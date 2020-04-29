@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -12,6 +11,7 @@ import (
 
 func main() {
 	opts := cli.ParseArguments()
+	readConnections()
 
 	switch opts.Command {
 	case "extract":
@@ -19,16 +19,10 @@ func main() {
 	}
 }
 
-func extract(_ string, table string) {
-	database, _ := dburl.Open("sqlite3://test/example.sqlite3")
-	res, err := database.Query("SELECT name FROM sqlite_master WHERE type='table'")
+func extract(source string, table string) {
+	url := Connections[source].Config.Url
+	database, err := dburl.Open(url)
 	if err != nil {
-		log.Println(err)
-		return
-	}
-	var name string
-	for res.Next() {
-		res.Scan(&name)
-		fmt.Println(name)
+		log.Fatal("Database Open Error:", err)
 	}
 }
