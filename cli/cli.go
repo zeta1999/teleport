@@ -7,10 +7,11 @@ import (
 )
 
 type CliOptions struct {
-	Command    string
-	DataSource string
-	TableName  string
-	File       string
+	Command               string
+	DataSource            string
+	TableName             string
+	File                  string
+	DestinationDataSource string
 }
 
 func ParseArguments() CliOptions {
@@ -20,6 +21,7 @@ func ParseArguments() CliOptions {
 	options.Command = os.Args[1]
 	flag.StringVar(&options.DataSource, "s", "", "Data source name")
 	flag.StringVar(&options.TableName, "t", "", "Name of table from data source")
+	flag.StringVar(&options.DestinationDataSource, "d", "", "Destination data source name")
 	flag.StringVar(&options.File, "f", "", "Path to file to be used in command")
 
 	versionPtr := flag.Bool("v", false, "Show version")

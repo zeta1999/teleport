@@ -29,6 +29,8 @@ func main() {
 		listTables(opts.DataSource)
 	case "drop-table":
 		dropTable(opts.DataSource, opts.TableName)
+	case "create-destination-table":
+		createDestinationTable(opts.DataSource, opts.DestinationDataSource, opts.TableName)
 	}
 }
 
@@ -150,4 +152,37 @@ func dropTable(source string, table string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func createDestinationTable(source string, destination string, table string) {
+	sourceURL := Connections[source].Config.Url
+	sourceDatabase, err := dburl.Open(sourceURL)
+	if err != nil {
+		log.Fatal("Database Open Error:", err)
+	}
+	destinationURL := Connections[destination].Config.Url
+	destinationDatabase, err := dburl.Open(destinationURL)
+	if err != nil {
+		log.Fatal("Database Open Error:", err)
+	}
+
+	sourceCols, err := schema.Table(sourceDatabase, table)
+	if err != nil {
+		log.Fatal("Database Open Error:", err)
+	}
+	statement := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s_%s", source, table)
+	statement += " (\n"
+	for _, col := range sourceCols {
+		statement += fmt.Sprintf("%s %s,\n", col.Name(), col.DatabaseTypeName())
+	}
+	statement = strings.TrimSuffix(statement, ",\n")
+	statement += "\n);"
+
+	fmt.Println(statement)
+	_, err = destinationDatabase.Exec(statement)
+	if err != nil {
+		log.Fatal(err)
+	}
+	destinationDatabase.Close()
+	sourceDatabase.Close()
 }
