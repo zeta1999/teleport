@@ -1,12 +1,10 @@
 package main
 
 import (
-	"bytes"
 	"encoding/csv"
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os/exec"
 	"strings"
 
 	"github.com/jimsmart/schema"
@@ -92,24 +90,6 @@ func extract(source string, table string) {
 	}
 
 	log.Printf("Extracted to: %s\n", tmpfile.Name())
-}
-
-func load(source string, table string, file string) {
-	url := Connections[source].Config.Url
-	sqlite3URL, err := dburl.Parse(url)
-	if err != nil {
-		log.Fatal("Database Open Error:", err)
-	}
-
-	cmd := exec.Command("sqlite3", sqlite3URL.DSN)
-	cmd.Stdin = strings.NewReader(fmt.Sprintf(".mode csv\n.import %s %s", file, table))
-	var errout bytes.Buffer
-	cmd.Stderr = &errout
-	err = cmd.Run()
-	fmt.Println(cmd.ProcessState)
-	if err != nil {
-		log.Fatal("CSV Import Error: ", errout.String())
-	}
 }
 
 func listTables(source string) {
