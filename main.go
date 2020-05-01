@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/jimsmart/schema"
+	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/xo/dburl"
 )
@@ -119,6 +120,9 @@ func listTables(source string) {
 	}
 
 	tables, err := schema.TableNames(database)
+	if err != nil {
+		log.Fatal("Database Error:", err)
+	}
 	for _, tablename := range tables {
 		fmt.Println(tablename)
 	}
@@ -176,7 +180,6 @@ func createDestinationTable(source string, destination string, table string) {
 	statement = strings.TrimSuffix(statement, ",\n")
 	statement += "\n);"
 
-	fmt.Println(statement)
 	_, err = destinationDatabase.Exec(statement)
 	if err != nil {
 		log.Fatal(err)
