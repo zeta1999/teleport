@@ -1,4 +1,4 @@
-package cli
+package main
 
 import (
 	"flag"
@@ -14,7 +14,7 @@ type CliOptions struct {
 	DestinationDataSource string
 }
 
-func ParseArguments() CliOptions {
+func parseArguments() CliOptions {
 	options := CliOptions{}
 
 	flag.Usage = help

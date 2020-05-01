@@ -12,12 +12,10 @@ import (
 	"github.com/jimsmart/schema"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/xo/dburl"
-
-	"github.com/hundredwatt/teleport/cli"
 )
 
 func main() {
-	opts := cli.ParseArguments()
+	opts := parseArguments()
 	readConnections()
 
 	switch opts.Command {
