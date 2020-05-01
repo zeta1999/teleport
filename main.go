@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/csv"
 	"fmt"
 	"io/ioutil"
@@ -32,8 +33,7 @@ func main() {
 }
 
 func extract(source string, table string) {
-	url := Connections[source].Config.Url
-	database, err := dburl.Open(url)
+	database, err := connectDatabase(source)
 	if err != nil {
 		log.Fatal("Database Open Error:", err)
 	}
@@ -93,8 +93,7 @@ func extract(source string, table string) {
 }
 
 func listTables(source string) {
-	url := Connections[source].Config.Url
-	database, err := dburl.Open(url)
+	database, err := connectDatabase(source)
 	if err != nil {
 		log.Fatal("Database Open Error:", err)
 	}
@@ -109,8 +108,7 @@ func listTables(source string) {
 }
 
 func dropTable(source string, table string) {
-	url := Connections[source].Config.Url
-	database, err := dburl.Open(url)
+	database, err := connectDatabase(source)
 	if err != nil {
 		log.Fatal("Database Open Error:", err)
 	}
@@ -137,15 +135,14 @@ func dropTable(source string, table string) {
 }
 
 func createDestinationTable(source string, destination string, table string) {
-	sourceURL := Connections[source].Config.Url
-	sourceDatabase, err := dburl.Open(sourceURL)
+	sourceDatabase, err := connectDatabase(source)
 	if err != nil {
-		log.Fatal("Database Open Error:", err)
+		log.Fatal("Database Connect Error:", err)
 	}
-	destinationURL := Connections[destination].Config.Url
-	destinationDatabase, err := dburl.Open(destinationURL)
+
+	destinationDatabase, err := connectDatabase(source)
 	if err != nil {
-		log.Fatal("Database Open Error:", err)
+		log.Fatal("Database Connect Error:", err)
 	}
 
 	sourceCols, err := schema.Table(sourceDatabase, table)
@@ -166,4 +163,19 @@ func createDestinationTable(source string, destination string, table string) {
 	}
 	destinationDatabase.Close()
 	sourceDatabase.Close()
+}
+
+func connectDatabase(source string) (*sql.DB, error) {
+	url := Connections[source].Config.Url
+	database, err := dburl.Open(url)
+	if err != nil {
+		return nil, err
+	}
+
+	err = database.Ping()
+	if err != nil {
+		return nil, err
+	}
+
+	return database, nil
 }

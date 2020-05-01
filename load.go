@@ -32,8 +32,7 @@ func load(source string, table string, file string) {
 }
 
 func loadPostgres(source string, table string, file string) {
-	url := Connections[source].Config.Url
-	database, err := dburl.Open(url)
+	database, err := connectDatabase(source)
 	if err != nil {
 		log.Fatal("Database Open Error:", err)
 	}
