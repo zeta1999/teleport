@@ -29,6 +29,8 @@ func main() {
 		dropTable(opts.DataSource, opts.TableName)
 	case "create-destination-table":
 		createDestinationTable(opts.DataSource, opts.DestinationDataSource, opts.TableName)
+	case "describe-table":
+		describeTable(opts.DataSource, opts.TableName)
 	}
 }
 

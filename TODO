@@ -1,0 +1,8 @@
+Schema Manager
+==============
+* Convert schema.Table output to standard datatype
+* Serialize standard datatype to file
+* Test serialization in Postgres, SQLite
+* Use serialized file to create a table
+* Use serialized file to detect changes or unsupported columns
+  * Be liberal in what we accept (e.g., VARCHAR as long as limit(source) < limit(target))
