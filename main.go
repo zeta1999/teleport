@@ -189,3 +189,28 @@ func connectDatabase(source string) (*sql.DB, error) {
 	dbs[source] = database
 	return dbs[source], nil
 }
+
+func describeTable(source string, tableName string) {
+	table, err := dumpTableMetadata(source, tableName)
+	if err != nil {
+		log.Fatal("Describe Table Error:", err)
+	}
+
+	fmt.Println("Source: ", table.Source)
+	fmt.Println("Table: ", table.Table)
+	fmt.Println()
+	fmt.Println("Columns:")
+	fmt.Println("========")
+	for _, column := range table.Columns {
+		fmt.Print(column.Name, " | ", column.DataType.String())
+		if len(column.Options) > 0 {
+			fmt.Print(" ( ")
+			for option, value := range column.Options {
+				fmt.Print(strings.ToLower(option.String()), ": ", value, ", ")
+
+			}
+			fmt.Print(" )")
+		}
+		fmt.Println()
+	}
+}
