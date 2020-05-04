@@ -14,6 +14,10 @@ import (
 	"github.com/xo/dburl"
 )
 
+var (
+	dbs = make(map[string]*sql.DB)
+)
+
 func main() {
 	opts := parseArguments()
 	readConnections()
@@ -168,6 +172,9 @@ func createDestinationTable(source string, destination string, table string) {
 }
 
 func connectDatabase(source string) (*sql.DB, error) {
+	if dbs[source] != nil {
+		return dbs[source], nil
+	}
 	url := Connections[source].Config.Url
 	database, err := dburl.Open(url)
 	if err != nil {
@@ -179,5 +186,6 @@ func connectDatabase(source string) (*sql.DB, error) {
 		return nil, err
 	}
 
-	return database, nil
+	dbs[source] = database
+	return dbs[source], nil
 }
