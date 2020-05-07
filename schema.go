@@ -12,37 +12,37 @@ import (
 )
 
 type Table struct {
-	Source  string
-	Table   string
-	Columns []Column
+	Source  string   `yaml:"source"`
+	Table   string   `yaml:"table"`
+	Columns []Column `yaml:"columns"`
 }
 
 // Column is our representation of a column within a table
 type Column struct {
-	Name     string
-	DataType DataType
-	Options  map[Option]int
+	Name     string         `yaml:"name"`
+	DataType DataType       `yaml:"datatype"`
+	Options  map[Option]int `yaml:"options"`
 }
 
-type DataType int
+type DataType string
 
 const (
-	INTEGER DataType = iota
-	DECIMAL
-	FLOAT
-	STRING
-	DATE
-	TIMESTAMP
-	BOOLEAN
+	INTEGER   DataType = "integer"
+	DECIMAL   DataType = "decimal"
+	FLOAT     DataType = "float"
+	STRING    DataType = "string"
+	DATE      DataType = "date"
+	TIMESTAMP DataType = "timestamp"
+	BOOLEAN   DataType = "boolean"
 )
 
-type Option int
+type Option string
 
 const (
-	LENGTH Option = iota
-	PRECISION
-	SCALE
-	BYTES
+	LENGTH    Option = "length"
+	PRECISION Option = "precision"
+	SCALE     Option = "scale"
+	BYTES     Option = "bytes"
 )
 
 // Supported Data Types:
@@ -101,7 +101,7 @@ func determineDataType(columnType *sql.ColumnType) (DataType, error) {
 		return DATE, nil
 	}
 
-	return -1, fmt.Errorf("unable to determine data type for: %s (%s)", columnType.Name(), databaseTypeName)
+	return "", fmt.Errorf("unable to determine data type for: %s (%s)", columnType.Name(), databaseTypeName)
 }
 
 func determineOptions(columnType *sql.ColumnType, dataType DataType) (map[Option]int, error) {
@@ -176,5 +176,5 @@ func (column *Column) generateDataTypeExpression() string {
 		return fmt.Sprintf("DECIMAL(%d,%d)", precision, scale)
 	}
 
-	return column.DataType.String()
+	return strings.ToUpper(string(column.DataType))
 }

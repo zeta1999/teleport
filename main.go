@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"strings"
 
 	"github.com/jimsmart/schema"
 	_ "github.com/lib/pq"
@@ -191,11 +190,11 @@ func describeTable(source string, tableName string) {
 	fmt.Println("Columns:")
 	fmt.Println("========")
 	for _, column := range table.Columns {
-		fmt.Print(column.Name, " | ", column.DataType.String())
+		fmt.Print(column.Name, " | ", column.DataType)
 		if len(column.Options) > 0 {
 			fmt.Print(" ( ")
 			for option, value := range column.Options {
-				fmt.Print(strings.ToLower(option.String()), ": ", value, ", ")
+				fmt.Print(option, ": ", value, ", ")
 
 			}
 			fmt.Print(" )")
