@@ -147,3 +147,34 @@ func determineOptions(columnType *sql.ColumnType, dataType DataType) (map[Option
 
 	return options, nil
 }
+
+func (table *Table) generateCreateTableStatement(name string) string {
+	statement := fmt.Sprintf("CREATE TABLE %s (\n", name)
+	for _, column := range table.Columns {
+		statement += fmt.Sprintf("%s %s,\n", column.Name, column.generateDataTypeExpression())
+	}
+	statement = strings.TrimSuffix(statement, ",\n")
+	statement += "\n);"
+
+	return statement
+}
+
+func (column *Column) generateDataTypeExpression() string {
+	switch column.DataType {
+	case INTEGER:
+		bytes := column.Options[BYTES]
+
+		return fmt.Sprintf("INT%d", bytes)
+	case STRING:
+		length := column.Options[LENGTH]
+
+		return fmt.Sprintf("VARCHAR(%d)", length)
+	case DECIMAL:
+		precision := column.Options[PRECISION]
+		scale := column.Options[SCALE]
+
+		return fmt.Sprintf("DECIMAL(%d,%d)", precision, scale)
+	}
+
+	return column.DataType.String()
+}

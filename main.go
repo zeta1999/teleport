@@ -140,10 +140,10 @@ func dropTable(source string, table string) {
 	}
 }
 
-func createDestinationTable(source string, destination string, table string) {
-	sourceDatabase, err := connectDatabase(source)
+func createDestinationTable(source string, destination string, sourceTableName string) {
+	table, err := dumpTableMetadata(source, sourceTableName)
 	if err != nil {
-		log.Fatal("Database Connect Error:", err)
+		log.Fatal("Table Metadata Error:", err)
 	}
 
 	destinationDatabase, err := connectDatabase(source)
@@ -151,24 +151,13 @@ func createDestinationTable(source string, destination string, table string) {
 		log.Fatal("Database Connect Error:", err)
 	}
 
-	sourceCols, err := schema.Table(sourceDatabase, table)
-	if err != nil {
-		log.Fatal("Database Open Error:", err)
-	}
-	statement := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s_%s", source, table)
-	statement += " (\n"
-	for _, col := range sourceCols {
-		statement += fmt.Sprintf("%s %s,\n", col.Name(), col.DatabaseTypeName())
-	}
-	statement = strings.TrimSuffix(statement, ",\n")
-	statement += "\n);"
+	statement := table.generateCreateTableStatement(fmt.Sprintf("%s_%s", source, sourceTableName))
 
 	_, err = destinationDatabase.Exec(statement)
 	if err != nil {
 		log.Fatal(err)
 	}
 	destinationDatabase.Close()
-	sourceDatabase.Close()
 }
 
 func connectDatabase(source string) (*sql.DB, error) {
