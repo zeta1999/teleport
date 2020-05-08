@@ -45,17 +45,7 @@ func extract(source string, table string) {
 		log.Fatal("Database Open Error:", err)
 	}
 
-	tables, err := schema.TableNames(database)
-	if err != nil {
-		log.Fatal(err)
-	}
-	targetTable := ""
-	for _, tablename := range tables {
-		if tablename == table {
-			targetTable = tablename
-		}
-	}
-	if targetTable == "" {
+	if !tableExists(source, table) {
 		log.Fatalf("table \"%s\" not found in \"%s\"", table, source)
 	}
 
@@ -64,7 +54,7 @@ func extract(source string, table string) {
 		log.Fatal(err)
 	}
 
-	rows, err := database.Query(fmt.Sprintf("SELECT * FROM %s", targetTable))
+	rows, err := database.Query(fmt.Sprintf("SELECT * FROM %s", table))
 	writer := csv.NewWriter(tmpfile)
 	columnNames, err := rows.Columns()
 	if err != nil {
@@ -120,22 +110,11 @@ func dropTable(source string, table string) {
 		log.Fatal("Database Open Error:", err)
 	}
 
-	tables, err := schema.TableNames(database)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	targetTable := ""
-	for _, tablename := range tables {
-		if tablename == table {
-			targetTable = tablename
-		}
-	}
-	if targetTable == "" {
+	if !tableExists(source, table) {
 		log.Fatalf("table \"%s\" not found in \"%s\"", table, source)
 	}
 
-	_, err = database.Exec(fmt.Sprintf("DROP TABLE %s", targetTable))
+	_, err = database.Exec(fmt.Sprintf("DROP TABLE %s", table))
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -24,6 +24,16 @@ func TestGenerateCreateTableStatement(t *testing.T) {
 
 }
 
+func TestTableExists(t *testing.T) {
+	Connections["test"] = Connection{"test", Configuration{"sqlite://:memory:"}}
+	db, _ := connectDatabase("test")
+
+	db.Exec("CREATE TABLE IF NOT EXISTS animals (id integer, name varchar(255))")
+
+	assert.False(t, tableExists("test", "does_not_exist"))
+	assert.True(t, tableExists("test", "animals"))
+}
+
 func squish(s string) string {
 	return strings.Join(strings.Fields(s), " ")
 }

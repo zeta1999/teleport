@@ -178,3 +178,23 @@ func (column *Column) generateDataTypeExpression() string {
 
 	return strings.ToUpper(string(column.DataType))
 }
+
+func tableExists(source string, tableName string) bool {
+	database, err := connectDatabase(source)
+	if err != nil {
+		log.Fatal("Database Open Error:", err)
+	}
+
+	tables, err := schema.TableNames(database)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, table := range tables {
+		if table == tableName {
+			return true
+		}
+	}
+
+	return false
+}
