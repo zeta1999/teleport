@@ -131,9 +131,8 @@ func createDestinationTable(source string, destination string, sourceTableName s
 		log.Fatal("Database Connect Error:", err)
 	}
 
-	statement := table.generateCreateTableStatement(fmt.Sprintf("%s_%s", source, sourceTableName))
+	err = createTable(destinationDatabase, fmt.Sprintf("%s_%s", source, sourceTableName), table)
 
-	_, err = destinationDatabase.Exec(statement)
 	if err != nil {
 		log.Fatal(err)
 	}

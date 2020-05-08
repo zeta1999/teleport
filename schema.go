@@ -198,3 +198,11 @@ func tableExists(source string, tableName string) bool {
 
 	return false
 }
+
+func createTable(database *sql.DB, tableName string, table *Table) error {
+	statement := table.generateCreateTableStatement(tableName)
+
+	_, err := database.Exec(statement)
+
+	return err
+}
