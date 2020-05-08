@@ -16,7 +16,7 @@ import (
 	"github.com/xo/dburl"
 )
 
-func load(source string, table string, file string) {
+func importCSV(source string, table string, file string) {
 	url := Connections[source].Config.Url
 	database, err := dburl.Open(url)
 	if err != nil {
@@ -25,13 +25,13 @@ func load(source string, table string, file string) {
 
 	switch driverType := fmt.Sprintf("%T", database.Driver()); driverType {
 	case "*pq.Driver":
-		loadPostgres(source, table, file)
+		importPostgres(source, table, file)
 	case "*sqlite3.SQLiteDriver":
-		loadSqlite3(source, table, file)
+		importSqlite3(source, table, file)
 	}
 }
 
-func loadPostgres(source string, table string, file string) {
+func importPostgres(source string, table string, file string) {
 	database, err := connectDatabase(source)
 	if err != nil {
 		log.Fatal("Database Open Error:", err)
@@ -106,7 +106,7 @@ func loadPostgres(source string, table string, file string) {
 	}
 }
 
-func loadSqlite3(source string, table string, file string) {
+func importSqlite3(source string, table string, file string) {
 	url := Connections[source].Config.Url
 	sqlite3URL, err := dburl.Parse(url)
 	if err != nil {

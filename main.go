@@ -25,7 +25,9 @@ func main() {
 	case "extract":
 		extract(opts.DataSource, opts.TableName)
 	case "load":
-		load(opts.DataSource, opts.TableName, opts.File)
+		load(opts.DataSource, opts.DestinationDataSource, opts.TableName)
+	case "import-csv":
+		importCSV(opts.DataSource, opts.TableName, opts.File)
 	case "list-tables":
 		listTables(opts.DataSource)
 	case "drop-table":
