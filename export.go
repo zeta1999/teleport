@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"strings"
 )
 
-func exportCSV(source string, table string) (string, error) {
+func exportCSV(source string, table string, columns []Column) (string, error) {
 	database, err := connectDatabase(source)
 	if err != nil {
 		log.Fatal("Database Open Error:", err)
@@ -17,14 +18,19 @@ func exportCSV(source string, table string) (string, error) {
 		log.Fatalf("table \"%s\" not found in \"%s\"", table, source)
 	}
 
+	columnNames := make([]string, len(columns))
+	for i, column := range columns {
+		columnNames[i] = column.Name
+	}
+
 	tmpfile, err := ioutil.TempFile("/tmp/", fmt.Sprintf("extract-%s-%s", table, source))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	rows, err := database.Query(fmt.Sprintf("SELECT * FROM %s", table))
+	rows, err := database.Query(fmt.Sprintf("SELECT %s FROM %s", strings.Join(columnNames, ", "), table))
 	writer := csv.NewWriter(tmpfile)
-	columnNames, err := rows.Columns()
+	columnNames, err = rows.Columns()
 	if err != nil {
 		log.Fatal(err)
 	}

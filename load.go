@@ -18,18 +18,20 @@ func load(source string, destination string, tableName string) {
 		log.Fatal("Table Metadata Error:", err)
 	}
 
+	var exportColumns []Column
 	if !tableExists(destination, destinationTableName) {
 		createTable(destinationDatabase, destinationTableName, table)
+		exportColumns = table.Columns
 	} else {
-		// 		destinationTable, err := dumpTableMetadata(destination, destinationTableName)
-		// 		if err != nil {
-		// 			log.Fatal("Table Metadata Error:", err)
-		// }
+		destinationTable, err := dumpTableMetadata(destination, destinationTableName)
+		if err != nil {
+			log.Fatal("Table Metadata Error:", err)
+		}
 
-		// 		destinationTable.compatabilityWith(table)
+		exportColumns = importableColumns(destinationTable, table)
 	}
 
-	file, err := exportCSV(source, tableName)
+	file, err := exportCSV(source, tableName, exportColumns)
 	if err != nil {
 		log.Fatal("Extract Error:", err)
 	}

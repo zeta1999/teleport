@@ -156,7 +156,7 @@ func importSqlite3(database *sql.DB, table string, file string) {
 
 		_, err = statement.Exec(writeBuffer...)
 		if err != nil {
-			log.Fatalf("Statement exec error: %s", error)
+			log.Fatal("Import statement exec error: ", err)
 		}
 	}
 
@@ -169,4 +169,74 @@ func importSqlite3(database *sql.DB, table string, file string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func importableColumns(destinationTable *Table, sourceTable *Table) []Column {
+	var (
+		destinationOnly = make([]Column, 0)
+		sourceOnly      = make([]Column, 0)
+		both            = make([]Column, 0)
+	)
+
+	destinationOnly = filterColumns(destinationTable.Columns, sourceTable.notContainsColumnWithSameName)
+	sourceOnly = filterColumns(sourceTable.Columns, destinationTable.notContainsColumnWithSameName)
+	both = filterColumns(destinationTable.Columns, sourceTable.containsColumnWithSameName)
+
+	for _, column := range destinationOnly {
+		log.Printf("destination table column `%s` excluded from extract (not present in source)", column.Name)
+	}
+	for _, column := range sourceOnly {
+		log.Printf("source table column `%s` excluded from extract (not present in destination)", column.Name)
+	}
+
+	for _, column := range both {
+		destinationColumn := filterColumns(destinationTable.Columns, func(c Column) bool { return column.Name == c.Name })[0]
+		sourceColumn := filterColumns(sourceTable.Columns, func(c Column) bool { return column.Name == c.Name })[0]
+
+		switch destinationColumn.DataType {
+		case STRING:
+			if sourceColumn.Options[LENGTH] > destinationColumn.Options[LENGTH] {
+				log.Printf("For string column `%s`, destination LENGTH is too short", sourceColumn.Name)
+			}
+		case INTEGER:
+			if sourceColumn.Options[BYTES] > destinationColumn.Options[BYTES] {
+				log.Printf("For integer column `%s`, destination SIZE is too small", sourceColumn.Name)
+			}
+		case DECIMAL:
+			if sourceColumn.Options[PRECISION] > destinationColumn.Options[PRECISION] {
+				log.Printf("For numeric column `%s`, destination PRECISION is too small", sourceColumn.Name)
+			}
+		}
+
+	}
+
+	return both
+}
+
+func filterColumns(columns []Column, f func(column Column) bool) []Column {
+	filtered := make([]Column, 0)
+	for _, c := range columns {
+		if f(c) {
+			filtered = append(filtered, c)
+		}
+	}
+	return filtered
+}
+
+func (table *Table) containsColumnWithSameName(c Column) bool {
+	for _, column := range table.Columns {
+		if c.Name == column.Name {
+			return true
+		}
+	}
+	return false
+}
+
+func (table *Table) notContainsColumnWithSameName(c Column) bool {
+	for _, column := range table.Columns {
+		if c.Name == column.Name {
+			return false
+		}
+	}
+	return true
 }
