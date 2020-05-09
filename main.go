@@ -11,6 +11,7 @@ import (
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/xo/dburl"
+	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -34,8 +35,12 @@ func main() {
 		dropTable(opts.DataSource, opts.TableName)
 	case "create-destination-table":
 		createDestinationTable(opts.DataSource, opts.DestinationDataSource, opts.TableName)
+	case "create-destination-table-from-config-file":
+		createDestinationTableFromConfigFile(opts.DataSource, opts.File)
 	case "describe-table":
 		describeTable(opts.DataSource, opts.TableName)
+	case "table-metadata":
+		tableMetadata(opts.DataSource, opts.TableName)
 	}
 }
 
@@ -136,7 +141,22 @@ func createDestinationTable(source string, destination string, sourceTableName s
 	if err != nil {
 		log.Fatal(err)
 	}
-	destinationDatabase.Close()
+}
+
+func createDestinationTableFromConfigFile(source string, file string) {
+	table := readTableFromConfigFile(file)
+
+	database, err := connectDatabase(source)
+	if err != nil {
+		log.Fatal("Database Connect Error:", err)
+	}
+
+	statement := table.generateCreateTableStatement(fmt.Sprintf("%s_%s", table.Source, table.Table))
+
+	_, err = database.Exec(statement)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func connectDatabase(source string) (*sql.DB, error) {
@@ -181,4 +201,34 @@ func describeTable(source string, tableName string) {
 		}
 		fmt.Println()
 	}
+}
+
+func tableMetadata(source string, tableName string) {
+	table, err := dumpTableMetadata(source, tableName)
+	if err != nil {
+		log.Fatal("Describe Table Error:", err)
+	}
+
+	b, err := yaml.Marshal(table)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(string(b))
+}
+
+func readTableFromConfigFile(file string) *Table {
+	var table Table
+
+	yamlFile, err := ioutil.ReadFile(file)
+	if err != nil {
+		log.Printf("yamlFile.Get err   #%v ", err)
+	}
+
+	err = yaml.Unmarshal(yamlFile, &table)
+	if err != nil {
+		log.Fatalf("Unmarshal: %v", err)
+	}
+
+	return &table
 }
