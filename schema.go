@@ -71,6 +71,9 @@ func dumpTableMetadata(source string, tableName string) (*Table, error) {
 		column := Column{}
 		column.Name = columnType.Name()
 		column.DataType, err = determineDataType(columnType)
+		if err != nil {
+			log.Fatal(err)
+		}
 		column.Options, err = determineOptions(columnType, column.DataType)
 		if err != nil {
 			log.Fatal(err)
@@ -86,6 +89,8 @@ func determineDataType(columnType *sql.ColumnType) (DataType, error) {
 	if strings.Contains(databaseTypeName, "varchar") {
 		return STRING, nil
 	} else if strings.HasPrefix(databaseTypeName, "int") {
+		return INTEGER, nil
+	} else if strings.HasSuffix(databaseTypeName, "int") {
 		return INTEGER, nil
 	} else if strings.HasPrefix(databaseTypeName, "decimal") {
 		return DECIMAL, nil
