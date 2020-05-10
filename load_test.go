@@ -16,10 +16,10 @@ var (
 )
 
 func TestLoadNewTable(t *testing.T) {
-	Connections["test1"] = Connection{"test1", Configuration{"sqlite://:memory:"}}
+	Connections["test1"] = Connection{"test1", Configuration{"sqlite://:memory:", map[string]string{}}}
 	db1, _ := connectDatabase("test1")
 
-	Connections["test2"] = Connection{"test2", Configuration{"sqlite://:memory:"}}
+	Connections["test2"] = Connection{"test2", Configuration{"sqlite://:memory:", map[string]string{}}}
 	db2, _ := connectDatabase("test2")
 
 	db1.Exec(widgetsTableDefinition.generateCreateTableStatement("widgets"))
@@ -34,10 +34,10 @@ func TestLoadNewTable(t *testing.T) {
 }
 
 func TestLoadSourceHasAdditionalColumn(t *testing.T) {
-	Connections["test1"] = Connection{"test1", Configuration{"sqlite://:memory:"}}
+	Connections["test1"] = Connection{"test1", Configuration{"sqlite://:memory:", map[string]string{}}}
 	db1, _ := connectDatabase("test1")
 
-	Connections["test2"] = Connection{"test2", Configuration{"sqlite://:memory:"}}
+	Connections["test2"] = Connection{"test2", Configuration{"sqlite://:memory:", map[string]string{}}}
 	db2, _ := connectDatabase("test2")
 
 	// Create a new Table Definition, same as widgets, but without the `description` column
@@ -63,10 +63,10 @@ func TestLoadSourceHasAdditionalColumn(t *testing.T) {
 }
 
 func TestLoadStringNotLongEnough(t *testing.T) {
-	Connections["test1"] = Connection{"test1", Configuration{"sqlite://:memory:"}}
+	Connections["test1"] = Connection{"test1", Configuration{"sqlite://:memory:", map[string]string{}}}
 	db1, _ := connectDatabase("test1")
 
-	Connections["test2"] = Connection{"test2", Configuration{"sqlite://:memory:"}}
+	Connections["test2"] = Connection{"test2", Configuration{"sqlite://:memory:", map[string]string{}}}
 	db2, _ := connectDatabase("test2")
 
 	// Create a new Table Definition, same as widgets, but with name LENGTH changed to 32

@@ -20,7 +20,7 @@ func TestGenerateCreateTableStatement(t *testing.T) {
 }
 
 func TestTableExists(t *testing.T) {
-	Connections["test"] = Connection{"test", Configuration{"sqlite://:memory:"}}
+	Connections["test"] = Connection{"test", Configuration{"sqlite://:memory:", map[string]string{}}}
 	db, _ := connectDatabase("test")
 
 	db.Exec("CREATE TABLE IF NOT EXISTS animals (id integer, name varchar(255))")
@@ -30,7 +30,7 @@ func TestTableExists(t *testing.T) {
 }
 
 func TestCreateTable(t *testing.T) {
-	Connections["test"] = Connection{"test", Configuration{"sqlite://:memory:"}}
+	Connections["test"] = Connection{"test", Configuration{"sqlite://:memory:", map[string]string{}}}
 	db, _ := connectDatabase("test")
 
 	table := widgetsTable()

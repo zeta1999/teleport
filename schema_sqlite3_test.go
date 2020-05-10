@@ -8,7 +8,7 @@ import (
 )
 
 func setup() {
-	Connections["test"] = Connection{"test", Configuration{"sqlite://:memory:"}}
+	Connections["test"] = Connection{"test", Configuration{"sqlite://:memory:", map[string]string{}}}
 	db, _ := connectDatabase("test")
 
 	db.Exec(`
