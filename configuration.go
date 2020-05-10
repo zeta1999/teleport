@@ -22,7 +22,8 @@ type Connection struct {
 }
 
 type Configuration struct {
-	Url string
+	Url     string
+	Options map[string]string
 }
 
 func readConnections() {
