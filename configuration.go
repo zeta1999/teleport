@@ -48,3 +48,24 @@ func readConnections() {
 		Connections[connection.Name] = connection
 	}
 }
+
+func aboutDB(source string) {
+	database, err := connectDatabase(source)
+	if err != nil {
+		log.Fatal("Database Open Error:", err)
+	}
+
+	fmt.Println("Name: ", source)
+	if strings.HasPrefix(Connections[source].Config.Url, "redshift://") {
+		fmt.Println("Type: ", "Redshift")
+	} else {
+		switch driverType := fmt.Sprintf("%T", database.Driver()); driverType {
+		case "*pq.Driver":
+			fmt.Println("Type: ", "Postgres")
+		case "*sqlite3.SQLiteDriver":
+			fmt.Println("Type: ", "SQLite")
+		default:
+			fmt.Println("Type: ", "MySQL")
+		}
+	}
+}

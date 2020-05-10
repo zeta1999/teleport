@@ -25,6 +25,8 @@ func main() {
 	readConnections()
 
 	switch opts.Command {
+	case "about-db":
+		aboutDB(opts.DataSource)
 	case "extract":
 		extract(opts.DataSource, opts.TableName)
 	case "load":
