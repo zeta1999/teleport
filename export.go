@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"strconv"
 	"strings"
+	"time"
 )
 
 func exportCSV(source string, table string, columns []Column) (string, error) {
@@ -34,18 +36,34 @@ func exportCSV(source string, table string, columns []Column) (string, error) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	//writer.Write(columnNames)
 
+	destination := make([]interface{}, len(columnNames))
 	rawResult := make([]interface{}, len(columnNames))
 	writeBuffer := make([]string, len(columnNames))
-	for i := range writeBuffer {
-		rawResult[i] = &writeBuffer[i]
+	for i := range rawResult {
+		destination[i] = &rawResult[i]
 	}
-
 	for rows.Next() {
-		err := rows.Scan(rawResult...)
+		err := rows.Scan(destination...)
 		if err != nil {
 			log.Fatal(err)
+		}
+
+		for i := range columns {
+			switch rawResult[i].(type) {
+			case time.Time:
+				writeBuffer[i] = rawResult[i].(time.Time).Format("2006-01-02 15:04:05")
+			case int64:
+				writeBuffer[i] = strconv.FormatInt(rawResult[i].(int64), 10)
+			case string:
+				writeBuffer[i] = rawResult[i].(string)
+			case float64:
+				writeBuffer[i] = strconv.FormatFloat(rawResult[i].(float64), 'E', -1, 64)
+			case nil:
+				writeBuffer[i] = ""
+			default:
+				writeBuffer[i] = string(rawResult[i].([]byte))
+			}
 		}
 
 		err = writer.Write(writeBuffer)

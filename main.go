@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"encoding/csv"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -51,53 +50,17 @@ func main() {
 }
 
 func extract(source string, table string) {
-	database, err := connectDatabase(source)
+	tableDefinition, err := dumpTableMetadata(source, table)
 	if err != nil {
-		log.Fatal("Database Open Error:", err)
+		log.Fatal("Dump Table Metadata Error:", err)
 	}
 
-	if !tableExists(source, table) {
-		log.Fatalf("table \"%s\" not found in \"%s\"", table, source)
-	}
-
-	tmpfile, err := ioutil.TempFile("/tmp/", fmt.Sprintf("extract-%s-%s", table, source))
+	tmpfile, err := exportCSV(source, table, tableDefinition.Columns)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Export CSV error:", err)
 	}
 
-	rows, err := database.Query(fmt.Sprintf("SELECT * FROM %s", table))
-	writer := csv.NewWriter(tmpfile)
-	columnNames, err := rows.Columns()
-	if err != nil {
-		log.Fatal(err)
-	}
-	//writer.Write(columnNames)
-
-	rawResult := make([]interface{}, len(columnNames))
-	writeBuffer := make([]string, len(columnNames))
-	for i := range writeBuffer {
-		rawResult[i] = &writeBuffer[i]
-	}
-
-	for rows.Next() {
-		err := rows.Scan(rawResult...)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		err = writer.Write(writeBuffer)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-
-	writer.Flush()
-
-	if err := tmpfile.Close(); err != nil {
-		log.Fatal(err)
-	}
-
-	log.Printf("Extracted to: %s\n", tmpfile.Name())
+	log.Printf("Extracted to: %s\n", tmpfile)
 }
 
 func listTables(source string) {

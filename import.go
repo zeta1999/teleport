@@ -115,9 +115,6 @@ func importPostgres(database *sql.DB, table string, file string) {
 	}
 
 	reader := csv.NewReader(bufio.NewReader(csvfile))
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	for {
 		line, error := reader.Read()
