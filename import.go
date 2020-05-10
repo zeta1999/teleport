@@ -40,11 +40,13 @@ func importCSV(source string, table string, file string) {
 }
 
 func importRedshift(database *sql.DB, table string, file string, options map[string]string) {
+	log.Print("Uploading CSV to S3")
 	s3URL, err := uploadFileToS3(options["s3_bucket"], file)
 	if err != nil {
 		log.Fatal("S3 Upload Error: ", err)
 	}
 
+	log.Print("Executing Redshift COPY command")
 	_, err = database.Exec(fmt.Sprintf(`
 		COPY %s
 		FROM '%s'
