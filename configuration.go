@@ -22,7 +22,7 @@ type Connection struct {
 }
 
 type Configuration struct {
-	Url     string
+	URL     string
 	Options map[string]string
 }
 
@@ -56,7 +56,7 @@ func aboutDB(source string) {
 	}
 
 	fmt.Println("Name: ", source)
-	if strings.HasPrefix(Connections[source].Config.Url, "redshift://") {
+	if strings.HasPrefix(Connections[source].Config.URL, "redshift://") {
 		fmt.Println("Type: ", "Redshift")
 	} else {
 		switch driverType := fmt.Sprintf("%T", database.Driver()); driverType {

@@ -26,7 +26,7 @@ func importCSV(source string, table string, file string) {
 		log.Fatal("Database Open Error:", err)
 	}
 
-	if strings.HasPrefix(Connections[source].Config.Url, "redshift://") {
+	if strings.HasPrefix(Connections[source].Config.URL, "redshift://") {
 		importRedshift(database, table, file, Connections[source].Config.Options)
 		return
 	}

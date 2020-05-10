@@ -134,7 +134,7 @@ func connectDatabase(source string) (*sql.DB, error) {
 	if dbs[source] != nil {
 		return dbs[source], nil
 	}
-	url := Connections[source].Config.Url
+	url := Connections[source].Config.URL
 	database, err := dburl.Open(url)
 	if err != nil {
 		return nil, err
