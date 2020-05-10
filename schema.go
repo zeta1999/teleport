@@ -126,7 +126,9 @@ func determineOptions(columnType *sql.ColumnType, dataType DataType) (map[Option
 			}
 			options[LENGTH] = length
 		} else {
-			return nil, fmt.Errorf("unable to determine options for: %s (%s)", columnType.Name(), columnType.DatabaseTypeName())
+			// fmt.Println(columnType)
+			// return nil, fmt.Errorf("unable to determine options for: %s (%s)", columnType.Name(), columnType.DatabaseTypeName())
+			options[LENGTH] = 4096
 		}
 	case DECIMAL:
 		precision, scale, ok := columnType.DecimalSize()
