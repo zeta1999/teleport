@@ -24,28 +24,30 @@ func main() {
 	readConnections()
 
 	switch opts.Command {
+	case "help", "-h", "--help":
+		help()
 	case "about-db":
-		aboutDB(opts.DataSource)
+		aboutDB(opts.Source)
 	case "extract":
-		extract(opts.DataSource, opts.TableName)
-	case "load":
-		load(opts.DataSource, opts.DestinationDataSource, opts.TableName)
+		extract(opts.FromSource, opts.TableName)
+	case "extract-load":
+		load(opts.FromSource, opts.ToSource, opts.TableName)
 	case "import-csv":
-		importCSV(opts.DataSource, opts.TableName, opts.File)
+		importCSV(opts.Source, opts.TableName, opts.File)
 	case "list-tables":
-		listTables(opts.DataSource)
+		listTables(opts.Source)
 	case "drop-table":
-		dropTable(opts.DataSource, opts.TableName)
+		dropTable(opts.Source, opts.TableName)
 	case "create-destination-table":
-		createDestinationTable(opts.DataSource, opts.DestinationDataSource, opts.TableName)
+		createDestinationTable(opts.FromSource, opts.ToSource, opts.TableName)
 	case "create-destination-table-from-config-file":
-		createDestinationTableFromConfigFile(opts.DataSource, opts.File)
+		createDestinationTableFromConfigFile(opts.Source, opts.File)
 	case "describe-table":
-		describeTable(opts.DataSource, opts.TableName)
+		describeTable(opts.Source, opts.TableName)
 	case "table-metadata":
-		tableMetadata(opts.DataSource, opts.TableName)
-	case "update-transform":
-		updateTransform(opts.DataSource, opts.TableName)
+		tableMetadata(opts.Source, opts.TableName)
+	case "transform":
+		updateTransform(opts.Source, opts.TableName)
 	}
 }
 
