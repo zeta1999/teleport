@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jimsmart/schema"
@@ -42,6 +43,8 @@ func main() {
 		describeTable(opts.DataSource, opts.TableName)
 	case "table-metadata":
 		tableMetadata(opts.DataSource, opts.TableName)
+	case "update-transform":
+		updateTransform(opts.DataSource, opts.TableName)
 	}
 }
 
@@ -232,4 +235,30 @@ func readTableFromConfigFile(file string) *Table {
 	}
 
 	return &table
+}
+
+func updateTransform(source string, transformName string) {
+	contents, err := ioutil.ReadFile(strings.Join([]string{"transforms/", transformName, ".sql"}, ""))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	database, err := connectDatabase(source)
+	if err != nil {
+		log.Fatal("Database Connect Error:", err)
+	}
+
+	_, err = database.Exec(fmt.Sprintf(`
+		DROP TABLE IF EXISTS staging_%s;
+
+		CREATE TABLE staging_%s AS %s;
+
+		BEGIN;
+			DROP TABLE IF EXISTS %s;
+			ALTER TABLE staging_%s RENAME TO %s;
+		END;
+	`, transformName, transformName, contents, transformName, transformName, transformName))
+	if err != nil {
+		log.Fatal("Transform Error:", err)
+	}
 }
