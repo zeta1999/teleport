@@ -6,7 +6,9 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"strings"
+	"syscall"
 )
 
 var (
@@ -68,4 +70,35 @@ func aboutDB(source string) {
 			fmt.Println("Type: ", "MySQL")
 		}
 	}
+}
+
+func dbTerminal(source string) {
+	database, err := connectDatabase(source)
+	if err != nil {
+		log.Fatal("Database Open Error:", err)
+	}
+
+	var command string
+	switch driverType := fmt.Sprintf("%T", database.Driver()); driverType {
+	case "*pq.Driver":
+		command = "psql"
+	// TODO: fix sqlite3 command (passing URL as first argument does not work)
+	// case "*sqlite3.SQLiteDriver":
+	// command = "sqlite3"
+	default:
+		log.Fatalf("Not implemented for this database type")
+	}
+
+	binary, err := exec.LookPath(command)
+	if err != nil {
+		log.Fatalf("command exec err (%s): %s", command, err)
+	}
+
+	env := os.Environ()
+
+	err = syscall.Exec(binary, []string{command, Connections[source].Config.URL}, env)
+	if err != nil {
+		log.Fatalf("Syscall error: %s", err)
+	}
+
 }

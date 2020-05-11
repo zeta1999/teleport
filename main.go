@@ -28,6 +28,8 @@ func main() {
 		help()
 	case "about-db":
 		aboutDB(opts.Source)
+	case "db-terminal":
+		dbTerminal(opts.Source)
 	case "extract":
 		extract(opts.FromSource, opts.TableName)
 	case "extract-load":
