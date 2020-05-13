@@ -54,10 +54,11 @@ func TestLoadSourceHasAdditionalColumn(t *testing.T) {
 
 	load("test1", "test2", "widgets")
 
+	log.SetOutput(os.Stdout)
+
 	assertRowCount(t, 3, db2, "test1_widgets")
 	assert.Contains(t, logBuffer.String(), "source table column `description` excluded")
 
-	log.SetOutput(os.Stderr)
 	db1.Exec("DROP TABLE widgets;")
 	db2.Exec("DROP TABLE test1_widgets;")
 }
@@ -82,9 +83,10 @@ func TestLoadStringNotLongEnough(t *testing.T) {
 
 	load("test1", "test2", "widgets")
 
+	log.SetOutput(os.Stdout)
+
 	assert.Contains(t, logBuffer.String(), "For string column `name`, destination LENGTH is too short")
 
-	log.SetOutput(os.Stderr)
 	db1.Exec("DROP TABLE widgets;")
 	db2.Exec("DROP TABLE test1_widgets;")
 }

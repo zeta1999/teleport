@@ -27,7 +27,9 @@ func load(source string, destination string, tableName string) {
 		createDestinationTableIfNotExists,
 		inspectDestinationTableIfNotCreated,
 		extractSource,
+		createStagingTable,
 		loadDestination,
+		promoteStagingTable,
 	}
 
 	for _, step := range steps {
@@ -106,9 +108,28 @@ func extractSource(tc *taskContext) error {
 	return err
 }
 
+func createStagingTable(tc *taskContext) error {
+	log.Printf("Creating staging table `staging_%s` in *%s*", tc.destinationTableName(), tc.Destination)
+
+	_, err := dbs[tc.Destination].Exec(fmt.Sprintf(DbDialect(Connections[tc.Destination]).CreateStagingTableQuery, tc.destinationTableName()))
+
+	return err
+}
+
 func loadDestination(tc *taskContext) error {
-	log.Printf("Importing CSV into table `%s` in *%s*", tc.destinationTableName(), tc.Destination)
-	importCSV(tc.Destination, tc.destinationTableName(), tc.CSVFile)
+	log.Printf("Importing CSV into table `staging_%s` in *%s*", tc.destinationTableName(), tc.Destination)
+	importCSV(tc.Destination, fmt.Sprintf("staging_%s", tc.destinationTableName()), tc.CSVFile)
+	return nil
+}
+
+func promoteStagingTable(tc *taskContext) error {
+	log.Printf("Promote staging table `staging_%[1]s` to primary `%[1]s` in *%[2]s*", tc.destinationTableName(), tc.Destination)
+
+	_, err := dbs[tc.Destination].Exec(fmt.Sprintf(DbDialect(Connections[tc.Destination]).PromoteStagingTableQuery, tc.destinationTableName()))
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
