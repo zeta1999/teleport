@@ -52,40 +52,13 @@ func readConnections() {
 }
 
 func aboutDB(source string) {
-	database, err := connectDatabase(source)
-	if err != nil {
-		log.Fatal("Database Open Error:", err)
-	}
-
 	fmt.Println("Name: ", source)
-	if strings.HasPrefix(Connections[source].Config.URL, "redshift://") {
-		fmt.Println("Type: ", "Redshift")
-	} else {
-		switch driverType := fmt.Sprintf("%T", database.Driver()); driverType {
-		case "*pq.Driver":
-			fmt.Println("Type: ", "Postgres")
-		case "*sqlite3.SQLiteDriver":
-			fmt.Println("Type: ", "SQLite")
-		default:
-			fmt.Println("Type: ", "MySQL")
-		}
-	}
+	fmt.Printf("Type: %s\n", DbDialect(Connections[source]).HumanName)
 }
 
 func dbTerminal(source string) {
-	database, err := connectDatabase(source)
-	if err != nil {
-		log.Fatal("Database Open Error:", err)
-	}
-
-	var command string
-	switch driverType := fmt.Sprintf("%T", database.Driver()); driverType {
-	case "*pq.Driver":
-		command = "psql"
-	// TODO: fix sqlite3 command (passing URL as first argument does not work)
-	// case "*sqlite3.SQLiteDriver":
-	// command = "sqlite3"
-	default:
+	command := DbDialect(Connections[source]).TerminalCommand
+	if command == "" {
 		log.Fatalf("Not implemented for this database type")
 	}
 

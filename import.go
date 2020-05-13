@@ -27,15 +27,18 @@ func importCSV(source string, table string, file string) {
 	}
 
 	if strings.HasPrefix(Connections[source].Config.URL, "redshift://") {
-		importRedshift(database, table, file, Connections[source].Config.Options)
 		return
 	}
 
-	switch driverType := fmt.Sprintf("%T", database.Driver()); driverType {
-	case "*pq.Driver":
+	switch DbDialect(Connections[source]).Key {
+	case "redshift":
+		importRedshift(database, table, file, Connections[source].Config.Options)
+	case "postgres":
 		importPostgres(database, table, file)
-	case "*sqlite3.SQLiteDriver":
+	case "sqlite":
 		importSqlite3(database, table, file)
+	default:
+		log.Fatalf("Not implemented for this database type")
 	}
 }
 
