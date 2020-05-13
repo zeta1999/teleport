@@ -31,6 +31,9 @@ func exportCSV(source string, table string, columns []Column) (string, error) {
 	}
 
 	rows, err := database.Query(fmt.Sprintf("SELECT %s FROM %s", strings.Join(columnNames, ", "), table))
+	if err != nil {
+		log.Fatal(err)
+	}
 	writer := csv.NewWriter(tmpfile)
 	columnNames, err = rows.Columns()
 	if err != nil {
