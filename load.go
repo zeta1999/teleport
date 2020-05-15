@@ -5,21 +5,25 @@ import (
 	"log"
 	"reflect"
 	"runtime"
+	"strconv"
+	"time"
 )
 
 type taskContext struct {
 	Source           string
 	Destination      string
 	TableName        string
+	Strategy         string
+	StrategyOpts     map[string]string
 	SourceTable      *Table
 	DestinationTable *Table
 	CSVFile          string
 }
 
-func load(source string, destination string, tableName string) {
+func load(source string, destination string, tableName string, strategy string, strategyOpts map[string]string) {
 	log.Printf("Starting extract-load from *%s* to *%s* with table `%s`", source, destination, tableName)
 
-	task := taskContext{source, destination, tableName, nil, nil, ""}
+	task := taskContext{source, destination, tableName, strategy, strategyOpts, nil, nil, ""}
 
 	steps := []func(tc *taskContext) error{
 		connectSourceDatabase,
@@ -101,8 +105,20 @@ func inspectDestinationTableIfNotCreated(tc *taskContext) error {
 func extractSource(tc *taskContext) error {
 	log.Printf("Exporting CSV of table `%s` from *%s*", tc.TableName, tc.Source)
 	exportColumns := importableColumns(tc.DestinationTable, tc.SourceTable)
+	var whereStatement string
+	switch tc.Strategy {
+	case "full":
+		whereStatement = ""
+	case "incremental":
+		hoursAgo, err := strconv.Atoi(tc.StrategyOpts["hours_ago"])
+		if err != nil {
+			log.Fatal("invalid value for hours-ago")
+		}
+		updateTime := (time.Now().Add(time.Duration(-1*hoursAgo) * time.Hour)).Format("2006-01-02 15:04:05")
+		whereStatement = fmt.Sprintf("%s > '%s'", tc.StrategyOpts["modified_at_column"], updateTime)
+	}
 
-	file, err := exportCSV(tc.Source, tc.TableName, exportColumns)
+	file, err := exportCSV(tc.Source, tc.TableName, exportColumns, whereStatement)
 
 	tc.CSVFile = file
 	return err

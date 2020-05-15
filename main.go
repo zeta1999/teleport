@@ -33,7 +33,18 @@ func main() {
 	case "extract":
 		extract(opts.FromSource, opts.TableName)
 	case "extract-load":
-		load(opts.FromSource, opts.ToSource, opts.TableName)
+		strategyOpts := make(map[string]string)
+		switch opts.Strategy {
+		case "full":
+			// None
+		case "incremental":
+			strategyOpts["primary_key"] = opts.PrimaryKey
+			strategyOpts["modified_at_column"] = opts.ModifiedAtColumn
+			strategyOpts["hours_ago"] = opts.HoursAgo
+		default:
+			log.Fatal("Invalid strategy, acceptable options: full, incremental")
+		}
+		load(opts.FromSource, opts.ToSource, opts.TableName, opts.Strategy, strategyOpts)
 	case "import-csv":
 		importCSV(opts.Source, opts.TableName, opts.File)
 	case "list-tables":
@@ -59,7 +70,7 @@ func extract(source string, table string) {
 		log.Fatal("Dump Table Metadata Error:", err)
 	}
 
-	tmpfile, err := exportCSV(source, table, tableDefinition.Columns)
+	tmpfile, err := exportCSV(source, table, tableDefinition.Columns, "")
 	if err != nil {
 		log.Fatal("Export CSV error:", err)
 	}

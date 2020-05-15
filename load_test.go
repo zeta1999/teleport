@@ -7,12 +7,14 @@ import (
 	"log"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
 
 var (
 	widgetsTableDefinition = readTableFromConfigFile("test/example_widgets.yaml")
+	fullStrategyOpts       = map[string]string{}
 )
 
 func TestLoadNewTable(t *testing.T) {
@@ -25,7 +27,7 @@ func TestLoadNewTable(t *testing.T) {
 	db1.Exec(widgetsTableDefinition.generateCreateTableStatement("widgets"))
 	importCSV("test1", "widgets", "test/example_widgets.csv")
 
-	load("test1", "test2", "widgets")
+	load("test1", "test2", "widgets", "full", fullStrategyOpts)
 
 	assertRowCount(t, 3, db2, "test1_widgets")
 
@@ -52,7 +54,7 @@ func TestLoadSourceHasAdditionalColumn(t *testing.T) {
 	var logBuffer bytes.Buffer
 	log.SetOutput(&logBuffer)
 
-	load("test1", "test2", "widgets")
+	load("test1", "test2", "widgets", "full", fullStrategyOpts)
 
 	log.SetOutput(os.Stdout)
 
@@ -81,7 +83,7 @@ func TestLoadStringNotLongEnough(t *testing.T) {
 	var logBuffer bytes.Buffer
 	log.SetOutput(&logBuffer)
 
-	load("test1", "test2", "widgets")
+	load("test1", "test2", "widgets", "full", fullStrategyOpts)
 
 	log.SetOutput(os.Stdout)
 
@@ -89,6 +91,37 @@ func TestLoadStringNotLongEnough(t *testing.T) {
 
 	db1.Exec("DROP TABLE widgets;")
 	db2.Exec("DROP TABLE test1_widgets;")
+}
+
+func TestIncrementalLoad(t *testing.T) {
+	Connections["test1"] = Connection{"test1", Configuration{"sqlite://:memory:", map[string]string{}}}
+	db1, _ := connectDatabase("test1")
+
+	Connections["test2"] = Connection{"test2", Configuration{"sqlite://:memory:", map[string]string{}}}
+	db2, _ := connectDatabase("test2")
+
+	objects := Table{"example", "objects", make([]Column, 3)}
+	objects.Columns[0] = Column{"id", INTEGER, map[Option]int{BYTES: 8}}
+	objects.Columns[1] = Column{"name", STRING, map[Option]int{LENGTH: 255}}
+	objects.Columns[2] = Column{"updated_at", TIMESTAMP, map[Option]int{}}
+
+	db1.Exec(objects.generateCreateTableStatement("objects"))
+	statement, _ := db1.Prepare("INSERT INTO objects (id, name, updated_at) VALUES (?, ?, ?)")
+	statement.Exec(1, "book", time.Now().Add(-7*24*time.Hour))
+	statement.Exec(2, "tv", time.Now().Add(-1*24*time.Hour))
+	statement.Exec(3, "chair", time.Now())
+	statement.Close()
+
+	strategyOpts := make(map[string]string)
+	strategyOpts["primary_key"] = "id"
+	strategyOpts["modified_at_column"] = "updated_at"
+	strategyOpts["hours_ago"] = "36"
+	load("test1", "test2", "objects", "incremental", strategyOpts)
+
+	assertRowCount(t, 2, db2, "test1_objects")
+
+	db1.Exec("DROP TABLE objects;")
+	db2.Exec("DROP TABLE test1_objects;")
 }
 
 func assertRowCount(t *testing.T, expected int, database *sql.DB, table string) {

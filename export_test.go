@@ -22,7 +22,7 @@ func TestExportTimestamp(t *testing.T) {
 	db1.Exec("INSERT INTO timestamps (created_at) VALUES (DATETIME(1092941466, 'unixepoch'))")
 	db1.Exec("INSERT INTO timestamps (created_at) VALUES (NULL)")
 
-	tempfile, _ := exportCSV("test1", "timestamps", columns)
+	tempfile, _ := exportCSV("test1", "timestamps", columns, "")
 
 	assertCsvCellContents(t, "2004-08-19 18:51:06", tempfile, 0, 0)
 	assertCsvCellContents(t, "", tempfile, 1, 0)

@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func exportCSV(source string, table string, columns []Column) (string, error) {
+func exportCSV(source string, table string, columns []Column, whereStatement string) (string, error) {
 	database, err := connectDatabase(source)
 	if err != nil {
 		log.Fatal("Database Open Error:", err)
@@ -30,16 +30,17 @@ func exportCSV(source string, table string, columns []Column) (string, error) {
 		log.Fatal(err)
 	}
 
-	rows, err := database.Query(fmt.Sprintf("SELECT %s FROM %s", strings.Join(columnNames, ", "), table))
-	if err != nil {
-		log.Fatal(err)
+	query := fmt.Sprintf("SELECT %s FROM %s", strings.Join(columnNames, ", "), table)
+	if whereStatement != "" {
+		query += fmt.Sprintf(" WHERE %s", whereStatement)
 	}
-	writer := csv.NewWriter(tmpfile)
-	columnNames, err = rows.Columns()
+
+	rows, err := database.Query(query)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	writer := csv.NewWriter(tmpfile)
 	destination := make([]interface{}, len(columnNames))
 	rawResult := make([]interface{}, len(columnNames))
 	writeBuffer := make([]string, len(columnNames))
