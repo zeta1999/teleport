@@ -46,7 +46,11 @@ func main() {
 		}
 		load(opts.FromSource, opts.ToSource, opts.TableName, opts.Strategy, strategyOpts)
 	case "import-csv":
-		importCSV(opts.Source, opts.TableName, opts.File)
+		tableDefinition, err := dumpTableMetadata(opts.Source, opts.TableName)
+		if err != nil {
+			log.Fatal("Dump Table Metadata Error:", err)
+		}
+		importCSV(opts.Source, opts.TableName, opts.File, tableDefinition.Columns)
 	case "list-tables":
 		listTables(opts.Source)
 	case "drop-table":

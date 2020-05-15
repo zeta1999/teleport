@@ -16,11 +16,10 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/jimsmart/schema"
 	"github.com/lib/pq"
 )
 
-func importCSV(source string, table string, file string) {
+func importCSV(source string, table string, file string, columns []Column) {
 	database, err := connectDatabase(source)
 	if err != nil {
 		log.Fatal("Database Open Error:", err)
@@ -32,26 +31,32 @@ func importCSV(source string, table string, file string) {
 
 	switch DbDialect(Connections[source]).Key {
 	case "redshift":
-		importRedshift(database, table, file, Connections[source].Config.Options)
+		importRedshift(database, table, file, columns, Connections[source].Config.Options)
 	case "postgres":
-		importPostgres(database, table, file)
+		importPostgres(database, table, file, columns)
 	case "sqlite":
-		importSqlite3(database, table, file)
+		importSqlite3(database, table, file, columns)
 	default:
 		log.Fatalf("Not implemented for this database type")
 	}
 }
 
-func importRedshift(database *sql.DB, table string, file string, options map[string]string) {
+func importRedshift(database *sql.DB, table string, file string, columns []Column, options map[string]string) {
 	log.Print("Uploading CSV to S3")
 	s3URL, err := uploadFileToS3(options["s3_bucket"], file)
 	if err != nil {
 		log.Fatal("S3 Upload Error: ", err)
 	}
 
+	columnNames := make([]string, len(columns))
+	for i, column := range columns {
+		columnNames[i] = column.Name
+	}
+
 	log.Print("Executing Redshift COPY command")
 	_, err = database.Exec(fmt.Sprintf(`
 		COPY %s
+		(%s)
 		FROM '%s'
 		IAM_ROLE '%s'
 		REGION '%s'
@@ -59,7 +64,7 @@ func importRedshift(database *sql.DB, table string, file string, options map[str
 		EMPTYASNULL
 		ACCEPTINVCHARS
 		;
-	`, table, s3URL, options["service_role"], options["s3_region"]))
+	`, table, strings.Join(columnNames, ", "), s3URL, options["service_role"], options["s3_region"]))
 
 	if err != nil {
 		log.Fatal("Redshift Copy Error: ", err)
@@ -93,20 +98,15 @@ func uploadFileToS3(bucket string, filename string) (string, error) {
 	return fmt.Sprintf("s3://%s/%s", bucket, key), nil
 }
 
-func importPostgres(database *sql.DB, table string, file string) {
+func importPostgres(database *sql.DB, table string, file string, columns []Column) {
 	transaction, err := database.Begin()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	columns, err := schema.Table(database, table)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	columnNames := make([]string, len(columns))
 	for i, column := range columns {
-		columnNames[i] = column.Name()
+		columnNames[i] = column.Name
 	}
 
 	statement, err := transaction.Prepare(pq.CopyIn(table, columnNames...))
@@ -160,12 +160,7 @@ func importPostgres(database *sql.DB, table string, file string) {
 	}
 }
 
-func importSqlite3(database *sql.DB, table string, file string) {
-	columns, err := schema.Table(database, table)
-	if err != nil {
-		log.Fatalf("Table error: %s", err)
-	}
-
+func importSqlite3(database *sql.DB, table string, file string, columns []Column) {
 	transaction, err := database.Begin()
 	if err != nil {
 		log.Fatal(err)
@@ -173,7 +168,7 @@ func importSqlite3(database *sql.DB, table string, file string) {
 
 	preparedStatement := fmt.Sprintf("INSERT INTO %s (", table)
 	for _, column := range columns {
-		preparedStatement += fmt.Sprintf("%s, ", column.Name())
+		preparedStatement += fmt.Sprintf("%s, ", column.Name)
 	}
 	preparedStatement = strings.TrimSuffix(preparedStatement, ", ")
 

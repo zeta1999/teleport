@@ -18,12 +18,13 @@ type taskContext struct {
 	SourceTable      *Table
 	DestinationTable *Table
 	CSVFile          string
+	Columns          *[]Column
 }
 
 func load(source string, destination string, tableName string, strategy string, strategyOpts map[string]string) {
 	log.Printf("Starting extract-load from *%s* to *%s* with table `%s`", source, destination, tableName)
 
-	task := taskContext{source, destination, tableName, strategy, strategyOpts, nil, nil, ""}
+	task := taskContext{source, destination, tableName, strategy, strategyOpts, nil, nil, "", nil}
 
 	steps := []func(tc *taskContext) error{
 		connectSourceDatabase,
@@ -121,6 +122,7 @@ func extractSource(tc *taskContext) error {
 	file, err := exportCSV(tc.Source, tc.TableName, exportColumns, whereStatement)
 
 	tc.CSVFile = file
+	tc.Columns = &exportColumns
 	return err
 }
 
@@ -134,7 +136,7 @@ func createStagingTable(tc *taskContext) error {
 
 func loadDestination(tc *taskContext) error {
 	log.Printf("Importing CSV into table `staging_%s` in *%s*", tc.destinationTableName(), tc.Destination)
-	importCSV(tc.Destination, fmt.Sprintf("staging_%s", tc.destinationTableName()), tc.CSVFile)
+	importCSV(tc.Destination, fmt.Sprintf("staging_%s", tc.destinationTableName()), tc.CSVFile, *tc.Columns)
 	return nil
 }
 

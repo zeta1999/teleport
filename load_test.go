@@ -25,7 +25,7 @@ func TestLoadNewTable(t *testing.T) {
 	db2, _ := connectDatabase("test2")
 
 	db1.Exec(widgetsTableDefinition.generateCreateTableStatement("widgets"))
-	importCSV("test1", "widgets", "test/example_widgets.csv")
+	importCSV("test1", "widgets", "test/example_widgets.csv", widgetsTableDefinition.Columns)
 
 	load("test1", "test2", "widgets", "full", fullStrategyOpts)
 
@@ -49,7 +49,7 @@ func TestLoadSourceHasAdditionalColumn(t *testing.T) {
 
 	db1.Exec(widgetsTableDefinition.generateCreateTableStatement("widgets"))
 	db2.Exec(widgetsWithoutDescription.generateCreateTableStatement("test1_widgets"))
-	importCSV("test1", "widgets", "test/example_widgets.csv")
+	importCSV("test1", "widgets", "test/example_widgets.csv", widgetsTableDefinition.Columns)
 
 	var logBuffer bytes.Buffer
 	log.SetOutput(&logBuffer)
