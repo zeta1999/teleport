@@ -75,7 +75,7 @@ func createDestinationTableIfNotExists(tc *taskContext) error {
 		return nil
 	}
 
-	log.Printf("Table `%s` does not exist in *%s*, creating", tc.TableName, tc.Destination)
+	log.Printf("Table `%s` does not exist in *%s*, creating", tc.destinationTableName(), tc.Destination)
 
 	tc.DestinationTable = &Table{tc.Destination, tc.destinationTableName(), make([]Column, len(tc.SourceTable.Columns))}
 	copy(tc.DestinationTable.Columns, tc.SourceTable.Columns)

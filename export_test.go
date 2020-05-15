@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"encoding/csv"
-	"fmt"
 	"io"
 	"os"
 	"testing"
@@ -24,8 +23,6 @@ func TestExportTimestamp(t *testing.T) {
 	db1.Exec("INSERT INTO timestamps (created_at) VALUES (NULL)")
 
 	tempfile, _ := exportCSV("test1", "timestamps", columns)
-
-	fmt.Println(tempfile)
 
 	assertCsvCellContents(t, "2004-08-19 18:51:06", tempfile, 0, 0)
 	assertCsvCellContents(t, "", tempfile, 1, 0)
