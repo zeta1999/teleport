@@ -1,0 +1,12 @@
+{
+  "method": "GET",
+  "url": "https://hn.algolia.com/api/v1/search?query=github.com&restrictSearchableAttributes=url&page=%(page)",
+  "response_type": "json",
+  "pagination_type": "url-inc",
+  "max_pages": 3,
+  "transforms": [
+    "hn_algolia/extract_hits.star",
+    "hn_algolia/filter_repos.star",
+    "hn_algolia/apply_schema.star"
+  ]
+}

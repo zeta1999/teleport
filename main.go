@@ -45,6 +45,8 @@ func main() {
 			log.Fatal("Invalid strategy, acceptable options: full, incremental")
 		}
 		load(opts.FromSource, opts.ToSource, opts.TableName, opts.Strategy, strategyOpts)
+	case "extract-api":
+		extractAPI(opts.Source)
 	case "import-csv":
 		tableDefinition, err := dumpTableMetadata(opts.Source, opts.TableName)
 		if err != nil {
