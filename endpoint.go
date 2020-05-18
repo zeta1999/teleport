@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -16,14 +17,14 @@ func extractAPI(endpointName string) {
 	readEndpoints()
 	endpoint := Endpoints[endpointName]
 
-	if endpoint.Method != "GET" {
+	if !isValidMethod(endpoint.Method) {
 		log.Fatal("method not valid, allowed values: GET")
 	}
 	if endpoint.ResponseType != "json" {
 		log.Fatal("response_type not valid, allowed values: json")
 	}
-	if endpoint.PaginationType != "url-inc" {
-		log.Fatal("pagination_type not valid, allowed values: url-inc")
+	if !isValidPaginationType(endpoint.PaginationType) {
+		log.Fatal("pagination_type not valid, allowed values: url-inc, none")
 	}
 
 	thread := &starlark.Thread{}
@@ -32,7 +33,7 @@ func extractAPI(endpointName string) {
 	for {
 		currentURL := strings.NewReplacer("%(page)", strconv.Itoa(itr)).Replace(endpoint.URL)
 		var target interface{}
-		getResponse(currentURL, &target)
+		getResponse(endpoint.Method, currentURL, endpoint.Headers, &target)
 		value, err := slutil.Marshal(target)
 		if err != nil {
 			log.Fatal("unable to parse response: ", err)
@@ -51,19 +52,31 @@ func extractAPI(endpointName string) {
 			}
 		}
 
-		objectItr := value.(*starlark.List).Iterate()
-		var slobject starlark.Value
-		defer objectItr.Done()
-		for objectItr.Next(&slobject) {
-			object, err := slutil.Unmarshal(slobject)
+		switch value.(type) {
+		case *starlark.List:
+			objectItr := value.(*starlark.List).Iterate()
+			var slobject starlark.Value
+			defer objectItr.Done()
+			for objectItr.Next(&slobject) {
+				object, err := slutil.Unmarshal(slobject)
+				if err != nil {
+					log.Fatal("read object error: ", err)
+				}
+
+				results = append(results, object)
+			}
+		case *starlark.Dict:
+			object, err := slutil.Unmarshal(value)
 			if err != nil {
 				log.Fatal("read object error: ", err)
 			}
-
 			results = append(results, object)
 		}
 
 		itr++
+		if endpoint.PaginationType == "none" {
+			break
+		}
 		if endpoint.MaxPages >= 0 && itr >= endpoint.MaxPages {
 			break
 		}
@@ -74,12 +87,40 @@ func extractAPI(endpointName string) {
 	// TODO: export results to CSV (how to do columns??)
 }
 
-func getResponse(url string, target interface{}) error {
-	resp, err := http.Get(url)
+func getResponse(method string, url string, headers map[string]string, target interface{}) error {
+	client := &http.Client{}
+
+	req, err := http.NewRequest(strings.ToUpper(method), url, nil)
+	for key, value := range headers {
+		req.Header.Add(key, os.ExpandEnv(value))
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		log.Fatal("http error: ", err)
 	}
 	defer resp.Body.Close()
 
 	return json.NewDecoder(resp.Body).Decode(target)
+}
+
+func isValidPaginationType(paginationType string) bool {
+	switch paginationType {
+	case
+		"",
+		"url-inc",
+		"none":
+		return true
+	}
+	return false
+}
+
+func isValidMethod(method string) bool {
+	switch strings.ToUpper(method) {
+	case
+		"GET",
+		"POST":
+		return true
+	}
+	return false
 }

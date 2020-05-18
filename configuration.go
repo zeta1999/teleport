@@ -36,6 +36,7 @@ type Endpoint struct {
 	Name           string
 	Method         string
 	URL            string
+	Headers        map[string]string
 	ResponseType   string `json:"response_type"`
 	PaginationType string `json:"pagination_type"`
 	MaxPages       int    `json:"max_pages"`
@@ -82,7 +83,7 @@ func readEndpoints() {
 
 		defer file.Close()
 		decoder := json.NewDecoder(file)
-		endpoint := Endpoint{strings.Replace(fileinfo.Name(), ".json", "", 1), "", "", "", "", -1, make([]string, 0)}
+		endpoint := Endpoint{strings.Replace(fileinfo.Name(), ".json", "", 1), "", "", make(map[string]string, 0), "", "", -1, make([]string, 0)}
 		errDecode := decoder.Decode(&endpoint)
 		if errDecode != nil {
 			log.Fatalf("error reading config file `%s`: %s", fileinfo.Name(), errDecode)
