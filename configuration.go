@@ -57,8 +57,8 @@ func readConnections() {
 		decoder := json.NewDecoder(file)
 		connection := Connection{strings.Replace(fileinfo.Name(), ".json", "", 1), Configuration{}}
 		errDecode := decoder.Decode(&connection.Config)
-		if err != nil {
-			log.Fatal(errDecode)
+		if errDecode != nil {
+			log.Fatalf("error reading config file `%s`: %s", fileinfo.Name(), errDecode)
 		}
 
 		Connections[connection.Name] = connection
@@ -84,8 +84,8 @@ func readEndpoints() {
 		decoder := json.NewDecoder(file)
 		endpoint := Endpoint{strings.Replace(fileinfo.Name(), ".json", "", 1), "", "", "", "", -1, make([]string, 0)}
 		errDecode := decoder.Decode(&endpoint)
-		if err != nil {
-			log.Fatal(errDecode)
+		if errDecode != nil {
+			log.Fatalf("error reading config file `%s`: %s", fileinfo.Name(), errDecode)
 		}
 
 		Endpoints[endpoint.Name] = endpoint
