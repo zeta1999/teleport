@@ -32,6 +32,8 @@ func main() {
 		dbTerminal(opts.Source)
 	case "extract":
 		extract(opts.FromSource, opts.TableName)
+	case "extract-api":
+		extractAPI(opts.FromSource)
 	case "extract-load":
 		strategyOpts := make(map[string]string)
 		switch opts.Strategy {

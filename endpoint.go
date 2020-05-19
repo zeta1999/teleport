@@ -44,6 +44,26 @@ func loadAPI(endpoint string, destination string, tableName string, strategy str
 
 }
 
+func extractAPI(endpoint string) {
+	log.Printf("Starting extract-api from *%s*", endpoint)
+
+	task := taskContext{endpoint, "", "", "", make(map[string]string), nil, nil, "", nil, nil}
+
+	steps := []func(tc *taskContext) error{
+		performAPIExtraction,
+		saveResultsToCSV,
+	}
+
+	for _, step := range steps {
+		err := step(&task)
+		if err != nil {
+			log.Fatalf("Error in %s: %s", getFunctionName(step), err)
+		}
+	}
+
+	log.Printf("Extracted to: %s\n", task.CSVFile)
+}
+
 func determineImportColumns(tc *taskContext) error {
 	headers := make([]string, 0)
 	for key := range (*tc.Results)[0] {
@@ -158,13 +178,26 @@ func saveResultsToCSV(tc *taskContext) error {
 		return err
 	}
 
+	writeHeaders := false
 	headers := make([]string, 0)
-	for _, column := range *tc.Columns {
-		headers = append(headers, column.Name)
+	if tc.Columns == nil {
+		writeHeaders = true
+		for key := range (*tc.Results)[0] {
+			headers = append(headers, key)
+		}
+	} else {
+		for _, column := range *tc.Columns {
+			headers = append(headers, column.Name)
+		}
 	}
 
 	writer := csv.NewWriter(tmpfile)
 	writeBuffer := make([]string, len(headers))
+
+	if writeHeaders {
+		writer.Write(headers)
+	}
+
 	for _, object := range *tc.Results {
 		for i, key := range headers {
 			switch object[key].(type) {
