@@ -68,7 +68,7 @@ func connectSourceDatabase(tc *taskContext) error {
 
 func connectDestinationDatabase(tc *taskContext) error {
 	log.Printf("Connecting to *%s*...", tc.Destination)
-	_, err := connectDatabase(tc.Source)
+	_, err := connectDatabase(tc.Destination)
 	if err != nil {
 		return err
 	}
