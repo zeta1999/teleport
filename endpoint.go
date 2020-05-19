@@ -19,39 +19,74 @@ type dataObject = map[string]interface{}
 
 var emptyResults = make([]dataObject, 0)
 
-func extractAPI(endpointName string) {
-	tmpfile, err := performAPIExtraction(endpointName)
-	if err != nil {
-		log.Fatal(err)
+func loadAPI(endpoint string, destination string, tableName string, strategy string, strategyOpts map[string]string) {
+	log.Printf("Starting extract-load-api from *%s* to *%s* table `%s`", endpoint, destination, tableName)
+
+	task := taskContext{endpoint, destination, tableName, strategy, strategyOpts, nil, nil, "", nil, nil}
+
+	steps := []func(tc *taskContext) error{
+		connectDestinationDatabase,
+		inspectDestinationTableIfNotCreated,
+		performAPIExtraction,
+		determineImportColumns,
+		saveResultsToCSV,
+		createStagingTable,
+		loadDestination,
+		promoteStagingTable,
 	}
-	log.Printf("Extracted to: %s\n", tmpfile)
+
+	for _, step := range steps {
+		err := step(&task)
+		if err != nil {
+			log.Fatalf("Error in %s: %s", getFunctionName(step), err)
+		}
+	}
+
 }
 
-func performAPIExtraction(endpointName string) (string, error) {
+func determineImportColumns(tc *taskContext) error {
+	headers := make([]string, 0)
+	for key := range (*tc.Results)[0] {
+		headers = append(headers, key)
+	}
+
+	importColumns := make([]Column, 0)
+	for _, column := range tc.DestinationTable.Columns {
+		for _, header := range headers {
+			if column.Name == header {
+				importColumns = append(importColumns, column)
+				break
+			}
+		}
+	}
+
+	tc.Columns = &importColumns
+
+	return nil
+}
+
+func performAPIExtraction(tc *taskContext) error {
 	readEndpoints()
-	endpoint := Endpoints[endpointName]
+	endpoint := Endpoints[tc.Source]
 
 	if !isValidMethod(endpoint.Method) {
-		log.Fatal("method not valid, allowed values: GET")
+		return fmt.Errorf("method not valid, allowed values: GET")
 	}
 	if endpoint.ResponseType != "json" {
-		log.Fatal("response_type not valid, allowed values: json")
+		return fmt.Errorf("response_type not valid, allowed values: json")
 	}
 	if !isValidPaginationType(endpoint.PaginationType) {
-		log.Fatal("pagination_type not valid, allowed values: url-inc, none")
+		return fmt.Errorf("pagination_type not valid, allowed values: url-inc, none")
 	}
 
 	results, err := performAPIExtractionPaginated(endpoint)
 	if err != nil {
-		log.Fatal("Extract API error: ", err)
+		return err
 	}
 
-	tmpfile, err := generateEndpointCSV(endpoint, results)
-	if err != nil {
-		log.Fatal("Export CSV error: ", err)
-	}
+	tc.Results = &results
 
-	return tmpfile, nil
+	return nil
 }
 
 func performAPIExtractionPaginated(endpoint Endpoint) ([]dataObject, error) {
@@ -117,21 +152,20 @@ func performAPIExtractionPaginated(endpoint Endpoint) ([]dataObject, error) {
 	return results, nil
 }
 
-func generateEndpointCSV(endpoint Endpoint, results []dataObject) (string, error) {
-	tmpfile, err := ioutil.TempFile("/tmp/", fmt.Sprintf("extract-api-%s", endpoint.Name))
+func saveResultsToCSV(tc *taskContext) error {
+	tmpfile, err := ioutil.TempFile("/tmp/", fmt.Sprintf("extract-api-%s", tc.Source))
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	headers := make([]string, 0)
-	for key := range results[0] {
-		headers = append(headers, key)
+	for _, column := range *tc.Columns {
+		headers = append(headers, column.Name)
 	}
 
 	writer := csv.NewWriter(tmpfile)
 	writeBuffer := make([]string, len(headers))
-	for _, object := range results {
-		fmt.Println(object)
+	for _, object := range *tc.Results {
 		for i, key := range headers {
 			switch object[key].(type) {
 			case string:
@@ -139,24 +173,24 @@ func generateEndpointCSV(endpoint Endpoint, results []dataObject) (string, error
 			case nil:
 				writeBuffer[i] = ""
 			default:
-				fmt.Printf("%T\n", object[key])
-				fmt.Println(object[key])
 				writeBuffer[i] = string(object[key].([]byte))
 			}
 		}
 		err = writer.Write(writeBuffer)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 	}
 
 	writer.Flush()
 
 	if err := tmpfile.Close(); err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	return tmpfile.Name(), nil
+	tc.CSVFile = tmpfile.Name()
+
+	return nil
 }
 
 func getResponse(method string, url string, headers map[string]string, target interface{}) error {
@@ -169,7 +203,7 @@ func getResponse(method string, url string, headers map[string]string, target in
 
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Fatal("http error: ", err)
+		return fmt.Errorf("http error: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -181,6 +215,7 @@ func getResponse(method string, url string, headers map[string]string, target in
 func convertJSONNumbers(data interface{}) (v interface{}, err error) {
 	switch x := data.(type) {
 	case json.Number:
+		// Use String representation of number for now since the destination database is defining types
 		v = x.String()
 	case []interface{}:
 		var elems = make([]interface{}, len(x))

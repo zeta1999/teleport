@@ -19,12 +19,13 @@ type taskContext struct {
 	DestinationTable *Table
 	CSVFile          string
 	Columns          *[]Column
+	Results          *[]dataObject
 }
 
 func load(source string, destination string, tableName string, strategy string, strategyOpts map[string]string) {
 	log.Printf("Starting extract-load from *%s* to *%s* with table `%s`", source, destination, tableName)
 
-	task := taskContext{source, destination, tableName, strategy, strategyOpts, nil, nil, "", nil}
+	task := taskContext{source, destination, tableName, strategy, strategyOpts, nil, nil, "", nil, nil}
 
 	steps := []func(tc *taskContext) error{
 		connectSourceDatabase,

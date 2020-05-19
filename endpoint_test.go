@@ -1,55 +1,44 @@
 package main
 
 import (
-	"bufio"
-	"encoding/csv"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestBasicExtractAPI(t *testing.T) {
+func TestLoadAPI(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `[{"id":1,"name":"Santana"},{"id":2,"name":"David Grohl"}]`)
 	}))
 	defer ts.Close()
 	Endpoints["test"] = Endpoint{"test", "GET", ts.URL, make(map[string]string), "json", "none", 1, make([]string, 0)}
 
-	csvfile, _ := performAPIExtraction("test")
-	fmt.Println(csvfile)
+	Connections["test1"] = Connection{"test1", Configuration{"sqlite://:memory:", map[string]string{}}}
+	db, _ := connectDatabase("test1")
+	db.Exec(`CREATE TABLE test_objects (id INT, name VARCHAR(255))`)
 
-	assertCsvRowCount(t, 2, csvfile)
-	// assertCsvCellContents(t, "id", csvfile, 0, 0)
-	assertCsvCellContents(t, "1", csvfile, 0, 0)
-	assertCsvCellContents(t, "Santana", csvfile, 0, 1)
-	assertCsvCellContents(t, "David Grohl", csvfile, 1, 1)
+	loadAPI("test", "test1", "objects", "full", fullStrategyOpts)
+	assertRowCount(t, 2, db, "test_objects")
+
+	db.Exec("DROP TABLE test_objects;")
 }
 
-func assertCsvRowCount(t *testing.T, expected int, csvfilename string) {
-	csvfile, err := os.Open(csvfilename)
-	if err != nil {
-		panic(err)
-	}
+func TestPerformAPIExtraction(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, `[{"id":1,"name":"Santana"},{"id":2,"name":"David Grohl"}]`)
+	}))
+	defer ts.Close()
+	Endpoints["test"] = Endpoint{"test", "GET", ts.URL, make(map[string]string), "json", "none", 1, make([]string, 0)}
 
-	reader := csv.NewReader(bufio.NewReader(csvfile))
+	task := taskContext{"test", "", "", "full", fullStrategyOpts, nil, nil, "", nil, nil}
 
-	rowItr := 0
+	performAPIExtraction(&task)
+	results := *task.Results
 
-	for {
-		_, error := reader.Read()
-		if error == io.EOF {
-			break
-		} else if error != nil {
-			panic(error)
-		}
-
-		rowItr++
-	}
-
-	assert.EqualValues(t, expected, rowItr)
+	assert.Len(t, results, 2)
+	assert.Equal(t, "1", results[0]["id"])
+	assert.Equal(t, "2", results[1]["id"])
 }

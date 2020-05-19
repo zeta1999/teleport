@@ -45,8 +45,19 @@ func main() {
 			log.Fatal("Invalid strategy, acceptable options: full, incremental")
 		}
 		load(opts.FromSource, opts.ToSource, opts.TableName, opts.Strategy, strategyOpts)
-	case "extract-api":
-		extractAPI(opts.Source)
+	case "extract-load-api":
+		strategyOpts := make(map[string]string)
+		switch opts.Strategy {
+		case "full":
+			// None
+		case "incremental":
+			strategyOpts["primary_key"] = opts.PrimaryKey
+			strategyOpts["modified_at_column"] = opts.ModifiedAtColumn
+			strategyOpts["hours_ago"] = opts.HoursAgo
+		default:
+			log.Fatal("Invalid strategy, acceptable options: full, incremental")
+		}
+		loadAPI(opts.FromSource, opts.ToSource, opts.TableName, opts.Strategy, strategyOpts)
 	case "import-csv":
 		tableDefinition, err := dumpTableMetadata(opts.Source, opts.TableName)
 		if err != nil {
