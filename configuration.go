@@ -1,14 +1,15 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
-	"os/exec"
 	"strings"
-	"syscall"
+
+	"github.com/xo/dburl"
 )
 
 var (
@@ -20,6 +21,8 @@ var (
 
 	// Endpoints is a list of configured HTTP endpoints
 	Endpoints = make(map[string]Endpoint)
+
+	dbs = make(map[string]*sql.DB)
 )
 
 type Connection struct {
@@ -93,27 +96,21 @@ func readEndpoints() {
 	}
 }
 
-func aboutDB(source string) {
-	fmt.Println("Name: ", source)
-	fmt.Printf("Type: %s\n", DbDialect(Connections[source]).HumanName)
-}
-
-func dbTerminal(source string) {
-	command := DbDialect(Connections[source]).TerminalCommand
-	if command == "" {
-		log.Fatalf("Not implemented for this database type")
+func connectDatabase(source string) (*sql.DB, error) {
+	if dbs[source] != nil {
+		return dbs[source], nil
 	}
-
-	binary, err := exec.LookPath(command)
+	url := Connections[source].Config.URL
+	database, err := dburl.Open(url)
 	if err != nil {
-		log.Fatalf("command exec err (%s): %s", command, err)
+		return nil, err
 	}
 
-	env := os.Environ()
-
-	err = syscall.Exec(binary, []string{command, Connections[source].Config.URL}, env)
+	err = database.Ping()
 	if err != nil {
-		log.Fatalf("Syscall error: %s", err)
+		return nil, err
 	}
 
+	dbs[source] = database
+	return dbs[source], nil
 }

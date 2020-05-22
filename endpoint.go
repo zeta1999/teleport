@@ -86,7 +86,6 @@ func determineImportColumns(tc *taskContext) error {
 }
 
 func performAPIExtraction(tc *taskContext) error {
-	readEndpoints()
 	endpoint := Endpoints[tc.Source]
 
 	if !isValidMethod(endpoint.Method) {

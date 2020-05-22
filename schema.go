@@ -3,12 +3,17 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"os"
+	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/jimsmart/schema"
+	"gopkg.in/yaml.v2"
 )
 
 type Table struct {
@@ -212,4 +217,163 @@ func createTable(database *sql.DB, tableName string, table *Table) error {
 	_, err := database.Exec(statement)
 
 	return err
+}
+
+func listTables(source string) {
+	database, err := connectDatabase(source)
+	if err != nil {
+		log.Fatal("Database Open Error:", err)
+	}
+
+	tables, err := schema.TableNames(database)
+	if err != nil {
+		log.Fatal("Database Error:", err)
+	}
+	for _, tablename := range tables {
+		fmt.Println(tablename)
+	}
+}
+
+func dropTable(source string, table string) {
+	database, err := connectDatabase(source)
+	if err != nil {
+		log.Fatal("Database Open Error:", err)
+	}
+
+	if !tableExists(source, table) {
+		log.Fatalf("table \"%s\" not found in \"%s\"", table, source)
+	}
+
+	_, err = database.Exec(fmt.Sprintf("DROP TABLE %s", table))
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func createDestinationTable(source string, destination string, sourceTableName string) {
+	table, err := dumpTableMetadata(source, sourceTableName)
+	if err != nil {
+		log.Fatal("Table Metadata Error:", err)
+	}
+
+	destinationDatabase, err := connectDatabase(source)
+	if err != nil {
+		log.Fatal("Database Connect Error:", err)
+	}
+
+	err = createTable(destinationDatabase, fmt.Sprintf("%s_%s", source, sourceTableName), table)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func createDestinationTableFromConfigFile(source string, file string) {
+	table := readTableFromConfigFile(file)
+
+	database, err := connectDatabase(source)
+	if err != nil {
+		log.Fatal("Database Connect Error:", err)
+	}
+
+	statement := table.generateCreateTableStatement(fmt.Sprintf("%s_%s", table.Source, table.Table))
+
+	_, err = database.Exec(statement)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func aboutDB(source string) {
+	fmt.Println("Name: ", source)
+	fmt.Printf("Type: %s\n", DbDialect(Connections[source]).HumanName)
+}
+
+func dbTerminal(source string) {
+	command := DbDialect(Connections[source]).TerminalCommand
+	if command == "" {
+		log.Fatalf("Not implemented for this database type")
+	}
+
+	binary, err := exec.LookPath(command)
+	if err != nil {
+		log.Fatalf("command exec err (%s): %s", command, err)
+	}
+
+	env := os.Environ()
+
+	err = syscall.Exec(binary, []string{command, Connections[source].Config.URL}, env)
+	if err != nil {
+		log.Fatalf("Syscall error: %s", err)
+	}
+
+}
+
+func describeTable(source string, tableName string) {
+	table, err := dumpTableMetadata(source, tableName)
+	if err != nil {
+		log.Fatal("Describe Table Error:", err)
+	}
+
+	fmt.Println("Source: ", table.Source)
+	fmt.Println("Table: ", table.Table)
+	fmt.Println()
+	fmt.Println("Columns:")
+	fmt.Println("========")
+	for _, column := range table.Columns {
+		fmt.Print(column.Name, " | ", column.DataType)
+		if len(column.Options) > 0 {
+			fmt.Print(" ( ")
+			for option, value := range column.Options {
+				fmt.Print(option, ": ", value, ", ")
+
+			}
+			fmt.Print(" )")
+		}
+		fmt.Println()
+	}
+}
+
+func tableMetadata(source string, tableName string) {
+	table, err := dumpTableMetadata(source, tableName)
+	if err != nil {
+		log.Fatal("Describe Table Error:", err)
+	}
+
+	b, err := yaml.Marshal(table)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(string(b))
+}
+
+func readTableFromConfigFile(file string) *Table {
+	var table Table
+
+	yamlFile, err := ioutil.ReadFile(file)
+	if err != nil {
+		log.Printf("yamlFile.Get err   #%v ", err)
+	}
+
+	err = yaml.Unmarshal(yamlFile, &table)
+	if err != nil {
+		log.Fatalf("Unmarshal: %v", err)
+	}
+
+	return &table
+}
+
+func extractDB(source string, table string) {
+	tableDefinition, err := dumpTableMetadata(source, table)
+	if err != nil {
+		log.Fatal("Dump Table Metadata Error:", err)
+	}
+
+	tmpfile, err := exportCSV(source, table, tableDefinition.Columns, "")
+	if err != nil {
+		log.Fatal("Export CSV error:", err)
+	}
+
+	log.Printf("Extracted to: %s\n", tmpfile)
 }
