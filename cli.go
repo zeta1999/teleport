@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 )
 
@@ -53,4 +54,19 @@ func help() {
 	fmt.Println("-table, -t [table]\tName of table from data source")
 	fmt.Println("-v\t\tShow version and license information")
 	fmt.Println("-h\t\tThis help screen")
+}
+
+func extractStrategyOptions(opts *CliOptions) (strategyOpts map[string]string) {
+	switch opts.Strategy {
+	case "full":
+		// None
+	case "incremental":
+		strategyOpts["primary_key"] = opts.PrimaryKey
+		strategyOpts["modified_at_column"] = opts.ModifiedAtColumn
+		strategyOpts["hours_ago"] = opts.HoursAgo
+	default:
+		log.Fatal("Invalid strategy, acceptable options: full, incremental")
+	}
+
+	return
 }
