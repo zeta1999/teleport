@@ -1,7 +1,6 @@
 package main
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -37,10 +36,6 @@ func TestCreateTable(t *testing.T) {
 
 	assert.NoError(t, createTable(db, "newtable", &table))
 	assert.True(t, tableExists("test", "animals"))
-}
-
-func squish(s string) string {
-	return strings.Join(strings.Fields(s), " ")
 }
 
 func widgetsTable() Table {

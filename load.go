@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"reflect"
-	"runtime"
 	"strconv"
 	"time"
 )
@@ -150,8 +148,4 @@ func promoteStagingTable(tc *taskContext) error {
 	}
 
 	return nil
-}
-
-func getFunctionName(i interface{}) string {
-	return runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
 }
