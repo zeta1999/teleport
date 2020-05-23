@@ -289,7 +289,7 @@ func aboutDB(source string) {
 	fmt.Printf("Type: %s\n", GetDialect(Connections[source]).HumanName)
 }
 
-func dbTerminal(source string) {
+func databaseTerminal(source string) {
 	command := GetDialect(Connections[source]).TerminalCommand
 	if command == "" {
 		log.Fatalf("Not implemented for this database type")

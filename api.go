@@ -19,7 +19,7 @@ type dataObject = map[string]interface{}
 
 var emptyResults = make([]dataObject, 0)
 
-func loadAPI(endpoint string, destination string, tableName string, strategy string, strategyOpts map[string]string) {
+func extractLoadAPI(endpoint string, destination string, tableName string, strategy string, strategyOpts map[string]string) {
 	log.Printf("Starting extract-load-api from *%s* to *%s* table `%s`", endpoint, destination, tableName)
 
 	task := taskContext{endpoint, destination, tableName, strategy, strategyOpts, nil, nil, "", nil, nil}

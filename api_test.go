@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestLoadAPI(t *testing.T) {
+func TestExtractLoadAPI(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `[{"id":1,"name":"Santana"},{"id":2,"name":"David Grohl"}]`)
 	}))
@@ -20,7 +20,7 @@ func TestLoadAPI(t *testing.T) {
 	db, _ := connectDatabase("test1")
 	db.Exec(`CREATE TABLE test_objects (id INT, name VARCHAR(255))`)
 
-	loadAPI("test", "test1", "objects", "full", fullStrategyOpts)
+	extractLoadAPI("test", "test1", "objects", "full", fullStrategyOpts)
 	assertRowCount(t, 2, db, "test_objects")
 
 	db.Exec("DROP TABLE test_objects;")

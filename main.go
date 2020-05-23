@@ -19,7 +19,7 @@ func main() {
 	case "about-db":
 		aboutDB(opts.Source)
 	case "db-terminal":
-		dbTerminal(opts.Source)
+		databaseTerminal(opts.Source)
 	case "list-tables":
 		listTables(opts.Source)
 	case "drop-table":
@@ -33,17 +33,17 @@ func main() {
 	case "table-metadata":
 		tableMetadata(opts.Source, opts.TableName)
 
-	// Extract data from a source
+	// Extract data from a source to csv
 	case "extract":
-		extractDB(opts.FromSource, opts.TableName)
+		extractDatabase(opts.FromSource, opts.TableName)
 	case "extract-api":
 		extractAPI(opts.FromSource)
 
 	// Extract data from a source and load into datawarehouse
 	case "extract-load":
-		load(opts.FromSource, opts.ToSource, opts.TableName, opts.Strategy, extractStrategyOptions(&opts))
+		extractLoadDatabase(opts.FromSource, opts.ToSource, opts.TableName, opts.Strategy, extractStrategyOptions(&opts))
 	case "extract-load-api":
-		loadAPI(opts.FromSource, opts.ToSource, opts.TableName, opts.Strategy, extractStrategyOptions(&opts))
+		extractLoadAPI(opts.FromSource, opts.ToSource, opts.TableName, opts.Strategy, extractStrategyOptions(&opts))
 
 	// Run Transform within datawarehouse
 	case "transform":

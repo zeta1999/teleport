@@ -30,7 +30,7 @@ func TestLoadNewTable(t *testing.T) {
 	db1.Exec(widgetsTableDefinition.generateCreateTableStatement("widgets"))
 	importCSV("test1", "widgets", "test/example_widgets.csv", widgetsTableDefinition.Columns)
 
-	load("test1", "test2", "widgets", "full", fullStrategyOpts)
+	extractLoadDatabase("test1", "test2", "widgets", "full", fullStrategyOpts)
 
 	assertRowCount(t, 3, db2, "test1_widgets")
 
@@ -57,7 +57,7 @@ func TestLoadSourceHasAdditionalColumn(t *testing.T) {
 	var logBuffer bytes.Buffer
 	log.SetOutput(&logBuffer)
 
-	load("test1", "test2", "widgets", "full", fullStrategyOpts)
+	extractLoadDatabase("test1", "test2", "widgets", "full", fullStrategyOpts)
 
 	log.SetOutput(os.Stdout)
 
@@ -86,7 +86,7 @@ func TestLoadStringNotLongEnough(t *testing.T) {
 	var logBuffer bytes.Buffer
 	log.SetOutput(&logBuffer)
 
-	load("test1", "test2", "widgets", "full", fullStrategyOpts)
+	extractLoadDatabase("test1", "test2", "widgets", "full", fullStrategyOpts)
 
 	log.SetOutput(os.Stdout)
 
@@ -96,7 +96,7 @@ func TestLoadStringNotLongEnough(t *testing.T) {
 	db2.Exec("DROP TABLE test1_widgets;")
 }
 
-func TestIncrementalLoad(t *testing.T) {
+func TestIncrementalStrategy(t *testing.T) {
 	Connections["test1"] = Connection{"test1", Configuration{"sqlite://:memory:", map[string]string{}}}
 	db1, _ := connectDatabase("test1")
 
@@ -119,7 +119,7 @@ func TestIncrementalLoad(t *testing.T) {
 	strategyOpts["primary_key"] = "id"
 	strategyOpts["modified_at_column"] = "updated_at"
 	strategyOpts["hours_ago"] = "36"
-	load("test1", "test2", "objects", "incremental", strategyOpts)
+	extractLoadDatabase("test1", "test2", "objects", "incremental", strategyOpts)
 
 	assertRowCount(t, 2, db2, "test1_objects")
 

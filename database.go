@@ -23,7 +23,7 @@ type taskContext struct {
 	Results          *[]dataObject
 }
 
-func load(source string, destination string, tableName string, strategy string, strategyOpts map[string]string) {
+func extractLoadDatabase(source string, destination string, tableName string, strategy string, strategyOpts map[string]string) {
 	log.Printf("Starting extract-load from *%s* to *%s* with table `%s`", source, destination, tableName)
 
 	task := taskContext{source, destination, tableName, strategy, strategyOpts, nil, nil, "", nil, nil}
@@ -162,7 +162,7 @@ func exportCSV(source string, table string, columns []Column, whereStatement str
 	return tmpfile.Name(), nil
 }
 
-func extractDB(source string, table string) {
+func extractDatabase(source string, table string) {
 	tableDefinition, err := dumpTableMetadata(source, table)
 	if err != nil {
 		log.Fatal("Dump Table Metadata Error:", err)
