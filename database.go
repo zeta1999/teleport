@@ -47,6 +47,26 @@ func extractLoadDatabase(source string, destination string, tableName string, st
 	}
 }
 
+func extractDatabase(source string, tableName string) {
+	log.Printf("Starting extract from *%s* table `%s` to CSV", source, tableName)
+
+	task := taskContext{source, "", tableName, "", make(map[string]string), nil, nil, "", nil, nil}
+
+	steps := []func(tc *taskContext) error{
+		connectSourceDatabase,
+		extractSource,
+	}
+
+	for _, step := range steps {
+		err := step(&task)
+		if err != nil {
+			log.Fatalf("Error in %s: %s", getFunctionName(step), err)
+		}
+	}
+
+	log.Printf("Extracted to: %s\n", task.CSVFile)
+}
+
 func connectSourceDatabase(tc *taskContext) error {
 	log.Printf("Connecting to *%s*...", tc.Source)
 	_, err := connectDatabase(tc.Source)
@@ -66,7 +86,15 @@ func connectSourceDatabase(tc *taskContext) error {
 
 func extractSource(tc *taskContext) error {
 	log.Printf("Exporting CSV of table `%s` from *%s*", tc.TableName, tc.Source)
-	exportColumns := importableColumns(tc.DestinationTable, tc.SourceTable)
+
+	var exportColumns []Column
+
+	if tc.DestinationTable != nil {
+		exportColumns = importableColumns(tc.DestinationTable, tc.SourceTable)
+	} else {
+		exportColumns = tc.SourceTable.Columns
+	}
+
 	var whereStatement string
 	switch tc.Strategy {
 	case "full":
@@ -160,18 +188,4 @@ func exportCSV(source string, table string, columns []Column, whereStatement str
 	}
 
 	return tmpfile.Name(), nil
-}
-
-func extractDatabase(source string, table string) {
-	tableDefinition, err := dumpTableMetadata(source, table)
-	if err != nil {
-		log.Fatal("Dump Table Metadata Error:", err)
-	}
-
-	tmpfile, err := exportCSV(source, table, tableDefinition.Columns, "")
-	if err != nil {
-		log.Fatal("Export CSV error:", err)
-	}
-
-	log.Printf("Extracted to: %s\n", tmpfile)
 }
