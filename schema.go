@@ -286,11 +286,11 @@ func createDestinationTableFromConfigFile(source string, file string) {
 
 func aboutDB(source string) {
 	fmt.Println("Name: ", source)
-	fmt.Printf("Type: %s\n", DbDialect(Connections[source]).HumanName)
+	fmt.Printf("Type: %s\n", GetDialect(Connections[source]).HumanName)
 }
 
 func dbTerminal(source string) {
-	command := DbDialect(Connections[source]).TerminalCommand
+	command := GetDialect(Connections[source]).TerminalCommand
 	if command == "" {
 		log.Fatalf("Not implemented for this database type")
 	}
@@ -362,18 +362,4 @@ func readTableFromConfigFile(file string) *Table {
 	}
 
 	return &table
-}
-
-func extractDB(source string, table string) {
-	tableDefinition, err := dumpTableMetadata(source, table)
-	if err != nil {
-		log.Fatal("Dump Table Metadata Error:", err)
-	}
-
-	tmpfile, err := exportCSV(source, table, tableDefinition.Columns, "")
-	if err != nil {
-		log.Fatal("Export CSV error:", err)
-	}
-
-	log.Printf("Extracted to: %s\n", tmpfile)
 }

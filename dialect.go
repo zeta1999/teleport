@@ -33,7 +33,7 @@ var (
 		"CREATE TABLE staging_%[1]s AS SELECT * FROM %[1]s LIMIT 0", postgres.PromoteStagingTableQuery}
 )
 
-func DbDialect(c Connection) Dialect {
+func GetDialect(c Connection) Dialect {
 	if strings.HasPrefix(c.Config.URL, "redshift://") {
 		return redshift
 	} else if strings.HasPrefix(c.Config.URL, "postgres://") {

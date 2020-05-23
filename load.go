@@ -3,66 +3,11 @@ package main
 import (
 	"fmt"
 	"log"
-	"strconv"
-	"time"
+	"strings"
 )
-
-type taskContext struct {
-	Source           string
-	Destination      string
-	TableName        string
-	Strategy         string
-	StrategyOpts     map[string]string
-	SourceTable      *Table
-	DestinationTable *Table
-	CSVFile          string
-	Columns          *[]Column
-	Results          *[]dataObject
-}
-
-func load(source string, destination string, tableName string, strategy string, strategyOpts map[string]string) {
-	log.Printf("Starting extract-load from *%s* to *%s* with table `%s`", source, destination, tableName)
-
-	task := taskContext{source, destination, tableName, strategy, strategyOpts, nil, nil, "", nil, nil}
-
-	steps := []func(tc *taskContext) error{
-		connectSourceDatabase,
-		connectDestinationDatabase,
-		createDestinationTableIfNotExists,
-		inspectDestinationTableIfNotCreated,
-		extractSource,
-		createStagingTable,
-		loadDestination,
-		promoteStagingTable,
-	}
-
-	for _, step := range steps {
-		err := step(&task)
-		if err != nil {
-			log.Fatalf("Error in %s: %s", getFunctionName(step), err)
-		}
-	}
-}
 
 func (tc *taskContext) destinationTableName() string {
 	return fmt.Sprintf("%s_%s", tc.Source, tc.TableName)
-}
-
-func connectSourceDatabase(tc *taskContext) error {
-	log.Printf("Connecting to *%s*...", tc.Source)
-	_, err := connectDatabase(tc.Source)
-	if err != nil {
-		return err
-	}
-
-	table, err := dumpTableMetadata(tc.Source, tc.TableName)
-	if err != nil {
-		return err
-	}
-
-	tc.SourceTable = table
-
-	return nil
 }
 
 func connectDestinationDatabase(tc *taskContext) error {
@@ -102,33 +47,10 @@ func inspectDestinationTableIfNotCreated(tc *taskContext) error {
 	return nil
 }
 
-func extractSource(tc *taskContext) error {
-	log.Printf("Exporting CSV of table `%s` from *%s*", tc.TableName, tc.Source)
-	exportColumns := importableColumns(tc.DestinationTable, tc.SourceTable)
-	var whereStatement string
-	switch tc.Strategy {
-	case "full":
-		whereStatement = ""
-	case "incremental":
-		hoursAgo, err := strconv.Atoi(tc.StrategyOpts["hours_ago"])
-		if err != nil {
-			log.Fatal("invalid value for hours-ago")
-		}
-		updateTime := (time.Now().Add(time.Duration(-1*hoursAgo) * time.Hour)).Format("2006-01-02 15:04:05")
-		whereStatement = fmt.Sprintf("%s > '%s'", tc.StrategyOpts["modified_at_column"], updateTime)
-	}
-
-	file, err := exportCSV(tc.Source, tc.TableName, exportColumns, whereStatement)
-
-	tc.CSVFile = file
-	tc.Columns = &exportColumns
-	return err
-}
-
 func createStagingTable(tc *taskContext) error {
 	log.Printf("Creating staging table `staging_%s` in *%s*", tc.destinationTableName(), tc.Destination)
 
-	_, err := dbs[tc.Destination].Exec(fmt.Sprintf(DbDialect(Connections[tc.Destination]).CreateStagingTableQuery, tc.destinationTableName()))
+	_, err := dbs[tc.Destination].Exec(fmt.Sprintf(GetDialect(Connections[tc.Destination]).CreateStagingTableQuery, tc.destinationTableName()))
 
 	return err
 }
@@ -142,10 +64,102 @@ func loadDestination(tc *taskContext) error {
 func promoteStagingTable(tc *taskContext) error {
 	log.Printf("Promote staging table `staging_%[1]s` to primary `%[1]s` in *%[2]s*", tc.destinationTableName(), tc.Destination)
 
-	_, err := dbs[tc.Destination].Exec(fmt.Sprintf(DbDialect(Connections[tc.Destination]).PromoteStagingTableQuery, tc.destinationTableName()))
+	_, err := dbs[tc.Destination].Exec(fmt.Sprintf(GetDialect(Connections[tc.Destination]).PromoteStagingTableQuery, tc.destinationTableName()))
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func importCSV(source string, table string, file string, columns []Column) {
+	database, err := connectDatabase(source)
+	if err != nil {
+		log.Fatal("Database Open Error:", err)
+	}
+
+	if strings.HasPrefix(Connections[source].Config.URL, "redshift://") {
+		return
+	}
+
+	switch GetDialect(Connections[source]).Key {
+	case "redshift":
+		importRedshift(database, table, file, columns, Connections[source].Config.Options)
+	case "postgres":
+		importPostgres(database, table, file, columns)
+	case "sqlite":
+		importSqlite3(database, table, file, columns)
+	default:
+		log.Fatalf("Not implemented for this database type")
+	}
+}
+
+func importableColumns(destinationTable *Table, sourceTable *Table) []Column {
+	var (
+		destinationOnly = make([]Column, 0)
+		sourceOnly      = make([]Column, 0)
+		both            = make([]Column, 0)
+	)
+
+	destinationOnly = filterColumns(destinationTable.Columns, sourceTable.notContainsColumnWithSameName)
+	sourceOnly = filterColumns(sourceTable.Columns, destinationTable.notContainsColumnWithSameName)
+	both = filterColumns(destinationTable.Columns, sourceTable.containsColumnWithSameName)
+
+	for _, column := range destinationOnly {
+		log.Printf("destination table column `%s` excluded from extract (not present in source)", column.Name)
+	}
+	for _, column := range sourceOnly {
+		log.Printf("source table column `%s` excluded from extract (not present in destination)", column.Name)
+	}
+
+	for _, column := range both {
+		destinationColumn := filterColumns(destinationTable.Columns, func(c Column) bool { return column.Name == c.Name })[0]
+		sourceColumn := filterColumns(sourceTable.Columns, func(c Column) bool { return column.Name == c.Name })[0]
+
+		switch destinationColumn.DataType {
+		case STRING:
+			if sourceColumn.Options[LENGTH] > destinationColumn.Options[LENGTH] {
+				log.Printf("For string column `%s`, destination LENGTH is too short", sourceColumn.Name)
+			}
+		case INTEGER:
+			if sourceColumn.Options[BYTES] > destinationColumn.Options[BYTES] {
+				log.Printf("For integer column `%s`, destination SIZE is too small", sourceColumn.Name)
+			}
+		case DECIMAL:
+			if sourceColumn.Options[PRECISION] > destinationColumn.Options[PRECISION] {
+				log.Printf("For numeric column `%s`, destination PRECISION is too small", sourceColumn.Name)
+			}
+		}
+
+	}
+
+	return both
+}
+
+func filterColumns(columns []Column, f func(column Column) bool) []Column {
+	filtered := make([]Column, 0)
+	for _, c := range columns {
+		if f(c) {
+			filtered = append(filtered, c)
+		}
+	}
+	return filtered
+}
+
+func (table *Table) containsColumnWithSameName(c Column) bool {
+	for _, column := range table.Columns {
+		if c.Name == column.Name {
+			return true
+		}
+	}
+	return false
+}
+
+func (table *Table) notContainsColumnWithSameName(c Column) bool {
+	for _, column := range table.Columns {
+		if c.Name == column.Name {
+			return false
+		}
+	}
+	return true
 }
