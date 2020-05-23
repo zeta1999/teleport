@@ -6,15 +6,14 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"strings"
 )
 
-func importSqlite3(database *sql.DB, table string, file string, columns []Column) {
+func importSqlite3(database *sql.DB, table string, file string, columns []Column) error {
 	transaction, err := database.Begin()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	preparedStatement := fmt.Sprintf("INSERT INTO %s (", table)
@@ -32,25 +31,25 @@ func importSqlite3(database *sql.DB, table string, file string, columns []Column
 
 	statement, err := transaction.Prepare(preparedStatement)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	csvfile, err := os.Open(file)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	reader := csv.NewReader(bufio.NewReader(csvfile))
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	for {
-		line, error := reader.Read()
-		if error == io.EOF {
+		line, err := reader.Read()
+		if err == io.EOF {
 			break
-		} else if error != nil {
-			log.Fatalf("Line error: %s", error)
+		} else if err != nil {
+			return fmt.Errorf("line error: %w", err)
 		}
 
 		writeBuffer := make([]interface{}, len(line))
@@ -64,17 +63,19 @@ func importSqlite3(database *sql.DB, table string, file string, columns []Column
 
 		_, err = statement.Exec(writeBuffer...)
 		if err != nil {
-			log.Fatal("Import statement exec error: ", err)
+			return fmt.Errorf("import statement exec error: %w", err)
 		}
 	}
 
 	err = statement.Close()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	err = transaction.Commit()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+
+	return nil
 }

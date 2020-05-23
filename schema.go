@@ -77,11 +77,11 @@ func dumpTableMetadata(source string, tableName string) (*Table, error) {
 		column.Name = columnType.Name()
 		column.DataType, err = determineDataType(columnType)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 		column.Options, err = determineOptions(columnType, column.DataType)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 		table.Columns = append(table.Columns, column)
 	}
@@ -191,24 +191,24 @@ func (column *Column) generateDataTypeExpression() string {
 	return strings.ToUpper(string(column.DataType))
 }
 
-func tableExists(source string, tableName string) bool {
+func tableExists(source string, tableName string) (bool, error) {
 	database, err := connectDatabase(source)
 	if err != nil {
-		log.Fatal("Database Open Error:", err)
+		return false, err
 	}
 
 	tables, err := schema.TableNames(database)
 	if err != nil {
-		log.Fatal(err)
+		return false, err
 	}
 
 	for _, table := range tables {
 		if table == tableName {
-			return true
+			return true, nil
 		}
 	}
 
-	return false
+	return false, nil
 }
 
 func createTable(database *sql.DB, tableName string, table *Table) error {
@@ -240,7 +240,10 @@ func dropTable(source string, table string) {
 		log.Fatal("Database Open Error:", err)
 	}
 
-	if !tableExists(source, table) {
+	exists, err := tableExists(source, table)
+	if err != nil {
+		log.Fatal(err)
+	} else if !exists {
 		log.Fatalf("table \"%s\" not found in \"%s\"", table, source)
 	}
 

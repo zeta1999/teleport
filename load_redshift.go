@@ -15,11 +15,11 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
-func importRedshift(database *sql.DB, table string, file string, columns []Column, options map[string]string) {
+func importRedshift(database *sql.DB, table string, file string, columns []Column, options map[string]string) error {
 	log.Print("Uploading CSV to S3")
 	s3URL, err := uploadFileToS3(options["s3_bucket"], file)
 	if err != nil {
-		log.Fatal("S3 Upload Error: ", err)
+		return fmt.Errorf("s3 upload error: %w", err)
 	}
 
 	columnNames := make([]string, len(columns))
@@ -41,8 +41,10 @@ func importRedshift(database *sql.DB, table string, file string, columns []Colum
 	`, table, strings.Join(columnNames, ", "), s3URL, options["service_role"], options["s3_region"]))
 
 	if err != nil {
-		log.Fatal("Redshift Copy Error: ", err)
+		return fmt.Errorf("redshift copy error: %w", err)
 	}
+
+	return nil
 }
 
 func uploadFileToS3(bucket string, filename string) (string, error) {

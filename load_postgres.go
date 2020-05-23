@@ -5,16 +5,15 @@ import (
 	"database/sql"
 	"encoding/csv"
 	"io"
-	"log"
 	"os"
 
 	"github.com/lib/pq"
 )
 
-func importPostgres(database *sql.DB, table string, file string, columns []Column) {
+func importPostgres(database *sql.DB, table string, file string, columns []Column) error {
 	transaction, err := database.Begin()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	columnNames := make([]string, len(columns))
@@ -24,22 +23,22 @@ func importPostgres(database *sql.DB, table string, file string, columns []Colum
 
 	statement, err := transaction.Prepare(pq.CopyIn(table, columnNames...))
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	csvfile, err := os.Open(file)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	reader := csv.NewReader(bufio.NewReader(csvfile))
 
 	for {
-		line, error := reader.Read()
-		if error == io.EOF {
+		line, err := reader.Read()
+		if err == io.EOF {
 			break
-		} else if error != nil {
-			log.Fatal(error)
+		} else if err != nil {
+			return err
 		}
 
 		writeBuffer := make([]interface{}, len(line))
@@ -53,22 +52,24 @@ func importPostgres(database *sql.DB, table string, file string, columns []Colum
 
 		_, err = statement.Exec(writeBuffer...)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 	}
 
 	_, err = statement.Exec()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	err = statement.Close()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	err = transaction.Commit()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+
+	return nil
 }

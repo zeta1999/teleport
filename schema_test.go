@@ -24,8 +24,11 @@ func TestTableExists(t *testing.T) {
 
 	db.Exec("CREATE TABLE IF NOT EXISTS animals (id integer, name varchar(255))")
 
-	assert.False(t, tableExists("test", "does_not_exist"))
-	assert.True(t, tableExists("test", "animals"))
+	actual, _ := tableExists("test", "does_not_exist")
+	assert.False(t, actual)
+
+	actual, _ = tableExists("test", "animals")
+	assert.True(t, actual)
 }
 
 func TestCreateTable(t *testing.T) {
@@ -35,7 +38,8 @@ func TestCreateTable(t *testing.T) {
 	table := widgetsTable()
 
 	assert.NoError(t, createTable(db, "newtable", &table))
-	assert.True(t, tableExists("test", "animals"))
+	actual, _ := tableExists("test", "animals")
+	assert.True(t, actual)
 }
 
 func widgetsTable() Table {

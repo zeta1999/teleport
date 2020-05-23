@@ -1,9 +1,9 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
-	"strings"
 )
 
 func (tc *taskContext) destinationTableName() string {
@@ -20,7 +20,10 @@ func connectDestinationDatabase(tc *taskContext) error {
 }
 
 func createDestinationTableIfNotExists(tc *taskContext) error {
-	if tableExists(tc.Destination, tc.destinationTableName()) {
+	exists, err := tableExists(tc.Destination, tc.destinationTableName())
+	if err != nil {
+		return err
+	} else if exists {
 		return nil
 	}
 
@@ -72,26 +75,25 @@ func promoteStagingTable(tc *taskContext) error {
 	return nil
 }
 
-func importCSV(source string, table string, file string, columns []Column) {
-	database, err := connectDatabase(source)
+func importCSV(source string, table string, file string, columns []Column) (err error) {
+	var database *sql.DB
+	database, err = connectDatabase(source)
 	if err != nil {
-		log.Fatal("Database Open Error:", err)
-	}
-
-	if strings.HasPrefix(Connections[source].Config.URL, "redshift://") {
 		return
 	}
 
 	switch GetDialect(Connections[source]).Key {
 	case "redshift":
-		importRedshift(database, table, file, columns, Connections[source].Config.Options)
+		err = importRedshift(database, table, file, columns, Connections[source].Config.Options)
 	case "postgres":
-		importPostgres(database, table, file, columns)
+		err = importPostgres(database, table, file, columns)
 	case "sqlite":
-		importSqlite3(database, table, file, columns)
+		err = importSqlite3(database, table, file, columns)
 	default:
-		log.Fatalf("Not implemented for this database type")
+		err = fmt.Errorf("not implemented for this database type")
 	}
+
+	return
 }
 
 func importableColumns(destinationTable *Table, sourceTable *Table) []Column {

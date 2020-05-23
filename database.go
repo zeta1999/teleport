@@ -102,27 +102,33 @@ func extractSource(tc *taskContext) error {
 	case "incremental":
 		hoursAgo, err := strconv.Atoi(tc.StrategyOpts["hours_ago"])
 		if err != nil {
-			log.Fatal("invalid value for hours-ago")
+			return fmt.Errorf("invalid value `%s` for hours-ago", tc.StrategyOpts["hours_ago"])
 		}
 		updateTime := (time.Now().Add(time.Duration(-1*hoursAgo) * time.Hour)).Format("2006-01-02 15:04:05")
 		whereStatement = fmt.Sprintf("%s > '%s'", tc.StrategyOpts["modified_at_column"], updateTime)
 	}
 
 	file, err := exportCSV(tc.Source, tc.TableName, exportColumns, whereStatement)
+	if err != nil {
+		return err
+	}
 
 	tc.CSVFile = file
 	tc.Columns = &exportColumns
-	return err
+	return nil
 }
 
 func exportCSV(source string, table string, columns []Column, whereStatement string) (string, error) {
 	database, err := connectDatabase(source)
 	if err != nil {
-		log.Fatal("Database Open Error:", err)
+		return "", fmt.Errorf("Database Open Error: %w", err)
 	}
 
-	if !tableExists(source, table) {
-		log.Fatalf("table \"%s\" not found in \"%s\"", table, source)
+	exists, err := tableExists(source, table)
+	if err != nil {
+		return "", err
+	} else if !exists {
+		return "", fmt.Errorf("table \"%s\" not found in \"%s\"", table, source)
 	}
 
 	columnNames := make([]string, len(columns))
@@ -132,7 +138,7 @@ func exportCSV(source string, table string, columns []Column, whereStatement str
 
 	tmpfile, err := ioutil.TempFile("/tmp/", fmt.Sprintf("extract-%s-%s", table, source))
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
 
 	query := fmt.Sprintf("SELECT %s FROM %s", strings.Join(columnNames, ", "), table)
@@ -142,7 +148,7 @@ func exportCSV(source string, table string, columns []Column, whereStatement str
 
 	rows, err := database.Query(query)
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
 
 	writer := csv.NewWriter(tmpfile)
@@ -155,7 +161,7 @@ func exportCSV(source string, table string, columns []Column, whereStatement str
 	for rows.Next() {
 		err := rows.Scan(destination...)
 		if err != nil {
-			log.Fatal(err)
+			return "", err
 		}
 
 		for i := range columns {
@@ -177,14 +183,14 @@ func exportCSV(source string, table string, columns []Column, whereStatement str
 
 		err = writer.Write(writeBuffer)
 		if err != nil {
-			log.Fatal(err)
+			return "", err
 		}
 	}
 
 	writer.Flush()
 
 	if err := tmpfile.Close(); err != nil {
-		log.Fatal(err)
+		return "", err
 	}
 
 	return tmpfile.Name(), nil
