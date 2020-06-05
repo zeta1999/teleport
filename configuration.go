@@ -22,6 +22,9 @@ var (
 	// Endpoints is a list of configured HTTP endpoints
 	Endpoints = make(map[string]Endpoint)
 
+	// Transforms is a list of configured Starlark Transforms for endpoints to use
+	Transforms = make(map[string]string)
+
 	dbs = make(map[string]*sql.DB)
 )
 

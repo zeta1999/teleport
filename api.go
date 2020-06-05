@@ -126,8 +126,14 @@ func performAPIExtractionPaginated(endpoint Endpoint) ([]dataObject, error) {
 		}
 
 		for _, transform := range endpoint.Transforms {
-			transformfile := fmt.Sprintf("%s%s", endpointsConfigDirectory, transform)
-			contents, err := starlark.ExecFile(thread, transformfile, nil, nil)
+			log.Printf("Applying transform: *%s*", transform)
+			var contents starlark.StringDict
+			if source, ok := Transforms[transform]; ok {
+				contents, err = starlark.ExecFile(thread, transform, source, nil)
+			} else {
+				transformfile := fmt.Sprintf("%s%s", endpointsConfigDirectory, transform)
+				contents, err = starlark.ExecFile(thread, transformfile, nil, nil)
+			}
 			if err != nil {
 				return emptyResults, fmt.Errorf("read starlark file `%s` error: %w", transform, err)
 			}
