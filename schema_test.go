@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,27 +20,25 @@ func TestGenerateCreateTableStatement(t *testing.T) {
 }
 
 func TestTableExists(t *testing.T) {
-	Connections["test"] = Connection{"test", Configuration{"sqlite://:memory:", map[string]string{}}}
-	db, _ := connectDatabase("test")
+	runDatabaseTest(t, func(t *testing.T, db *sql.DB, _ *sql.DB) {
+		db.Exec("CREATE TABLE IF NOT EXISTS animals (id integer, name varchar(255))")
 
-	db.Exec("CREATE TABLE IF NOT EXISTS animals (id integer, name varchar(255))")
+		actual, _ := tableExists("testsrc", "does_not_exist")
+		assert.False(t, actual)
 
-	actual, _ := tableExists("test", "does_not_exist")
-	assert.False(t, actual)
-
-	actual, _ = tableExists("test", "animals")
-	assert.True(t, actual)
+		actual, _ = tableExists("testsrc", "animals")
+		assert.True(t, actual)
+	})
 }
 
 func TestCreateTable(t *testing.T) {
-	Connections["test"] = Connection{"test", Configuration{"sqlite://:memory:", map[string]string{}}}
-	db, _ := connectDatabase("test")
+	runDatabaseTest(t, func(t *testing.T, db *sql.DB, _ *sql.DB) {
+		table := widgetsTable()
 
-	table := widgetsTable()
-
-	assert.NoError(t, createTable(db, "newtable", &table))
-	actual, _ := tableExists("test", "animals")
-	assert.True(t, actual)
+		assert.NoError(t, createTable(db, "newtable", &table))
+		actual, _ := tableExists("testsrc", "newtable")
+		assert.True(t, actual)
+	})
 }
 
 func widgetsTable() Table {

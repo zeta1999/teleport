@@ -21,127 +21,114 @@ var (
 )
 
 func TestLoadNewTable(t *testing.T) {
-	Connections["test1"] = Connection{"test1", Configuration{"sqlite://:memory:", map[string]string{}}}
-	db1, _ := connectDatabase("test1")
+	runDatabaseTest(t, func(t *testing.T, srcdb *sql.DB, destdb *sql.DB) {
+		srcdb.Exec(widgetsTableDefinition.generateCreateTableStatement("widgets"))
+		importCSV("testsrc", "widgets", "test/example_widgets.csv", widgetsTableDefinition.Columns)
 
-	Connections["test2"] = Connection{"test2", Configuration{"sqlite://:memory:", map[string]string{}}}
-	db2, _ := connectDatabase("test2")
+		redirectLogs(t, func() {
+			extractLoadDatabase("testsrc", "testdest", "widgets", "full", fullStrategyOpts)
 
-	db1.Exec(widgetsTableDefinition.generateCreateTableStatement("widgets"))
-	importCSV("test1", "widgets", "test/example_widgets.csv", widgetsTableDefinition.Columns)
-
-	redirectLogs(t, func() {
-		extractLoadDatabase("test1", "test2", "widgets", "full", fullStrategyOpts)
-
-		assertRowCount(t, 3, db2, "test1_widgets")
+			assertRowCount(t, 3, destdb, "testsrc_widgets")
+		})
 	})
-
-	db1.Exec("DROP TABLE widgets;")
-	db2.Exec("DROP TABLE test1_widgets;")
 }
 
 func TestLoadSourceHasAdditionalColumn(t *testing.T) {
-	Connections["test1"] = Connection{"test1", Configuration{"sqlite://:memory:", map[string]string{}}}
-	db1, _ := connectDatabase("test1")
+	runDatabaseTest(t, func(t *testing.T, srcdb *sql.DB, destdb *sql.DB) {
+		// Create a new Table Definition, same as widgets, but without the `description` column
+		widgetsWithoutDescription := Table{"example", "widgets", make([]Column, 0)}
+		widgetsWithoutDescription.Columns = append(widgetsWithoutDescription.Columns, widgetsTableDefinition.Columns[:2]...)
+		widgetsWithoutDescription.Columns = append(widgetsWithoutDescription.Columns, widgetsTableDefinition.Columns[3:]...)
 
-	Connections["test2"] = Connection{"test2", Configuration{"sqlite://:memory:", map[string]string{}}}
-	db2, _ := connectDatabase("test2")
+		srcdb.Exec(widgetsTableDefinition.generateCreateTableStatement("widgets"))
+		destdb.Exec(widgetsWithoutDescription.generateCreateTableStatement("testsrc_widgets"))
+		importCSV("testsrc", "widgets", "test/example_widgets.csv", widgetsTableDefinition.Columns)
 
-	// Create a new Table Definition, same as widgets, but without the `description` column
-	widgetsWithoutDescription := Table{"example", "widgets", make([]Column, 0)}
-	widgetsWithoutDescription.Columns = append(widgetsWithoutDescription.Columns, widgetsTableDefinition.Columns[:2]...)
-	widgetsWithoutDescription.Columns = append(widgetsWithoutDescription.Columns, widgetsTableDefinition.Columns[3:]...)
+		expectLogMessage(t, "source table column `description` excluded", func() {
+			extractLoadDatabase("testsrc", "testdest", "widgets", "full", fullStrategyOpts)
 
-	db1.Exec(widgetsTableDefinition.generateCreateTableStatement("widgets"))
-	db2.Exec(widgetsWithoutDescription.generateCreateTableStatement("test1_widgets"))
-	importCSV("test1", "widgets", "test/example_widgets.csv", widgetsTableDefinition.Columns)
-
-	expectLogMessage(t, "source table column `description` excluded", func() {
-		extractLoadDatabase("test1", "test2", "widgets", "full", fullStrategyOpts)
-
-		assertRowCount(t, 3, db2, "test1_widgets")
+			assertRowCount(t, 3, destdb, "testsrc_widgets")
+		})
 	})
-
-	db1.Exec("DROP TABLE widgets;")
-	db2.Exec("DROP TABLE test1_widgets;")
 }
 
 func TestLoadStringNotLongEnough(t *testing.T) {
-	Connections["test1"] = Connection{"test1", Configuration{"sqlite://:memory:", map[string]string{}}}
-	db1, _ := connectDatabase("test1")
+	runDatabaseTest(t, func(t *testing.T, srcdb *sql.DB, destdb *sql.DB) {
+		// Create a new Table Definition, same as widgets, but with name LENGTH changed to 32
+		widgetsWithShortName := Table{"example", "widgets", make([]Column, len(widgetsTableDefinition.Columns))}
+		copy(widgetsWithShortName.Columns, widgetsTableDefinition.Columns)
+		widgetsWithShortName.Columns[1] = Column{"name", STRING, map[Option]int{LENGTH: 32}}
 
-	Connections["test2"] = Connection{"test2", Configuration{"sqlite://:memory:", map[string]string{}}}
-	db2, _ := connectDatabase("test2")
+		srcdb.Exec(widgetsTableDefinition.generateCreateTableStatement("widgets"))
+		destdb.Exec(widgetsWithShortName.generateCreateTableStatement("testsrc_widgets"))
 
-	// Create a new Table Definition, same as widgets, but with name LENGTH changed to 32
-	widgetsWithShortName := Table{"example", "widgets", make([]Column, len(widgetsTableDefinition.Columns))}
-	copy(widgetsWithShortName.Columns, widgetsTableDefinition.Columns)
-	widgetsWithShortName.Columns[1] = Column{"name", STRING, map[Option]int{LENGTH: 32}}
-
-	db1.Exec(widgetsTableDefinition.generateCreateTableStatement("widgets"))
-	db2.Exec(widgetsWithShortName.generateCreateTableStatement("test1_widgets"))
-
-	expectLogMessage(t, "For string column `name`, destination LENGTH is too short", func() {
-		extractLoadDatabase("test1", "test2", "widgets", "full", fullStrategyOpts)
+		expectLogMessage(t, "For string column `name`, destination LENGTH is too short", func() {
+			extractLoadDatabase("testsrc", "testdest", "widgets", "full", fullStrategyOpts)
+		})
 	})
-
-	db1.Exec("DROP TABLE widgets;")
-	db2.Exec("DROP TABLE test1_widgets;")
 }
 
 func TestIncrementalStrategy(t *testing.T) {
-	Connections["test1"] = Connection{"test1", Configuration{"sqlite://:memory:", map[string]string{}}}
-	db1, _ := connectDatabase("test1")
+	runDatabaseTest(t, func(t *testing.T, srcdb *sql.DB, destdb *sql.DB) {
+		objects := Table{"example", "objects", make([]Column, 3)}
+		objects.Columns[0] = Column{"id", INTEGER, map[Option]int{BYTES: 8}}
+		objects.Columns[1] = Column{"name", STRING, map[Option]int{LENGTH: 255}}
+		objects.Columns[2] = Column{"updated_at", TIMESTAMP, map[Option]int{}}
 
-	Connections["test2"] = Connection{"test2", Configuration{"sqlite://:memory:", map[string]string{}}}
-	db2, _ := connectDatabase("test2")
+		srcdb.Exec(objects.generateCreateTableStatement("objects"))
+		statement, _ := srcdb.Prepare("INSERT INTO objects (id, name, updated_at) VALUES (?, ?, ?)")
+		statement.Exec(1, "book", time.Now().Add(-7*24*time.Hour))
+		statement.Exec(2, "tv", time.Now().Add(-1*24*time.Hour))
+		statement.Exec(3, "chair", time.Now())
+		statement.Close()
 
-	objects := Table{"example", "objects", make([]Column, 3)}
-	objects.Columns[0] = Column{"id", INTEGER, map[Option]int{BYTES: 8}}
-	objects.Columns[1] = Column{"name", STRING, map[Option]int{LENGTH: 255}}
-	objects.Columns[2] = Column{"updated_at", TIMESTAMP, map[Option]int{}}
+		redirectLogs(t, func() {
+			strategyOpts := make(map[string]string)
+			strategyOpts["primary_key"] = "id"
+			strategyOpts["modified_at_column"] = "updated_at"
+			strategyOpts["hours_ago"] = "36"
+			extractLoadDatabase("testsrc", "testdest", "objects", "incremental", strategyOpts)
 
-	db1.Exec(objects.generateCreateTableStatement("objects"))
-	statement, _ := db1.Prepare("INSERT INTO objects (id, name, updated_at) VALUES (?, ?, ?)")
-	statement.Exec(1, "book", time.Now().Add(-7*24*time.Hour))
-	statement.Exec(2, "tv", time.Now().Add(-1*24*time.Hour))
-	statement.Exec(3, "chair", time.Now())
-	statement.Close()
-
-	redirectLogs(t, func() {
-		strategyOpts := make(map[string]string)
-		strategyOpts["primary_key"] = "id"
-		strategyOpts["modified_at_column"] = "updated_at"
-		strategyOpts["hours_ago"] = "36"
-		extractLoadDatabase("test1", "test2", "objects", "incremental", strategyOpts)
-
-		assertRowCount(t, 2, db2, "test1_objects")
+			assertRowCount(t, 2, destdb, "testsrc_objects")
+		})
 	})
-
-	db1.Exec("DROP TABLE objects;")
-	db2.Exec("DROP TABLE test1_objects;")
 }
 
 func TestExportTimestamp(t *testing.T) {
-	Connections["test1"] = Connection{"test1", Configuration{"sqlite://:memory:", map[string]string{}}}
-	db1, _ := connectDatabase("test1")
+	runDatabaseTest(t, func(t *testing.T, db *sql.DB, _ *sql.DB) {
+		columns := make([]Column, 0)
+		columns = append(columns, Column{"created_at", TIMESTAMP, map[Option]int{}})
+		table := Table{"test1", "timestamps", columns}
 
-	columns := make([]Column, 0)
-	columns = append(columns, Column{"created_at", TIMESTAMP, map[Option]int{}})
-	table := Table{"test1", "timestamps", columns}
+		db.Exec(table.generateCreateTableStatement("timestamps"))
+		db.Exec("INSERT INTO timestamps (created_at) VALUES (DATETIME(1092941466, 'unixepoch'))")
+		db.Exec("INSERT INTO timestamps (created_at) VALUES (NULL)")
 
-	db1.Exec(table.generateCreateTableStatement("timestamps"))
-	db1.Exec("INSERT INTO timestamps (created_at) VALUES (DATETIME(1092941466, 'unixepoch'))")
-	db1.Exec("INSERT INTO timestamps (created_at) VALUES (NULL)")
+		redirectLogs(t, func() {
+			tempfile, _ := exportCSV("testsrc", "timestamps", columns, "")
 
-	redirectLogs(t, func() {
-		tempfile, _ := exportCSV("test1", "timestamps", columns, "")
-
-		assertCsvCellContents(t, "2004-08-19 18:51:06", tempfile, 0, 0)
-		assertCsvCellContents(t, "", tempfile, 1, 0)
+			assertCsvCellContents(t, "2004-08-19 18:51:06", tempfile, 0, 0)
+			assertCsvCellContents(t, "", tempfile, 1, 0)
+		})
 	})
+}
 
-	db1.Exec("DROP TABLE timestamps;")
+func runDatabaseTest(t *testing.T, testfn func(*testing.T, *sql.DB, *sql.DB)) {
+	Connections["testsrc"] = Connection{"testsrc", Configuration{"sqlite://:memory:", map[string]string{}}}
+	dbSrc, err := connectDatabase("testsrc")
+	if err != nil {
+		assert.FailNow(t, "%w", err)
+	}
+	defer delete(dbs, "testsrc")
+
+	Connections["testdest"] = Connection{"testdest", Configuration{"sqlite://:memory:", map[string]string{}}}
+	dbDest, err := connectDatabase("testdest")
+	if err != nil {
+		assert.FailNow(t, "%w", err)
+	}
+	defer delete(dbs, "testdest")
+
+	testfn(t, dbSrc, dbDest)
 }
 
 func assertRowCount(t *testing.T, expected int, database *sql.DB, table string) {
@@ -149,7 +136,7 @@ func assertRowCount(t *testing.T, expected int, database *sql.DB, table string) 
 	var count int
 	err := row.Scan(&count)
 	if err != nil {
-		panic(err)
+		assert.FailNow(t, "%w", err)
 	}
 	assert.Equal(t, expected, count, "the number of rows is different than expected")
 }
@@ -157,7 +144,7 @@ func assertRowCount(t *testing.T, expected int, database *sql.DB, table string) 
 func assertCsvCellContents(t *testing.T, expected string, csvfilename string, row int, col int) {
 	csvfile, err := os.Open(csvfilename)
 	if err != nil {
-		panic(err)
+		assert.FailNow(t, "%w", err)
 	}
 
 	reader := csv.NewReader(bufio.NewReader(csvfile))
@@ -165,11 +152,11 @@ func assertCsvCellContents(t *testing.T, expected string, csvfilename string, ro
 	rowItr := 0
 
 	for {
-		line, error := reader.Read()
-		if error == io.EOF {
+		line, err := reader.Read()
+		if err == io.EOF {
 			assert.FailNow(t, "fewer than %d rows in CSV", row)
-		} else if error != nil {
-			panic(error)
+		} else if err != nil {
+			assert.FailNow(t, "%w", err)
 		}
 
 		if row != rowItr {
@@ -190,11 +177,10 @@ func expectLogMessage(t *testing.T, message string, fn func()) {
 
 func redirectLogs(t *testing.T, fn func()) (buffer bytes.Buffer) {
 	log.SetOutput(&buffer)
+	defer log.SetOutput(os.Stdout)
 
 	fn()
 
 	t.Log(buffer.String())
-	log.SetOutput(os.Stdout)
-
 	return
 }
