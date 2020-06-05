@@ -20,8 +20,10 @@ func TestExtractLoadAPI(t *testing.T) {
 	db, _ := connectDatabase("test1")
 	db.Exec(`CREATE TABLE test_objects (id INT, name VARCHAR(255))`)
 
-	extractLoadAPI("test", "test1", "objects", "full", fullStrategyOpts)
-	assertRowCount(t, 2, db, "test_objects")
+	redirectLogs(t, func() {
+		extractLoadAPI("test", "test1", "objects", "full", fullStrategyOpts)
+		assertRowCount(t, 2, db, "test_objects")
+	})
 
 	db.Exec("DROP TABLE test_objects;")
 }

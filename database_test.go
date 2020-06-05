@@ -30,9 +30,11 @@ func TestLoadNewTable(t *testing.T) {
 	db1.Exec(widgetsTableDefinition.generateCreateTableStatement("widgets"))
 	importCSV("test1", "widgets", "test/example_widgets.csv", widgetsTableDefinition.Columns)
 
-	extractLoadDatabase("test1", "test2", "widgets", "full", fullStrategyOpts)
+	redirectLogs(t, func() {
+		extractLoadDatabase("test1", "test2", "widgets", "full", fullStrategyOpts)
 
-	assertRowCount(t, 3, db2, "test1_widgets")
+		assertRowCount(t, 3, db2, "test1_widgets")
+	})
 
 	db1.Exec("DROP TABLE widgets;")
 	db2.Exec("DROP TABLE test1_widgets;")
@@ -54,15 +56,11 @@ func TestLoadSourceHasAdditionalColumn(t *testing.T) {
 	db2.Exec(widgetsWithoutDescription.generateCreateTableStatement("test1_widgets"))
 	importCSV("test1", "widgets", "test/example_widgets.csv", widgetsTableDefinition.Columns)
 
-	var logBuffer bytes.Buffer
-	log.SetOutput(&logBuffer)
+	expectLogMessage(t, "source table column `description` excluded", func() {
+		extractLoadDatabase("test1", "test2", "widgets", "full", fullStrategyOpts)
 
-	extractLoadDatabase("test1", "test2", "widgets", "full", fullStrategyOpts)
-
-	log.SetOutput(os.Stdout)
-
-	assertRowCount(t, 3, db2, "test1_widgets")
-	assert.Contains(t, logBuffer.String(), "source table column `description` excluded")
+		assertRowCount(t, 3, db2, "test1_widgets")
+	})
 
 	db1.Exec("DROP TABLE widgets;")
 	db2.Exec("DROP TABLE test1_widgets;")
@@ -83,14 +81,9 @@ func TestLoadStringNotLongEnough(t *testing.T) {
 	db1.Exec(widgetsTableDefinition.generateCreateTableStatement("widgets"))
 	db2.Exec(widgetsWithShortName.generateCreateTableStatement("test1_widgets"))
 
-	var logBuffer bytes.Buffer
-	log.SetOutput(&logBuffer)
-
-	extractLoadDatabase("test1", "test2", "widgets", "full", fullStrategyOpts)
-
-	log.SetOutput(os.Stdout)
-
-	assert.Contains(t, logBuffer.String(), "For string column `name`, destination LENGTH is too short")
+	expectLogMessage(t, "For string column `name`, destination LENGTH is too short", func() {
+		extractLoadDatabase("test1", "test2", "widgets", "full", fullStrategyOpts)
+	})
 
 	db1.Exec("DROP TABLE widgets;")
 	db2.Exec("DROP TABLE test1_widgets;")
@@ -115,13 +108,15 @@ func TestIncrementalStrategy(t *testing.T) {
 	statement.Exec(3, "chair", time.Now())
 	statement.Close()
 
-	strategyOpts := make(map[string]string)
-	strategyOpts["primary_key"] = "id"
-	strategyOpts["modified_at_column"] = "updated_at"
-	strategyOpts["hours_ago"] = "36"
-	extractLoadDatabase("test1", "test2", "objects", "incremental", strategyOpts)
+	redirectLogs(t, func() {
+		strategyOpts := make(map[string]string)
+		strategyOpts["primary_key"] = "id"
+		strategyOpts["modified_at_column"] = "updated_at"
+		strategyOpts["hours_ago"] = "36"
+		extractLoadDatabase("test1", "test2", "objects", "incremental", strategyOpts)
 
-	assertRowCount(t, 2, db2, "test1_objects")
+		assertRowCount(t, 2, db2, "test1_objects")
+	})
 
 	db1.Exec("DROP TABLE objects;")
 	db2.Exec("DROP TABLE test1_objects;")
@@ -139,10 +134,12 @@ func TestExportTimestamp(t *testing.T) {
 	db1.Exec("INSERT INTO timestamps (created_at) VALUES (DATETIME(1092941466, 'unixepoch'))")
 	db1.Exec("INSERT INTO timestamps (created_at) VALUES (NULL)")
 
-	tempfile, _ := exportCSV("test1", "timestamps", columns, "")
+	redirectLogs(t, func() {
+		tempfile, _ := exportCSV("test1", "timestamps", columns, "")
 
-	assertCsvCellContents(t, "2004-08-19 18:51:06", tempfile, 0, 0)
-	assertCsvCellContents(t, "", tempfile, 1, 0)
+		assertCsvCellContents(t, "2004-08-19 18:51:06", tempfile, 0, 0)
+		assertCsvCellContents(t, "", tempfile, 1, 0)
+	})
 
 	db1.Exec("DROP TABLE timestamps;")
 }
@@ -183,4 +180,21 @@ func assertCsvCellContents(t *testing.T, expected string, csvfilename string, ro
 		assert.EqualValues(t, expected, line[col])
 		return
 	}
+}
+
+func expectLogMessage(t *testing.T, message string, fn func()) {
+	logBuffer := redirectLogs(t, fn)
+
+	assert.Contains(t, logBuffer.String(), message)
+}
+
+func redirectLogs(t *testing.T, fn func()) (buffer bytes.Buffer) {
+	log.SetOutput(&buffer)
+
+	fn()
+
+	t.Log(buffer.String())
+	log.SetOutput(os.Stdout)
+
+	return
 }
