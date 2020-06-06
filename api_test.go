@@ -62,7 +62,7 @@ func TestAPIPreview(t *testing.T) {
 		destdb.Exec(`CREATE TABLE test_objects (id INT, name VARCHAR(255))`)
 
 		redirectLogs(t, func() {
-			expectLogMessage(t, "[PREVIEW]", func() {
+			expectLogMessage(t, "(not executed)", func() {
 				extractLoadAPI("test", "testdest", "objects", "full", fullStrategyOpts)
 			})
 

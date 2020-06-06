@@ -5,11 +5,11 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"strconv"
 	"strings"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/xo/dburl"
 )
 
@@ -20,7 +20,12 @@ var (
 )
 
 func extractLoadDatabase(source string, destination string, tableName string, strategy string, strategyOpts map[string]string) {
-	log.Printf("Starting extract-load from *%s* to *%s* with table `%s`", source, destination, tableName)
+	fnlog := log.WithFields(log.Fields{
+		"from":  source,
+		"to":    destination,
+		"table": tableName,
+	})
+	fnlog.Info("Starting extract-load")
 
 	var sourceTable Table
 	var destinationTable Table
@@ -43,10 +48,15 @@ func extractLoadDatabase(source string, destination string, tableName string, st
 		func() error { return loadDestination(&destinationTable, &columns, &csvfile) },
 		func() error { return promoteStagingTable(&destinationTable) },
 	})
+
+	fnlog.Info("Completed extract-load 🎉")
 }
 
 func extractDatabase(source string, tableName string) {
-	log.Printf("Starting extract from *%s* table `%s` to CSV", source, tableName)
+	log.WithFields(log.Fields{
+		"from":  source,
+		"table": tableName,
+	}).Info("Extracting table data to CSV")
 
 	var table Table
 	var csvfile string
@@ -57,11 +67,15 @@ func extractDatabase(source string, tableName string) {
 		func() error { return extractSource(&table, nil, "full", fullStrategyOpts, nil, &csvfile) },
 	})
 
-	log.Printf("Extracted to: %s\n", csvfile)
+	log.WithFields(log.Fields{
+		"file": csvfile,
+	}).Info("Extract to CSV completed 🎉")
 }
 
 func connectDatabaseWithLogging(source string) (err error) {
-	log.Printf("Connecting to database: *%s*", source)
+	log.WithFields(log.Fields{
+		"database": source,
+	}).Debug("Establish connection to Database")
 
 	_, err = connectDatabase(source)
 
@@ -69,7 +83,10 @@ func connectDatabaseWithLogging(source string) (err error) {
 }
 
 func inspectTable(source string, tableName string, table *Table) (err error) {
-	log.Printf("Describing table `%s` in *%s*...", tableName, source)
+	log.WithFields(log.Fields{
+		"database": source,
+		"table":    tableName,
+	}).Debug("Inspecting Table")
 
 	dumpedTable, err := dumpTableMetadata(source, tableName)
 	if err != nil {
@@ -81,7 +98,10 @@ func inspectTable(source string, tableName string, table *Table) (err error) {
 }
 
 func extractSource(sourceTable *Table, destinationTable *Table, strategy string, strategyOpts map[string]string, columns *[]Column, csvfile *string) (err error) {
-	log.Printf("Exporting CSV of table `%s` from *%s*", sourceTable.Table, sourceTable.Source)
+	log.WithFields(log.Fields{
+		"database": sourceTable.Source,
+		"table":    sourceTable.Table,
+	}).Debug("Exporting CSV of table data")
 
 	var exportColumns []Column
 
@@ -204,13 +224,18 @@ func exportCSV(source string, table string, columns []Column, whereStatement str
 			return "", err
 		}
 
-		log.Printf(`[PREVIEW] Results CSV (limit: %d)
-Headers:
-%s
+		log.WithFields(log.Fields{
+			"limit": PreviewLimit,
+			"file":  tmpfile.Name(),
+		}).Debug("Results CSV Generated")
 
-Body:
+		log.Debug(fmt.Sprintf(`CSV Contents:
+	Headers:
+	%s
+
+	Body:
 %s
-		`, PreviewLimit, strings.Join(columnNames, ","), string(content))
+				`, strings.Join(columnNames, ","), indentString(string(content))))
 	}
 
 	return tmpfile.Name(), nil

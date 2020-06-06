@@ -4,6 +4,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -19,6 +20,12 @@ func main() {
 	Preview = opts.Preview
 	readConnections()
 	readEndpoints()
+
+	if Preview || opts.Debug {
+		log.SetLevel(log.DebugLevel)
+	} else {
+		log.SetLevel(log.InfoLevel)
+	}
 
 	switch opts.Command {
 	case "help", "-h", "--help":

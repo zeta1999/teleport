@@ -3,11 +3,12 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -16,7 +17,7 @@ import (
 )
 
 func importRedshift(database *sql.DB, table string, file string, columns []Column, options map[string]string) error {
-	log.Print("Uploading CSV to S3")
+	log.Debug("Uploading CSV to S3")
 	s3URL, err := uploadFileToS3(options["s3_bucket"], file)
 	if err != nil {
 		return fmt.Errorf("s3 upload error: %w", err)
@@ -27,7 +28,7 @@ func importRedshift(database *sql.DB, table string, file string, columns []Colum
 		columnNames[i] = column.Name
 	}
 
-	log.Print("Executing Redshift COPY command")
+	log.Debug("Executing Redshift COPY command")
 	_, err = database.Exec(fmt.Sprintf(`
 		COPY %s
 		(%s)

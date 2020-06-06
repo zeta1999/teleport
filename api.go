@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 
 	slutil "github.com/qri-io/starlib/util"
+	log "github.com/sirupsen/logrus"
 	"go.starlark.net/starlark"
 )
 
@@ -20,7 +20,12 @@ type dataObject = map[string]interface{}
 var emptyResults = make([]dataObject, 0)
 
 func extractLoadAPI(endpoint string, destination string, tableName string, strategy string, strategyOpts map[string]string) {
-	log.Printf("Starting extract-load-api from *%s* to *%s* table `%s`", endpoint, destination, tableName)
+	fnlog := log.WithFields(log.Fields{
+		"from":  endpoint,
+		"to":    destination,
+		"table": tableName,
+	})
+	fnlog.Info("Starting extract-load-api")
 
 	var destinationTable Table
 	var columns []Column
@@ -39,10 +44,14 @@ func extractLoadAPI(endpoint string, destination string, tableName string, strat
 		func() error { return loadDestination(&destinationTable, &columns, &csvfile) },
 		func() error { return promoteStagingTable(&destinationTable) },
 	})
+
+	fnlog.Info("Completed extract-load-api 🎉")
 }
 
 func extractAPI(endpoint string) {
-	log.Printf("Starting extract-api from *%s*", endpoint)
+	log.WithFields(log.Fields{
+		"from": endpoint,
+	}).Info("Starting extract-api")
 
 	var results []dataObject
 	var csvfile string
@@ -52,7 +61,9 @@ func extractAPI(endpoint string) {
 		func() error { return saveResultsToCSV(endpoint, results, nil, &csvfile) },
 	})
 
-	log.Printf("Extracted to: %s\n", csvfile)
+	log.WithFields(log.Fields{
+		"file": csvfile,
+	}).Info("Extract to CSV completed 🎉")
 }
 
 func determineImportColumns(destinationTable *Table, results []dataObject, columns *[]Column) error {
@@ -104,7 +115,10 @@ func performAPIExtractionPaginated(endpoint Endpoint) ([]dataObject, error) {
 	results := make([]dataObject, 0)
 	var itr int = 0
 	for {
-		log.Printf("Requesting page %d", itr)
+		log.WithFields(log.Fields{
+			"page": itr,
+		}).Debug("Requesting page")
+
 		currentURL := strings.NewReplacer("%(page)", strconv.Itoa(itr)).Replace(endpoint.URL)
 		var target interface{}
 		getResponse(endpoint.Method, currentURL, endpoint.Headers, &target)
@@ -118,7 +132,10 @@ func performAPIExtractionPaginated(endpoint Endpoint) ([]dataObject, error) {
 		}
 
 		for _, transform := range endpoint.Transforms {
-			log.Printf("Applying transform: *%s*", transform)
+			log.WithFields(log.Fields{
+				"transform": transform,
+			}).Debug("Applying transform")
+
 			var contents starlark.StringDict
 			if source, ok := Transforms[transform]; ok {
 				contents, err = starlark.ExecFile(thread, transform, source, nil)
@@ -162,7 +179,7 @@ func performAPIExtractionPaginated(endpoint Endpoint) ([]dataObject, error) {
 			if len(results) > PreviewLimit {
 				results = results[:PreviewLimit]
 			}
-			log.Printf("[PREVIEW] Skipping additional pages if any")
+			log.Debug("(preview) Skipping additional pages if any")
 			break
 		}
 		if endpoint.PaginationType == "none" {
@@ -225,13 +242,18 @@ func saveResultsToCSV(endpointName string, results []dataObject, columns *[]Colu
 			return err
 		}
 
-		log.Printf(`[PREVIEW] Results CSV (limit: %d)
-Headers:
-%s
+		log.WithFields(log.Fields{
+			"limit": PreviewLimit,
+			"file":  tmpfile.Name(),
+		}).Debug("Results CSV Generated")
 
-Body:
+		log.Debug(fmt.Sprintf(`CSV Contents:
+	Headers:
+	%s
+
+	Body:
 %s
-		`, PreviewLimit, strings.Join(headers, ","), string(content))
+				`, strings.Join(headers, ","), indentString(string(content))))
 	}
 
 	*csvfile = tmpfile.Name()

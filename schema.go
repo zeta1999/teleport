@@ -356,7 +356,7 @@ func readTableFromConfigFile(file string) *Table {
 
 	yamlFile, err := ioutil.ReadFile(file)
 	if err != nil {
-		log.Printf("yamlFile.Get err   #%v ", err)
+		log.Fatalf("yamlFile.Get err   #%v ", err)
 	}
 
 	err = yaml.Unmarshal(yamlFile, &table)

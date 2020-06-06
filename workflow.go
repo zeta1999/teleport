@@ -1,6 +1,8 @@
 package main
 
-import "log"
+import (
+	log "github.com/sirupsen/logrus"
+)
 
 // Workflow is responsible for managing sequential execution steps of a process
 type Workflow struct {

@@ -19,6 +19,7 @@ type CliOptions struct {
 	ModifiedAtColumn string
 	HoursAgo         string
 	Preview          bool
+	Debug            bool
 }
 
 func parseArguments() CliOptions {
@@ -39,7 +40,9 @@ func parseArguments() CliOptions {
 	flag.StringVar(&options.ModifiedAtColumn, "modified-at-column", "updated_at", "column name of modified_at column to be used with incremental strategy")
 	flag.StringVar(&options.HoursAgo, "hours-ago", "36", "set the number of hours to look back for modified records")
 	flag.BoolVar(&options.Preview, "p", false, "alias for -preview")
-	flag.BoolVar(&options.Preview, "preview", options.Preview, "alias for -preview")
+	flag.BoolVar(&options.Preview, "preview", options.Preview, "use preview mode to perform a dry-run with truncated data and verbose logging")
+	flag.BoolVar(&options.Debug, "d", false, "alias for -debug")
+	flag.BoolVar(&options.Debug, "debug", options.Debug, "enable debug log messages")
 
 	versionPtr := flag.Bool("v", false, "Show version")
 	flag.CommandLine.Parse(os.Args[2:])

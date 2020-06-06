@@ -7,10 +7,11 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"testing"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -43,7 +44,7 @@ func TestLoadSourceHasAdditionalColumn(t *testing.T) {
 		destdb.Exec(widgetsWithoutDescription.generateCreateTableStatement("testsrc_widgets"))
 		importCSV("testsrc", "widgets", "test/example_widgets.csv", widgetsTableDefinition.Columns)
 
-		expectLogMessage(t, "source table column `description` excluded", func() {
+		expectLogMessages(t, []string{"destination table does not define column", "column=description"}, func() {
 			extractLoadDatabase("testsrc", "testdest", "widgets", "full", fullStrategyOpts)
 
 			assertRowCount(t, 3, destdb, "testsrc_widgets")
@@ -108,7 +109,7 @@ func TestDatabasePreview(t *testing.T) {
 		setupObjectsTable(srcdb)
 
 		redirectLogs(t, func() {
-			expectLogMessage(t, "[PREVIEW]", func() {
+			expectLogMessage(t, "(not executed)", func() {
 				extractLoadDatabase("testsrc", "testdest", "objects", "full", fullStrategyOpts)
 			})
 
@@ -176,9 +177,18 @@ func assertCsvCellContents(t *testing.T, expected string, csvfilename string, ro
 }
 
 func expectLogMessage(t *testing.T, message string, fn func()) {
+	expectLogMessages(t, []string{message}, fn)
+}
+
+func expectLogMessages(t *testing.T, messages []string, fn func()) {
+	originalLevel := log.GetLevel()
+	log.SetLevel(log.DebugLevel)
 	logBuffer := redirectLogs(t, fn)
 
-	assert.Contains(t, logBuffer.String(), message)
+	for _, message := range messages {
+		assert.Contains(t, logBuffer.String(), message)
+	}
+	log.SetLevel(originalLevel)
 }
 
 func redirectLogs(t *testing.T, fn func()) (buffer bytes.Buffer) {

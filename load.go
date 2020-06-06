@@ -3,15 +3,21 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"log"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func createDestinationTableIfNotExists(destination string, destinationTableName string, sourceTable *Table, destinationTable *Table) (err error) {
+	fnlog := log.WithFields(log.Fields{
+		"database": destination,
+		"table":    destinationTableName,
+	})
+
 	exists, err := tableExists(destination, destinationTableName)
 	if err != nil {
 		return
 	} else if exists {
-		log.Printf("Table `%s` already exists in *%s*, describing", destinationTableName, destination)
+		fnlog.Debug("Destination Table already exists, inspecting")
 
 		var dumpedTable *Table
 		dumpedTable, err = dumpTableMetadata(destination, destinationTableName)
@@ -27,26 +33,28 @@ func createDestinationTableIfNotExists(destination string, destinationTableName 
 	*destinationTable = Table{destination, destinationTableName, make([]Column, len(sourceTable.Columns))}
 	copy(destinationTable.Columns, sourceTable.Columns)
 
+	fnlog.Infof("Destination Table does not exist, creating")
 	if Preview {
-		log.Printf("[PREVIEW] Table `%s` does not exist in *%s*, creating\n%s",
-			destinationTableName, destination, destinationTable.generateCreateTableStatement(destinationTableName))
+		log.Debug("(not executed) SQL Query:\n" + indentString(destinationTable.generateCreateTableStatement(destinationTableName)))
 		return
 	}
-
-	log.Printf("Table `%s` does not exist in *%s*, creating", destinationTableName, destination)
 
 	return createTable(dbs[destination], destinationTableName, destinationTable)
 }
 
 func createStagingTable(destinationTable *Table) (err error) {
+	fnlog := log.WithFields(log.Fields{
+		"database":      destinationTable.Source,
+		"staging_table": fmt.Sprintf("staging_%s", destinationTable.Table),
+	})
+
 	query := fmt.Sprintf(GetDialect(Connections[destinationTable.Source]).CreateStagingTableQuery, destinationTable.Table)
 
+	fnlog.Debugf("Creating staging table")
 	if Preview {
-		log.Printf("[PREVIEW] Creating staging table `staging_%s` in *%s*", destinationTable.Table, destinationTable.Source)
+		log.Debugf("(not executed) SQL Query: \n\t%s", query)
 		return
 	}
-
-	log.Printf("Creating staging table `staging_%s` in *%s*", destinationTable.Table, destinationTable.Source)
 
 	_, err = dbs[destinationTable.Source].Exec(query)
 
@@ -54,25 +62,36 @@ func createStagingTable(destinationTable *Table) (err error) {
 }
 
 func loadDestination(destinationTable *Table, columns *[]Column, csvfile *string) (err error) {
+	fnlog := log.WithFields(log.Fields{
+		"database":      destinationTable.Source,
+		"staging_table": fmt.Sprintf("staging_%s", destinationTable.Table),
+	})
+
 	if Preview {
-		log.Printf("[PREVIEW] Importing CSV into table `staging_%s` in *%s*", destinationTable.Table, destinationTable.Source)
+		fnlog.Debugf("(not executed) Importing CSV into staging table")
 		return
 	}
 
-	log.Printf("Importing CSV into table `staging_%s` in *%s*", destinationTable.Table, destinationTable.Source)
+	fnlog.Debugf("Importing CSV into staging table")
 
 	return importCSV(destinationTable.Source, fmt.Sprintf("staging_%s", destinationTable.Table), *csvfile, *columns)
 }
 
 func promoteStagingTable(destinationTable *Table) (err error) {
+	fnlog := log.WithFields(log.Fields{
+		"database":      destinationTable.Source,
+		"staging_table": fmt.Sprintf("staging_%s", destinationTable.Table),
+		"table":         destinationTable.Table,
+	})
+
 	query := fmt.Sprintf(GetDialect(Connections[destinationTable.Source]).PromoteStagingTableQuery, destinationTable.Table)
 
+	fnlog.Debugf("Promote staging table to primary")
 	if Preview {
-		log.Printf("[PREVIEW] Promote staging table `staging_%[1]s` to primary `%[1]s` in *%[2]s*", destinationTable.Table, destinationTable.Source)
+		log.Debugf("(not executed) SQL Query: \n\t%s", query)
 		return
 	}
 
-	log.Printf("Promote staging table `staging_%[1]s` to primary `%[1]s` in *%[2]s*", destinationTable.Table, destinationTable.Source)
 	_, err = dbs[destinationTable.Source].Exec(query)
 	return
 }
@@ -110,10 +129,14 @@ func importableColumns(destinationTable *Table, sourceTable *Table) []Column {
 	both = filterColumns(destinationTable.Columns, sourceTable.containsColumnWithSameName)
 
 	for _, column := range destinationOnly {
-		log.Printf("destination table column `%s` excluded from extract (not present in source)", column.Name)
+		log.WithFields(log.Fields{
+			"column": column.Name,
+		}).Warn("source table does not define column included in destination table")
 	}
 	for _, column := range sourceOnly {
-		log.Printf("source table column `%s` excluded from extract (not present in destination)", column.Name)
+		log.WithFields(log.Fields{
+			"column": column.Name,
+		}).Warn("destination table does not define column included in source table, column excluded from extract")
 	}
 
 	for _, column := range both {
@@ -123,15 +146,15 @@ func importableColumns(destinationTable *Table, sourceTable *Table) []Column {
 		switch destinationColumn.DataType {
 		case STRING:
 			if sourceColumn.Options[LENGTH] > destinationColumn.Options[LENGTH] {
-				log.Printf("For string column `%s`, destination LENGTH is too short", sourceColumn.Name)
+				log.Warnf("For string column `%s`, destination LENGTH is too short", sourceColumn.Name)
 			}
 		case INTEGER:
 			if sourceColumn.Options[BYTES] > destinationColumn.Options[BYTES] {
-				log.Printf("For integer column `%s`, destination SIZE is too small", sourceColumn.Name)
+				log.Warnf("For integer column `%s`, destination SIZE is too small", sourceColumn.Name)
 			}
 		case DECIMAL:
 			if sourceColumn.Options[PRECISION] > destinationColumn.Options[PRECISION] {
-				log.Printf("For numeric column `%s`, destination PRECISION is too small", sourceColumn.Name)
+				log.Warnf("For numeric column `%s`, destination PRECISION is too small", sourceColumn.Name)
 			}
 		}
 
