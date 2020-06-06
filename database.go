@@ -29,7 +29,7 @@ func extractLoadDatabase(source string, destination string, tableName string, st
 
 	destinationTableName := fmt.Sprintf("%s_%s", source, tableName)
 
-	steps := []func() error{
+	runWorkflow([]func() error{
 		func() error { return connectDatabaseWithLogging(source) },
 		func() error { return connectDatabaseWithLogging(destination) },
 		func() error { return inspectTable(source, tableName, &sourceTable) },
@@ -42,14 +42,7 @@ func extractLoadDatabase(source string, destination string, tableName string, st
 		func() error { return createStagingTable(&destinationTable) },
 		func() error { return loadDestination(&destinationTable, &columns, &csvfile) },
 		func() error { return promoteStagingTable(&destinationTable) },
-	}
-
-	for _, step := range steps {
-		err := step()
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
+	})
 }
 
 func extractDatabase(source string, tableName string) {
@@ -58,18 +51,11 @@ func extractDatabase(source string, tableName string) {
 	var table Table
 	var csvfile string
 
-	steps := []func() error{
+	runWorkflow([]func() error{
 		func() error { return connectDatabaseWithLogging(source) },
 		func() error { return inspectTable(source, tableName, &table) },
 		func() error { return extractSource(&table, nil, "full", fullStrategyOpts, nil, &csvfile) },
-	}
-
-	for _, step := range steps {
-		err := step()
-		if err != nil {
-			log.Fatalf("ERROR: %s", err)
-		}
-	}
+	})
 
 	log.Printf("Extracted to: %s\n", csvfile)
 }

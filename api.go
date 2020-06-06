@@ -29,7 +29,7 @@ func extractLoadAPI(endpoint string, destination string, tableName string, strat
 
 	destinationTableName := fmt.Sprintf("%s_%s", endpoint, tableName)
 
-	steps := []func() error{
+	runWorkflow([]func() error{
 		func() error { return connectDatabaseWithLogging(destination) },
 		func() error { return inspectTable(destination, destinationTableName, &destinationTable) },
 		func() error { return performAPIExtraction(endpoint, &results) },
@@ -38,14 +38,7 @@ func extractLoadAPI(endpoint string, destination string, tableName string, strat
 		func() error { return createStagingTable(&destinationTable) },
 		func() error { return loadDestination(&destinationTable, &columns, &csvfile) },
 		func() error { return promoteStagingTable(&destinationTable) },
-	}
-
-	for _, step := range steps {
-		err := step()
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
+	})
 }
 
 func extractAPI(endpoint string) {
@@ -54,17 +47,10 @@ func extractAPI(endpoint string) {
 	var results []dataObject
 	var csvfile string
 
-	steps := []func() error{
+	runWorkflow([]func() error{
 		func() error { return performAPIExtraction(endpoint, &results) },
 		func() error { return saveResultsToCSV(endpoint, results, nil, &csvfile) },
-	}
-
-	for _, step := range steps {
-		err := step()
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
+	})
 
 	log.Printf("Extracted to: %s\n", csvfile)
 }
