@@ -39,4 +39,8 @@ func RunWorkflow(steps []step) {
 	currentWorkflow = &Workflow{steps, 0}
 
 	currentWorkflow.run()
+
+	if currentWorkflow.RowCounter == 0 {
+		log.Warn("0 rows processed")
+	}
 }
