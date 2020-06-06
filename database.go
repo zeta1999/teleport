@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/csv"
 	"fmt"
 	"io/ioutil"
@@ -8,7 +9,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/xo/dburl"
 )
+
+var dbs = make(map[string]*sql.DB)
 
 type taskContext struct {
 	Source           string
@@ -194,4 +199,23 @@ func exportCSV(source string, table string, columns []Column, whereStatement str
 	}
 
 	return tmpfile.Name(), nil
+}
+
+func connectDatabase(source string) (*sql.DB, error) {
+	if dbs[source] != nil {
+		return dbs[source], nil
+	}
+	url := Connections[source].Config.URL
+	database, err := dburl.Open(url)
+	if err != nil {
+		return nil, err
+	}
+
+	err = database.Ping()
+	if err != nil {
+		return nil, err
+	}
+
+	dbs[source] = database
+	return dbs[source], nil
 }

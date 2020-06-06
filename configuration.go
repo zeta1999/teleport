@@ -1,15 +1,12 @@
 package main
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"strings"
-
-	"github.com/xo/dburl"
 )
 
 var (
@@ -24,8 +21,6 @@ var (
 
 	// Transforms is a list of configured Starlark Transforms for endpoints to use
 	Transforms = make(map[string]string)
-
-	dbs = make(map[string]*sql.DB)
 )
 
 type Connection struct {
@@ -97,23 +92,4 @@ func readEndpoints() {
 
 		Endpoints[endpoint.Name] = endpoint
 	}
-}
-
-func connectDatabase(source string) (*sql.DB, error) {
-	if dbs[source] != nil {
-		return dbs[source], nil
-	}
-	url := Connections[source].Config.URL
-	database, err := dburl.Open(url)
-	if err != nil {
-		return nil, err
-	}
-
-	err = database.Ping()
-	if err != nil {
-		return nil, err
-	}
-
-	dbs[source] = database
-	return dbs[source], nil
 }
