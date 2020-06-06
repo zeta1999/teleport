@@ -18,6 +18,7 @@ type CliOptions struct {
 	PrimaryKey       string
 	ModifiedAtColumn string
 	HoursAgo         string
+	Preview          bool
 }
 
 func parseArguments() CliOptions {
@@ -37,6 +38,8 @@ func parseArguments() CliOptions {
 	flag.StringVar(&options.PrimaryKey, "primary-key", "id", "column name of primary key to be used when updating data")
 	flag.StringVar(&options.ModifiedAtColumn, "modified-at-column", "updated_at", "column name of modified_at column to be used with incremental strategy")
 	flag.StringVar(&options.HoursAgo, "hours-ago", "36", "set the number of hours to look back for modified records")
+	flag.BoolVar(&options.Preview, "p", false, "alias for -preview")
+	flag.BoolVar(&options.Preview, "preview", options.Preview, "alias for -preview")
 
 	versionPtr := flag.Bool("v", false, "Show version")
 	flag.CommandLine.Parse(os.Args[2:])

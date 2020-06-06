@@ -118,6 +118,7 @@ func performAPIExtractionPaginated(endpoint Endpoint) ([]dataObject, error) {
 	results := make([]dataObject, 0)
 	var itr int = 0
 	for {
+		log.Printf("Requesting page %d", itr)
 		currentURL := strings.NewReplacer("%(page)", strconv.Itoa(itr)).Replace(endpoint.URL)
 		var target interface{}
 		getResponse(endpoint.Method, currentURL, endpoint.Headers, &target)
@@ -171,6 +172,13 @@ func performAPIExtractionPaginated(endpoint Endpoint) ([]dataObject, error) {
 		}
 
 		itr++
+		if Preview {
+			if len(results) > PreviewLimit {
+				results = results[:PreviewLimit]
+			}
+			log.Printf("[PREVIEW] Skipping additional pages if any")
+			break
+		}
 		if endpoint.PaginationType == "none" {
 			break
 		}
@@ -188,10 +196,8 @@ func saveResultsToCSV(endpointName string, results []dataObject, columns *[]Colu
 		return err
 	}
 
-	writeHeaders := false
 	headers := make([]string, 0)
 	if columns == nil {
-		writeHeaders = true
 		for key := range results[0] {
 			headers = append(headers, key)
 		}
@@ -203,10 +209,6 @@ func saveResultsToCSV(endpointName string, results []dataObject, columns *[]Colu
 
 	writer := csv.NewWriter(tmpfile)
 	writeBuffer := make([]string, len(headers))
-
-	if writeHeaders {
-		writer.Write(headers)
-	}
 
 	for _, object := range results {
 		for i, key := range headers {
@@ -229,6 +231,21 @@ func saveResultsToCSV(endpointName string, results []dataObject, columns *[]Colu
 
 	if err := tmpfile.Close(); err != nil {
 		return err
+	}
+
+	if Preview {
+		content, err := ioutil.ReadFile(tmpfile.Name())
+		if err != nil {
+			return err
+		}
+
+		log.Printf(`[PREVIEW] Results CSV (limit: %d)
+Headers:
+%s
+
+Body:
+%s
+		`, PreviewLimit, strings.Join(headers, ","), string(content))
 	}
 
 	*csvfile = tmpfile.Name()

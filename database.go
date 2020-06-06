@@ -167,6 +167,7 @@ func exportCSV(source string, table string, columns []Column, whereStatement str
 	destination := make([]interface{}, len(columnNames))
 	rawResult := make([]interface{}, len(columnNames))
 	writeBuffer := make([]string, len(columnNames))
+	counter := 0
 	for i := range rawResult {
 		destination[i] = &rawResult[i]
 	}
@@ -175,6 +176,8 @@ func exportCSV(source string, table string, columns []Column, whereStatement str
 		if err != nil {
 			return "", err
 		}
+
+		counter++
 
 		for i := range columns {
 			switch rawResult[i].(type) {
@@ -197,12 +200,31 @@ func exportCSV(source string, table string, columns []Column, whereStatement str
 		if err != nil {
 			return "", err
 		}
+
+		if Preview && counter >= PreviewLimit {
+			break
+		}
 	}
 
 	writer.Flush()
 
 	if err := tmpfile.Close(); err != nil {
 		return "", err
+	}
+
+	if Preview {
+		content, err := ioutil.ReadFile(tmpfile.Name())
+		if err != nil {
+			return "", err
+		}
+
+		log.Printf(`[PREVIEW] Results CSV (limit: %d)
+Headers:
+%s
+
+Body:
+%s
+		`, PreviewLimit, strings.Join(columnNames, ","), string(content))
 	}
 
 	return tmpfile.Name(), nil

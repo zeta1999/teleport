@@ -6,8 +6,17 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+var (
+	// Preview indicates preview/dry-run mode is enabled
+	Preview bool = false
+
+	// PreviewLimit sets the number of rows to output while in preview mode
+	PreviewLimit int = 3
+)
+
 func main() {
 	opts := parseArguments()
+	Preview = opts.Preview
 	readConnections()
 	readEndpoints()
 

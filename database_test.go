@@ -69,17 +69,7 @@ func TestLoadStringNotLongEnough(t *testing.T) {
 
 func TestIncrementalStrategy(t *testing.T) {
 	runDatabaseTest(t, func(t *testing.T, srcdb *sql.DB, destdb *sql.DB) {
-		objects := Table{"example", "objects", make([]Column, 3)}
-		objects.Columns[0] = Column{"id", INTEGER, map[Option]int{BYTES: 8}}
-		objects.Columns[1] = Column{"name", STRING, map[Option]int{LENGTH: 255}}
-		objects.Columns[2] = Column{"updated_at", TIMESTAMP, map[Option]int{}}
-
-		srcdb.Exec(objects.generateCreateTableStatement("objects"))
-		statement, _ := srcdb.Prepare("INSERT INTO objects (id, name, updated_at) VALUES (?, ?, ?)")
-		statement.Exec(1, "book", time.Now().Add(-7*24*time.Hour))
-		statement.Exec(2, "tv", time.Now().Add(-1*24*time.Hour))
-		statement.Exec(3, "chair", time.Now())
-		statement.Close()
+		setupObjectsTable(srcdb)
 
 		redirectLogs(t, func() {
 			strategyOpts := make(map[string]string)
@@ -110,6 +100,23 @@ func TestExportTimestamp(t *testing.T) {
 			assertCsvCellContents(t, "", tempfile, 1, 0)
 		})
 	})
+}
+
+func TestDatabasePreview(t *testing.T) {
+	Preview = true
+	runDatabaseTest(t, func(t *testing.T, srcdb *sql.DB, destdb *sql.DB) {
+		setupObjectsTable(srcdb)
+
+		redirectLogs(t, func() {
+			expectLogMessage(t, "[PREVIEW]", func() {
+				extractLoadDatabase("testsrc", "testdest", "objects", "full", fullStrategyOpts)
+			})
+
+			actual, _ := tableExists("testdest", "testsrc_objects")
+			assert.False(t, actual)
+		})
+	})
+	Preview = false
 }
 
 func runDatabaseTest(t *testing.T, testfn func(*testing.T, *sql.DB, *sql.DB)) {
@@ -182,4 +189,18 @@ func redirectLogs(t *testing.T, fn func()) (buffer bytes.Buffer) {
 
 	t.Log(buffer.String())
 	return
+}
+
+func setupObjectsTable(db *sql.DB) {
+	objects := Table{"", "objects", make([]Column, 3)}
+	objects.Columns[0] = Column{"id", INTEGER, map[Option]int{BYTES: 8}}
+	objects.Columns[1] = Column{"name", STRING, map[Option]int{LENGTH: 255}}
+	objects.Columns[2] = Column{"updated_at", TIMESTAMP, map[Option]int{}}
+
+	db.Exec(objects.generateCreateTableStatement("objects"))
+	statement, _ := db.Prepare("INSERT INTO objects (id, name, updated_at) VALUES (?, ?, ?)")
+	statement.Exec(1, "book", time.Now().Add(-7*24*time.Hour))
+	statement.Exec(2, "tv", time.Now().Add(-1*24*time.Hour))
+	statement.Exec(3, "chair", time.Now())
+	statement.Close()
 }

@@ -24,33 +24,57 @@ func createDestinationTableIfNotExists(destination string, destinationTableName 
 		return
 	}
 
-	log.Printf("Table `%s` does not exist in *%s*, creating", destinationTableName, destination)
-
 	*destinationTable = Table{destination, destinationTableName, make([]Column, len(sourceTable.Columns))}
 	copy(destinationTable.Columns, sourceTable.Columns)
+
+	if Preview {
+		log.Printf("[PREVIEW] Table `%s` does not exist in *%s*, creating\n%s",
+			destinationTableName, destination, destinationTable.generateCreateTableStatement(destinationTableName))
+		return
+	}
+
+	log.Printf("Table `%s` does not exist in *%s*, creating", destinationTableName, destination)
 
 	return createTable(dbs[destination], destinationTableName, destinationTable)
 }
 
-func createStagingTable(destinationTable *Table) error {
+func createStagingTable(destinationTable *Table) (err error) {
+	query := fmt.Sprintf(GetDialect(Connections[destinationTable.Source]).CreateStagingTableQuery, destinationTable.Table)
+
+	if Preview {
+		log.Printf("[PREVIEW] Creating staging table `staging_%s` in *%s*", destinationTable.Table, destinationTable.Source)
+		return
+	}
+
 	log.Printf("Creating staging table `staging_%s` in *%s*", destinationTable.Table, destinationTable.Source)
 
-	_, err := dbs[destinationTable.Source].Exec(fmt.Sprintf(GetDialect(Connections[destinationTable.Source]).CreateStagingTableQuery, destinationTable.Table))
+	_, err = dbs[destinationTable.Source].Exec(query)
 
-	return err
+	return
 }
 
-func loadDestination(destinationTable *Table, columns *[]Column, csvfile *string) error {
+func loadDestination(destinationTable *Table, columns *[]Column, csvfile *string) (err error) {
+	if Preview {
+		log.Printf("[PREVIEW] Importing CSV into table `staging_%s` in *%s*", destinationTable.Table, destinationTable.Source)
+		return
+	}
+
 	log.Printf("Importing CSV into table `staging_%s` in *%s*", destinationTable.Table, destinationTable.Source)
 
 	return importCSV(destinationTable.Source, fmt.Sprintf("staging_%s", destinationTable.Table), *csvfile, *columns)
 }
 
-func promoteStagingTable(destinationTable *Table) error {
-	log.Printf("Promote staging table `staging_%[1]s` to primary `%[1]s` in *%[2]s*", destinationTable.Table, destinationTable.Source)
+func promoteStagingTable(destinationTable *Table) (err error) {
+	query := fmt.Sprintf(GetDialect(Connections[destinationTable.Source]).PromoteStagingTableQuery, destinationTable.Table)
 
-	_, err := dbs[destinationTable.Source].Exec(fmt.Sprintf(GetDialect(Connections[destinationTable.Source]).PromoteStagingTableQuery, destinationTable.Table))
-	return err
+	if Preview {
+		log.Printf("[PREVIEW] Promote staging table `staging_%[1]s` to primary `%[1]s` in *%[2]s*", destinationTable.Table, destinationTable.Source)
+		return
+	}
+
+	log.Printf("Promote staging table `staging_%[1]s` to primary `%[1]s` in *%[2]s*", destinationTable.Table, destinationTable.Source)
+	_, err = dbs[destinationTable.Source].Exec(query)
+	return
 }
 
 func importCSV(source string, table string, file string, columns []Column) (err error) {

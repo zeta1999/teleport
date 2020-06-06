@@ -30,11 +30,13 @@ func TestPerformAPIExtraction(t *testing.T) {
 	runAPITest(t, basicBody, func(t *testing.T, ts *httptest.Server, destdb *sql.DB) {
 		var results []dataObject
 
-		performAPIExtraction("test", &results)
+		redirectLogs(t, func() {
+			performAPIExtraction("test", &results)
 
-		assert.Len(t, results, 2)
-		assert.Equal(t, "1", results[0]["id"])
-		assert.Equal(t, "2", results[1]["id"])
+			assert.Len(t, results, 2)
+			assert.Equal(t, "1", results[0]["id"])
+			assert.Equal(t, "2", results[1]["id"])
+		})
 	})
 }
 
@@ -52,6 +54,22 @@ def transform(body):
 			assertRowCount(t, 2, destdb, "test_objects")
 		})
 	})
+}
+
+func TestAPIPreview(t *testing.T) {
+	Preview = true
+	runAPITest(t, basicBody, func(t *testing.T, ts *httptest.Server, destdb *sql.DB) {
+		destdb.Exec(`CREATE TABLE test_objects (id INT, name VARCHAR(255))`)
+
+		redirectLogs(t, func() {
+			expectLogMessage(t, "[PREVIEW]", func() {
+				extractLoadAPI("test", "testdest", "objects", "full", fullStrategyOpts)
+			})
+
+			assertRowCount(t, 0, destdb, "test_objects")
+		})
+	})
+	Preview = false
 }
 
 func runAPITest(t *testing.T, body string, testfn func(*testing.T, *httptest.Server, *sql.DB)) {
