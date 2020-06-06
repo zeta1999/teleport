@@ -6,73 +6,51 @@ import (
 	"log"
 )
 
-func (tc *taskContext) destinationTableName() string {
-	return fmt.Sprintf("%s_%s", tc.Source, tc.TableName)
-}
-
-func connectDestinationDatabase(tc *taskContext) error {
-	log.Printf("Connecting to *%s*...", tc.Destination)
-	_, err := connectDatabase(tc.Destination)
+func createDestinationTableIfNotExists(destination string, destinationTableName string, sourceTable *Table, destinationTable *Table) (err error) {
+	exists, err := tableExists(destination, destinationTableName)
 	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func createDestinationTableIfNotExists(tc *taskContext) error {
-	exists, err := tableExists(tc.Destination, tc.destinationTableName())
-	if err != nil {
-		return err
+		return
 	} else if exists {
-		return nil
+		log.Printf("Table `%s` already exists in *%s*, describing", destinationTableName, destination)
+
+		var dumpedTable *Table
+		dumpedTable, err = dumpTableMetadata(destination, destinationTableName)
+		if err != nil {
+			return
+		}
+
+		*destinationTable = *dumpedTable
+
+		return
 	}
 
-	log.Printf("Table `%s` does not exist in *%s*, creating", tc.destinationTableName(), tc.Destination)
+	log.Printf("Table `%s` does not exist in *%s*, creating", destinationTableName, destination)
 
-	tc.DestinationTable = &Table{tc.Destination, tc.destinationTableName(), make([]Column, len(tc.SourceTable.Columns))}
-	copy(tc.DestinationTable.Columns, tc.SourceTable.Columns)
+	*destinationTable = Table{destination, destinationTableName, make([]Column, len(sourceTable.Columns))}
+	copy(destinationTable.Columns, sourceTable.Columns)
 
-	return createTable(dbs[tc.Destination], tc.destinationTableName(), tc.SourceTable)
+	return createTable(dbs[destination], destinationTableName, destinationTable)
 }
 
-func inspectDestinationTableIfNotCreated(tc *taskContext) error {
-	if tc.DestinationTable != nil {
-		return nil
-	}
+func createStagingTable(destinationTable *Table) error {
+	log.Printf("Creating staging table `staging_%s` in *%s*", destinationTable.Table, destinationTable.Source)
 
-	log.Printf("Inspecting table `%s` in *%s*", tc.destinationTableName(), tc.Destination)
-	table, err := dumpTableMetadata(tc.Destination, tc.destinationTableName())
-	if err != nil {
-		return nil
-	}
-
-	tc.DestinationTable = table
-	return nil
-}
-
-func createStagingTable(tc *taskContext) error {
-	log.Printf("Creating staging table `staging_%s` in *%s*", tc.destinationTableName(), tc.Destination)
-
-	_, err := dbs[tc.Destination].Exec(fmt.Sprintf(GetDialect(Connections[tc.Destination]).CreateStagingTableQuery, tc.destinationTableName()))
+	_, err := dbs[destinationTable.Source].Exec(fmt.Sprintf(GetDialect(Connections[destinationTable.Source]).CreateStagingTableQuery, destinationTable.Table))
 
 	return err
 }
 
-func loadDestination(tc *taskContext) error {
-	log.Printf("Importing CSV into table `staging_%s` in *%s*", tc.destinationTableName(), tc.Destination)
-	importCSV(tc.Destination, fmt.Sprintf("staging_%s", tc.destinationTableName()), tc.CSVFile, *tc.Columns)
-	return nil
+func loadDestination(destinationTable *Table, columns *[]Column, csvfile *string) error {
+	log.Printf("Importing CSV into table `staging_%s` in *%s*", destinationTable.Table, destinationTable.Source)
+
+	return importCSV(destinationTable.Source, fmt.Sprintf("staging_%s", destinationTable.Table), *csvfile, *columns)
 }
 
-func promoteStagingTable(tc *taskContext) error {
-	log.Printf("Promote staging table `staging_%[1]s` to primary `%[1]s` in *%[2]s*", tc.destinationTableName(), tc.Destination)
+func promoteStagingTable(destinationTable *Table) error {
+	log.Printf("Promote staging table `staging_%[1]s` to primary `%[1]s` in *%[2]s*", destinationTable.Table, destinationTable.Source)
 
-	_, err := dbs[tc.Destination].Exec(fmt.Sprintf(GetDialect(Connections[tc.Destination]).PromoteStagingTableQuery, tc.destinationTableName()))
-	if err != nil {
-		return err
-	}
-
-	return nil
+	_, err := dbs[destinationTable.Source].Exec(fmt.Sprintf(GetDialect(Connections[destinationTable.Source]).PromoteStagingTableQuery, destinationTable.Table))
+	return err
 }
 
 func importCSV(source string, table string, file string, columns []Column) (err error) {

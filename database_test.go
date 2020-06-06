@@ -17,7 +17,6 @@ import (
 
 var (
 	widgetsTableDefinition = readTableFromConfigFile("test/example_widgets.yaml")
-	fullStrategyOpts       = map[string]string{}
 )
 
 func TestLoadNewTable(t *testing.T) {

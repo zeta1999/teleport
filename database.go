@@ -13,41 +13,41 @@ import (
 	"github.com/xo/dburl"
 )
 
-var dbs = make(map[string]*sql.DB)
+var (
+	dbs = make(map[string]*sql.DB)
 
-type taskContext struct {
-	Source           string
-	Destination      string
-	TableName        string
-	Strategy         string
-	StrategyOpts     map[string]string
-	SourceTable      *Table
-	DestinationTable *Table
-	CSVFile          string
-	Columns          *[]Column
-	Results          *[]dataObject
-}
+	fullStrategyOpts = map[string]string{}
+)
 
 func extractLoadDatabase(source string, destination string, tableName string, strategy string, strategyOpts map[string]string) {
 	log.Printf("Starting extract-load from *%s* to *%s* with table `%s`", source, destination, tableName)
 
-	task := taskContext{source, destination, tableName, strategy, strategyOpts, nil, nil, "", nil, nil}
+	var sourceTable Table
+	var destinationTable Table
+	var columns []Column
+	var csvfile string
 
-	steps := []func(tc *taskContext) error{
-		connectSourceDatabase,
-		connectDestinationDatabase,
-		createDestinationTableIfNotExists,
-		inspectDestinationTableIfNotCreated,
-		extractSource,
-		createStagingTable,
-		loadDestination,
-		promoteStagingTable,
+	destinationTableName := fmt.Sprintf("%s_%s", source, tableName)
+
+	steps := []func() error{
+		func() error { return connectDatabaseWithLogging(source) },
+		func() error { return connectDatabaseWithLogging(destination) },
+		func() error { return inspectTable(source, tableName, &sourceTable) },
+		func() error {
+			return createDestinationTableIfNotExists(destination, destinationTableName, &sourceTable, &destinationTable)
+		},
+		func() error {
+			return extractSource(&sourceTable, &destinationTable, strategy, strategyOpts, &columns, &csvfile)
+		},
+		func() error { return createStagingTable(&destinationTable) },
+		func() error { return loadDestination(&destinationTable, &columns, &csvfile) },
+		func() error { return promoteStagingTable(&destinationTable) },
 	}
 
 	for _, step := range steps {
-		err := step(&task)
+		err := step()
 		if err != nil {
-			log.Fatalf("Error in %s: %s", getFunctionName(step), err)
+			log.Fatal(err)
 		}
 	}
 }
@@ -55,72 +55,79 @@ func extractLoadDatabase(source string, destination string, tableName string, st
 func extractDatabase(source string, tableName string) {
 	log.Printf("Starting extract from *%s* table `%s` to CSV", source, tableName)
 
-	task := taskContext{source, "", tableName, "", make(map[string]string), nil, nil, "", nil, nil}
+	var table Table
+	var csvfile string
 
-	steps := []func(tc *taskContext) error{
-		connectSourceDatabase,
-		extractSource,
+	steps := []func() error{
+		func() error { return connectDatabaseWithLogging(source) },
+		func() error { return inspectTable(source, tableName, &table) },
+		func() error { return extractSource(&table, nil, "full", fullStrategyOpts, nil, &csvfile) },
 	}
 
 	for _, step := range steps {
-		err := step(&task)
+		err := step()
 		if err != nil {
-			log.Fatalf("Error in %s: %s", getFunctionName(step), err)
+			log.Fatalf("ERROR: %s", err)
 		}
 	}
 
-	log.Printf("Extracted to: %s\n", task.CSVFile)
+	log.Printf("Extracted to: %s\n", csvfile)
 }
 
-func connectSourceDatabase(tc *taskContext) error {
-	log.Printf("Connecting to *%s*...", tc.Source)
-	_, err := connectDatabase(tc.Source)
-	if err != nil {
-		return err
-	}
+func connectDatabaseWithLogging(source string) (err error) {
+	log.Printf("Connecting to database: *%s*", source)
 
-	table, err := dumpTableMetadata(tc.Source, tc.TableName)
-	if err != nil {
-		return err
-	}
+	_, err = connectDatabase(source)
 
-	tc.SourceTable = table
-
-	return nil
+	return
 }
 
-func extractSource(tc *taskContext) error {
-	log.Printf("Exporting CSV of table `%s` from *%s*", tc.TableName, tc.Source)
+func inspectTable(source string, tableName string, table *Table) (err error) {
+	log.Printf("Describing table `%s` in *%s*...", tableName, source)
+
+	dumpedTable, err := dumpTableMetadata(source, tableName)
+	if err != nil {
+		return
+	}
+
+	*table = *dumpedTable
+	return
+}
+
+func extractSource(sourceTable *Table, destinationTable *Table, strategy string, strategyOpts map[string]string, columns *[]Column, csvfile *string) (err error) {
+	log.Printf("Exporting CSV of table `%s` from *%s*", sourceTable.Table, sourceTable.Source)
 
 	var exportColumns []Column
 
-	if tc.DestinationTable != nil {
-		exportColumns = importableColumns(tc.DestinationTable, tc.SourceTable)
+	if destinationTable != nil {
+		exportColumns = importableColumns(destinationTable, sourceTable)
 	} else {
-		exportColumns = tc.SourceTable.Columns
+		exportColumns = sourceTable.Columns
 	}
 
 	var whereStatement string
-	switch tc.Strategy {
+	switch strategy {
 	case "full":
 		whereStatement = ""
 	case "incremental":
-		hoursAgo, err := strconv.Atoi(tc.StrategyOpts["hours_ago"])
+		hoursAgo, err := strconv.Atoi(strategyOpts["hours_ago"])
 		if err != nil {
-			return fmt.Errorf("invalid value `%s` for hours-ago", tc.StrategyOpts["hours_ago"])
+			return fmt.Errorf("invalid value `%s` for hours-ago", strategyOpts["hours_ago"])
 		}
 		updateTime := (time.Now().Add(time.Duration(-1*hoursAgo) * time.Hour)).Format("2006-01-02 15:04:05")
-		whereStatement = fmt.Sprintf("%s > '%s'", tc.StrategyOpts["modified_at_column"], updateTime)
+		whereStatement = fmt.Sprintf("%s > '%s'", strategyOpts["modified_at_column"], updateTime)
 	}
 
-	file, err := exportCSV(tc.Source, tc.TableName, exportColumns, whereStatement)
+	file, err := exportCSV(sourceTable.Source, sourceTable.Table, exportColumns, whereStatement)
 	if err != nil {
 		return err
 	}
 
-	tc.CSVFile = file
-	tc.Columns = &exportColumns
-	return nil
+	*csvfile = file
+	if columns != nil {
+		*columns = exportColumns
+	}
+	return
 }
 
 func exportCSV(source string, table string, columns []Column, whereStatement string) (string, error) {
@@ -205,6 +212,7 @@ func connectDatabase(source string) (*sql.DB, error) {
 	if dbs[source] != nil {
 		return dbs[source], nil
 	}
+
 	url := Connections[source].Config.URL
 	database, err := dburl.Open(url)
 	if err != nil {

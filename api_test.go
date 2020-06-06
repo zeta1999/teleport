@@ -28,10 +28,9 @@ func TestExtractLoadAPI(t *testing.T) {
 
 func TestPerformAPIExtraction(t *testing.T) {
 	runAPITest(t, basicBody, func(t *testing.T, ts *httptest.Server, destdb *sql.DB) {
-		task := taskContext{"test", "", "", "full", fullStrategyOpts, nil, nil, "", nil, nil}
+		var results []dataObject
 
-		performAPIExtraction(&task)
-		results := *task.Results
+		performAPIExtraction("test", &results)
 
 		assert.Len(t, results, 2)
 		assert.Equal(t, "1", results[0]["id"])

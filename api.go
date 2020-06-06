@@ -22,56 +22,61 @@ var emptyResults = make([]dataObject, 0)
 func extractLoadAPI(endpoint string, destination string, tableName string, strategy string, strategyOpts map[string]string) {
 	log.Printf("Starting extract-load-api from *%s* to *%s* table `%s`", endpoint, destination, tableName)
 
-	task := taskContext{endpoint, destination, tableName, strategy, strategyOpts, nil, nil, "", nil, nil}
+	var destinationTable Table
+	var columns []Column
+	var results []dataObject
+	var csvfile string
 
-	steps := []func(tc *taskContext) error{
-		connectDestinationDatabase,
-		inspectDestinationTableIfNotCreated,
-		performAPIExtraction,
-		determineImportColumns,
-		saveResultsToCSV,
-		createStagingTable,
-		loadDestination,
-		promoteStagingTable,
+	destinationTableName := fmt.Sprintf("%s_%s", endpoint, tableName)
+
+	steps := []func() error{
+		func() error { return connectDatabaseWithLogging(destination) },
+		func() error { return inspectTable(destination, destinationTableName, &destinationTable) },
+		func() error { return performAPIExtraction(endpoint, &results) },
+		func() error { return determineImportColumns(&destinationTable, results, &columns) },
+		func() error { return saveResultsToCSV(endpoint, results, &columns, &csvfile) },
+		func() error { return createStagingTable(&destinationTable) },
+		func() error { return loadDestination(&destinationTable, &columns, &csvfile) },
+		func() error { return promoteStagingTable(&destinationTable) },
 	}
 
 	for _, step := range steps {
-		err := step(&task)
+		err := step()
 		if err != nil {
-			log.Fatalf("Error in %s: %s", getFunctionName(step), err)
+			log.Fatal(err)
 		}
 	}
-
 }
 
 func extractAPI(endpoint string) {
 	log.Printf("Starting extract-api from *%s*", endpoint)
 
-	task := taskContext{endpoint, "", "", "", make(map[string]string), nil, nil, "", nil, nil}
+	var results []dataObject
+	var csvfile string
 
-	steps := []func(tc *taskContext) error{
-		performAPIExtraction,
-		saveResultsToCSV,
+	steps := []func() error{
+		func() error { return performAPIExtraction(endpoint, &results) },
+		func() error { return saveResultsToCSV(endpoint, results, nil, &csvfile) },
 	}
 
 	for _, step := range steps {
-		err := step(&task)
+		err := step()
 		if err != nil {
-			log.Fatalf("Error in %s: %s", getFunctionName(step), err)
+			log.Fatal(err)
 		}
 	}
 
-	log.Printf("Extracted to: %s\n", task.CSVFile)
+	log.Printf("Extracted to: %s\n", csvfile)
 }
 
-func determineImportColumns(tc *taskContext) error {
+func determineImportColumns(destinationTable *Table, results []dataObject, columns *[]Column) error {
 	headers := make([]string, 0)
-	for key := range (*tc.Results)[0] {
+	for key := range results[0] {
 		headers = append(headers, key)
 	}
 
 	importColumns := make([]Column, 0)
-	for _, column := range tc.DestinationTable.Columns {
+	for _, column := range destinationTable.Columns {
 		for _, header := range headers {
 			if column.Name == header {
 				importColumns = append(importColumns, column)
@@ -80,13 +85,13 @@ func determineImportColumns(tc *taskContext) error {
 		}
 	}
 
-	tc.Columns = &importColumns
+	*columns = importColumns
 
 	return nil
 }
 
-func performAPIExtraction(tc *taskContext) error {
-	endpoint := Endpoints[tc.Source]
+func performAPIExtraction(endpointName string, results *[]dataObject) error {
+	endpoint := Endpoints[endpointName]
 
 	if !isValidMethod(endpoint.Method) {
 		return fmt.Errorf("method not valid, allowed values: GET")
@@ -98,12 +103,12 @@ func performAPIExtraction(tc *taskContext) error {
 		return fmt.Errorf("pagination_type not valid, allowed values: url-inc, none")
 	}
 
-	results, err := performAPIExtractionPaginated(endpoint)
+	extractedResults, err := performAPIExtractionPaginated(endpoint)
 	if err != nil {
 		return err
 	}
 
-	tc.Results = &results
+	*results = extractedResults
 
 	return nil
 }
@@ -177,21 +182,21 @@ func performAPIExtractionPaginated(endpoint Endpoint) ([]dataObject, error) {
 	return results, nil
 }
 
-func saveResultsToCSV(tc *taskContext) error {
-	tmpfile, err := ioutil.TempFile("/tmp/", fmt.Sprintf("extract-api-%s", tc.Source))
+func saveResultsToCSV(endpointName string, results []dataObject, columns *[]Column, csvfile *string) error {
+	tmpfile, err := ioutil.TempFile("/tmp/", fmt.Sprintf("extract-api-%s", endpointName))
 	if err != nil {
 		return err
 	}
 
 	writeHeaders := false
 	headers := make([]string, 0)
-	if tc.Columns == nil {
+	if columns == nil {
 		writeHeaders = true
-		for key := range (*tc.Results)[0] {
+		for key := range results[0] {
 			headers = append(headers, key)
 		}
 	} else {
-		for _, column := range *tc.Columns {
+		for _, column := range *columns {
 			headers = append(headers, column.Name)
 		}
 	}
@@ -203,7 +208,7 @@ func saveResultsToCSV(tc *taskContext) error {
 		writer.Write(headers)
 	}
 
-	for _, object := range *tc.Results {
+	for _, object := range results {
 		for i, key := range headers {
 			switch object[key].(type) {
 			case string:
@@ -226,7 +231,7 @@ func saveResultsToCSV(tc *taskContext) error {
 		return err
 	}
 
-	tc.CSVFile = tmpfile.Name()
+	*csvfile = tmpfile.Name()
 
 	return nil
 }
