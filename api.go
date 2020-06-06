@@ -34,7 +34,7 @@ func extractLoadAPI(endpoint string, destination string, tableName string, strat
 
 	destinationTableName := fmt.Sprintf("%s_%s", endpoint, tableName)
 
-	runWorkflow([]func() error{
+	RunWorkflow([]func() error{
 		func() error { return connectDatabaseWithLogging(destination) },
 		func() error { return inspectTable(destination, destinationTableName, &destinationTable) },
 		func() error { return performAPIExtraction(endpoint, &results) },
@@ -45,7 +45,7 @@ func extractLoadAPI(endpoint string, destination string, tableName string, strat
 		func() error { return promoteStagingTable(&destinationTable) },
 	})
 
-	fnlog.Info("Completed extract-load-api 🎉")
+	fnlog.WithField("rows", currentWorkflow.RowCounter).Info("Completed extract-load-api 🎉")
 }
 
 func extractAPI(endpoint string) {
@@ -56,13 +56,14 @@ func extractAPI(endpoint string) {
 	var results []dataObject
 	var csvfile string
 
-	runWorkflow([]func() error{
+	RunWorkflow([]func() error{
 		func() error { return performAPIExtraction(endpoint, &results) },
 		func() error { return saveResultsToCSV(endpoint, results, nil, &csvfile) },
 	})
 
 	log.WithFields(log.Fields{
 		"file": csvfile,
+		"rows": currentWorkflow.RowCounter,
 	}).Info("Extract to CSV completed 🎉")
 }
 
@@ -164,6 +165,7 @@ func performAPIExtractionPaginated(endpoint Endpoint) ([]dataObject, error) {
 					return emptyResults, fmt.Errorf("read object error: %w", err)
 				}
 
+				IncrementRowCounter()
 				results = append(results, object.(dataObject))
 			}
 		case *starlark.Dict:
@@ -171,6 +173,7 @@ func performAPIExtractionPaginated(endpoint Endpoint) ([]dataObject, error) {
 			if err != nil {
 				return emptyResults, fmt.Errorf("read object error: %w", err)
 			}
+			IncrementRowCounter()
 			results = append(results, object.(dataObject))
 		}
 

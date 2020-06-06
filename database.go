@@ -34,7 +34,7 @@ func extractLoadDatabase(source string, destination string, tableName string, st
 
 	destinationTableName := fmt.Sprintf("%s_%s", source, tableName)
 
-	runWorkflow([]func() error{
+	RunWorkflow([]func() error{
 		func() error { return connectDatabaseWithLogging(source) },
 		func() error { return connectDatabaseWithLogging(destination) },
 		func() error { return inspectTable(source, tableName, &sourceTable) },
@@ -49,7 +49,7 @@ func extractLoadDatabase(source string, destination string, tableName string, st
 		func() error { return promoteStagingTable(&destinationTable) },
 	})
 
-	fnlog.Info("Completed extract-load 🎉")
+	fnlog.WithField("rows", currentWorkflow.RowCounter).Info("Completed extract-load 🎉")
 }
 
 func extractDatabase(source string, tableName string) {
@@ -61,7 +61,7 @@ func extractDatabase(source string, tableName string) {
 	var table Table
 	var csvfile string
 
-	runWorkflow([]func() error{
+	RunWorkflow([]func() error{
 		func() error { return connectDatabaseWithLogging(source) },
 		func() error { return inspectTable(source, tableName, &table) },
 		func() error { return extractSource(&table, nil, "full", fullStrategyOpts, nil, &csvfile) },
@@ -69,6 +69,7 @@ func extractDatabase(source string, tableName string) {
 
 	log.WithFields(log.Fields{
 		"file": csvfile,
+		"rows": currentWorkflow.RowCounter,
 	}).Info("Extract to CSV completed 🎉")
 }
 
@@ -173,7 +174,6 @@ func exportCSV(source string, table string, columns []Column, whereStatement str
 	destination := make([]interface{}, len(columnNames))
 	rawResult := make([]interface{}, len(columnNames))
 	writeBuffer := make([]string, len(columnNames))
-	counter := 0
 	for i := range rawResult {
 		destination[i] = &rawResult[i]
 	}
@@ -183,7 +183,7 @@ func exportCSV(source string, table string, columns []Column, whereStatement str
 			return "", err
 		}
 
-		counter++
+		IncrementRowCounter()
 
 		for i := range columns {
 			switch rawResult[i].(type) {
@@ -207,7 +207,7 @@ func exportCSV(source string, table string, columns []Column, whereStatement str
 			return "", err
 		}
 
-		if Preview && counter >= PreviewLimit {
+		if Preview && GetRowCounter() >= int64(PreviewLimit) {
 			break
 		}
 	}
