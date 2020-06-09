@@ -8,8 +8,8 @@ import (
 )
 
 func setupPostgres() {
-	readConnections()
-	db, _ := connectDatabase("jason")
+	Databases["testpostgres"] = Database{"postgres://localhost/jason?sslmode=disable", map[string]string{}, false}
+	db, _ := connectDatabase("testpostgres")
 
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS widgets (
@@ -32,7 +32,7 @@ func setupPostgres() {
 func TestDumpTableMetadataPostgres(t *testing.T) {
 	setupPostgres()
 
-	table, err := dumpTableMetadata("jason", "widgets")
+	table, err := dumpTableMetadata("testpostgres", "widgets")
 	if err != nil {
 		log.Fatal(err)
 	}

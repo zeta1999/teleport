@@ -1,42 +1,50 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
+	"path/filepath"
 	"strings"
+
+	"github.com/ilyakaznacheev/cleanenv"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
-	connectionsConfigDirectory = "./config/connections/"
-	endpointsConfigDirectory   = "./config/endpoints/"
+	apisConfigDirectory          = "./apis"
+	databasesConfigDirectory     = "./databases"
+	transformsConfigDirectory    = "./transforms"
+	apiTransformsConfigDirectory = "./apis/transforms"
 
-	// Connections is a list of configuration source connections
-	Connections = make(map[string]Connection)
+	// Databases contains the configuration for all databases
+	Databases = make(map[string]Database)
 
-	// Endpoints is a list of configured HTTP endpoints
-	Endpoints = make(map[string]Endpoint)
+	// APIs contains the configuration for all APIs
+	APIs = make(map[string]API)
 
 	// Transforms is a list of configured Starlark Transforms for endpoints to use
 	Transforms = make(map[string]string)
 )
 
-type Connection struct {
-	Name   string
-	Config Configuration
+type Database struct {
+	URL      string
+	Options  map[string]string
+	Readonly bool
 }
 
-type Configuration struct {
-	URL     string
-	Options map[string]string
+type API struct {
+	BaseURL string
+	Headers map[string]string
+	// TODO: allow inheritance for the below 3 attributes
+	// ResponseType   string `json:"response_type"`
+	// PaginationType string `json:"pagination_type"`
+	// MaxPages       int    `json:"max_pages"`
+	Endpoints map[string]Endpoint
 }
 
 type Endpoint struct {
-	Name           string
-	Method         string
 	URL            string
+	Method         string
 	Headers        map[string]string
 	ResponseType   string `json:"response_type"`
 	PaginationType string `json:"pagination_type"`
@@ -44,52 +52,65 @@ type Endpoint struct {
 	Transforms     []string
 }
 
-func readConnections() {
-	files, err := ioutil.ReadDir(connectionsConfigDirectory)
-	if err != nil {
-		log.Fatal(err)
-	}
-	for _, fileinfo := range files {
-		file, err := os.Open(fmt.Sprintf("%s%s", connectionsConfigDirectory, fileinfo.Name()))
+func readConfiguration() {
+	// Databases
+	for _, fileinfo := range readFiles(databasesConfigDirectory) {
+		var database Database
+		err := cleanenv.ReadConfig(filepath.Join(workingDir(), databasesConfigDirectory, fileinfo.Name()), &database)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		defer file.Close()
-		decoder := json.NewDecoder(file)
-		connection := Connection{strings.Replace(fileinfo.Name(), ".json", "", 1), Configuration{}}
-		errDecode := decoder.Decode(&connection.Config)
-		if errDecode != nil {
-			log.Fatalf("error reading config file `%s`: %s", fileinfo.Name(), errDecode)
+		Databases[fileNameWithoutExtension(fileinfo.Name())] = database
+	}
+
+	// APIs
+	for _, fileinfo := range readFiles(apisConfigDirectory) {
+		var api API
+		err := cleanenv.ReadConfig(filepath.Join(workingDir(), apisConfigDirectory, fileinfo.Name()), &api)
+		if err != nil {
+			log.Fatal(err)
 		}
 
-		Connections[connection.Name] = connection
+		APIs[fileNameWithoutExtension(fileinfo.Name())] = api
 	}
 }
 
-func readEndpoints() {
-	files, err := ioutil.ReadDir(endpointsConfigDirectory)
+func workingDir() (path string) {
+	path, ok := os.LookupEnv("PADPATH")
+	if ok {
+		return
+	}
+
+	path, err := os.Getwd()
 	if err != nil {
 		log.Fatal(err)
 	}
-	for _, fileinfo := range files {
-		if !strings.HasSuffix(fileinfo.Name(), ".json") {
+
+	return
+}
+
+func readFiles(directory string) (files []os.FileInfo) {
+	items, err := ioutil.ReadDir(filepath.Join(workingDir(), directory))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, fileinfo := range items {
+		if fileinfo.IsDir() {
+			continue
+		} else if strings.HasPrefix(fileinfo.Name(), ".") {
 			continue
 		}
 
-		file, err := os.Open(fmt.Sprintf("%s%s", endpointsConfigDirectory, fileinfo.Name()))
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		defer file.Close()
-		decoder := json.NewDecoder(file)
-		endpoint := Endpoint{strings.Replace(fileinfo.Name(), ".json", "", 1), "", "", make(map[string]string, 0), "", "", -1, make([]string, 0)}
-		errDecode := decoder.Decode(&endpoint)
-		if errDecode != nil {
-			log.Fatalf("error reading config file `%s`: %s", fileinfo.Name(), errDecode)
-		}
-
-		Endpoints[endpoint.Name] = endpoint
+		files = append(files, fileinfo)
 	}
+
+	return
+}
+
+func fileNameWithoutExtension(filename string) string {
+	extension := filepath.Ext(filename)
+
+	return filename[0 : len(filename)-len(extension)]
 }

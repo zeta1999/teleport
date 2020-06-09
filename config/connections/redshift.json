@@ -1,8 +1,0 @@
-{
-  "url": "redshift://root:7fBpdBb0dI@teleport-dev.crxpoutmcs5x.us-east-2.redshift.amazonaws.com:5439/datawarehouse",
-  "options": {
-    "s3_bucket": "teleportdata",
-    "service_role": "arn:aws:iam::102693510702:role/RedshiftRole",
-    "s3_region": "us-east-1"
-  }
-}

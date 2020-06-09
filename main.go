@@ -18,14 +18,14 @@ var (
 func main() {
 	opts := parseArguments()
 	Preview = opts.Preview
-	readConnections()
-	readEndpoints()
 
 	if Preview || opts.Debug {
 		log.SetLevel(log.DebugLevel)
 	} else {
 		log.SetLevel(log.InfoLevel)
 	}
+
+	readConfiguration()
 
 	switch opts.Command {
 	case "help", "-h", "--help":
@@ -53,13 +53,13 @@ func main() {
 	case "extract":
 		extractDatabase(opts.FromSource, opts.TableName)
 	case "extract-api":
-		extractAPI(opts.FromSource)
+		extractAPI(opts.FromSource, opts.EndpointName)
 
 	// Extract data from a source and load into datawarehouse
 	case "extract-load":
 		extractLoadDatabase(opts.FromSource, opts.ToSource, opts.TableName, opts.Strategy, extractStrategyOptions(&opts))
 	case "extract-load-api":
-		extractLoadAPI(opts.FromSource, opts.ToSource, opts.TableName, opts.Strategy, extractStrategyOptions(&opts))
+		extractLoadAPI(opts.FromSource, opts.ToSource, opts.EndpointName, opts.Strategy, extractStrategyOptions(&opts))
 
 	// Run Transform within datawarehouse
 	case "transform":

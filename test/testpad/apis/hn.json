@@ -1,0 +1,16 @@
+{
+  "baseurl": "https://hn.algolia.com/api/v1/",
+  "response_type": "json",
+  "pagination_type": "url-inc",
+  "max_pages": 3,
+  "endpoints": {
+    "search": {
+      "url": "search?query=github.com&restrictSearchableAttributes=url&page=%(page)",
+      "transforms": [
+        "hn/extract_hits.star",
+        "hn/filter_repos.star",
+        "hn/apply_schema.star"
+      ]
+    }
+  }
+}

@@ -33,12 +33,12 @@ var (
 		"CREATE TABLE staging_%[1]s AS SELECT * FROM %[1]s LIMIT 0", postgres.PromoteStagingTableQuery}
 )
 
-func GetDialect(c Connection) Dialect {
-	if strings.HasPrefix(c.Config.URL, "redshift://") {
+func GetDialect(d Database) Dialect {
+	if strings.HasPrefix(d.URL, "redshift://") {
 		return redshift
-	} else if strings.HasPrefix(c.Config.URL, "postgres://") {
+	} else if strings.HasPrefix(d.URL, "postgres://") {
 		return postgres
-	} else if strings.HasPrefix(c.Config.URL, "sqlite://") {
+	} else if strings.HasPrefix(d.URL, "sqlite://") {
 		return sqlite
 	}
 

@@ -289,11 +289,11 @@ func createDestinationTableFromConfigFile(source string, file string) {
 
 func aboutDB(source string) {
 	fmt.Println("Name: ", source)
-	fmt.Printf("Type: %s\n", GetDialect(Connections[source]).HumanName)
+	fmt.Printf("Type: %s\n", GetDialect(Databases[source]).HumanName)
 }
 
 func databaseTerminal(source string) {
-	command := GetDialect(Connections[source]).TerminalCommand
+	command := GetDialect(Databases[source]).TerminalCommand
 	if command == "" {
 		log.Fatalf("Not implemented for this database type")
 	}
@@ -305,7 +305,7 @@ func databaseTerminal(source string) {
 
 	env := os.Environ()
 
-	err = syscall.Exec(binary, []string{command, Connections[source].Config.URL}, env)
+	err = syscall.Exec(binary, []string{command, Databases[source].URL}, env)
 	if err != nil {
 		log.Fatalf("Syscall error: %s", err)
 	}

@@ -13,6 +13,7 @@ type CliOptions struct {
 	FromSource       string
 	ToSource         string
 	TableName        string
+	EndpointName     string
 	File             string
 	Strategy         string
 	PrimaryKey       string
@@ -33,6 +34,8 @@ func parseArguments() CliOptions {
 	flag.StringVar(&options.ToSource, "to", "", "Data source to load data into")
 	flag.StringVar(&options.TableName, "table", "", "Name of table to perform operations on")
 	flag.StringVar(&options.TableName, "t", "", "Alias for -table")
+	flag.StringVar(&options.EndpointName, "endpoint", "", "Name of the API endpoint to perform operations on")
+	flag.StringVar(&options.EndpointName, "e", "", "Alias for -endpoint")
 	flag.StringVar(&options.File, "file", "", "Path to file to be used in command")
 	flag.StringVar(&options.File, "f", "", "Alias for -file")
 	flag.StringVar(&options.Strategy, "strategy", "full", "data update strategy to be used when extracting and/or loading (full, incremental)")

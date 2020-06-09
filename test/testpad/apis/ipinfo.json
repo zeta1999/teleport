@@ -1,0 +1,14 @@
+{
+  "baseurl": "https://ipinfo.io/",
+  "headers": {
+    "Authorization": "Bearer $IPINFO_API_TOKEN"
+  },
+  "response_type": "json",
+  "pagination_type": "none",
+
+  "endpoints": {
+    "myip": {
+      "url": "/"
+    }
+  }
+}

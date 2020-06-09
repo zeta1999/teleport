@@ -17,11 +17,11 @@ var (
 
 func TestExtractLoadAPI(t *testing.T) {
 	runAPITest(t, basicBody, func(t *testing.T, ts *httptest.Server, destdb *sql.DB) {
-		destdb.Exec(`CREATE TABLE test_objects (id INT, name VARCHAR(255))`)
+		destdb.Exec(`CREATE TABLE test_items (id INT, name VARCHAR(255))`)
 
 		redirectLogs(t, func() {
-			extractLoadAPI("test", "testdest", "objects", "full", fullStrategyOpts)
-			assertRowCount(t, 2, destdb, "test_objects")
+			extractLoadAPI("test", "testdest", "items", "full", fullStrategyOpts)
+			assertRowCount(t, 2, destdb, "test_items")
 		})
 	})
 }
@@ -31,7 +31,9 @@ func TestPerformAPIExtraction(t *testing.T) {
 		var results []dataObject
 
 		redirectLogs(t, func() {
-			performAPIExtraction("test", &results)
+			api := APIs["test"]
+			endpoint := api.Endpoints["items"]
+			performAPIExtraction(&api, &endpoint, &results)
 
 			assert.Len(t, results, 2)
 			assert.Equal(t, "1", results[0]["id"])
@@ -42,31 +44,33 @@ func TestPerformAPIExtraction(t *testing.T) {
 
 func TestSimpleTransform(t *testing.T) {
 	runAPITest(t, rootedBody, func(t *testing.T, ts *httptest.Server, destdb *sql.DB) {
-		destdb.Exec(`CREATE TABLE test_objects (id INT, name VARCHAR(255))`)
+		destdb.Exec(`CREATE TABLE test_items (id INT, name VARCHAR(255))`)
 		Transforms["test/extract_items.star"] = `
 def transform(body):
 	return body["items"]
 `
-		Endpoints["test"] = Endpoint{"test", "GET", ts.URL, make(map[string]string), "json", "none", 1, []string{"test/extract_items.star"}}
 
-		redirectLogs(t, func() {
-			extractLoadAPI("test", "testdest", "objects", "full", fullStrategyOpts)
-			assertRowCount(t, 2, destdb, "test_objects")
-		})
+		endpoints := map[string]Endpoint{"items": Endpoint{"", "GET", make(map[string]string), "json", "none", 1, []string{"test/extract_items.star"}}}
+		APIs["test"] = API{ts.URL, make(map[string]string), endpoints}
+
+		// redirectLogs(t, func() {
+		extractLoadAPI("test", "testdest", "items", "full", fullStrategyOpts)
+		assertRowCount(t, 2, destdb, "test_items")
+		// })
 	})
 }
 
 func TestAPIPreview(t *testing.T) {
 	Preview = true
 	runAPITest(t, basicBody, func(t *testing.T, ts *httptest.Server, destdb *sql.DB) {
-		destdb.Exec(`CREATE TABLE test_objects (id INT, name VARCHAR(255))`)
+		destdb.Exec(`CREATE TABLE test_items (id INT, name VARCHAR(255))`)
 
 		redirectLogs(t, func() {
 			expectLogMessage(t, "(not executed)", func() {
-				extractLoadAPI("test", "testdest", "objects", "full", fullStrategyOpts)
+				extractLoadAPI("test", "testdest", "items", "full", fullStrategyOpts)
 			})
 
-			assertRowCount(t, 0, destdb, "test_objects")
+			assertRowCount(t, 0, destdb, "test_items")
 		})
 	})
 	Preview = false
@@ -76,10 +80,11 @@ func runAPITest(t *testing.T, body string, testfn func(*testing.T, *httptest.Ser
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, body)
 	}))
-	Endpoints["test"] = Endpoint{"test", "GET", ts.URL, make(map[string]string), "json", "none", 1, make([]string, 0)}
+	endpoints := map[string]Endpoint{"items": Endpoint{"", "GET", make(map[string]string), "json", "none", 1, []string{}}}
+	APIs["test"] = API{ts.URL, make(map[string]string), endpoints}
 	defer ts.Close()
 
-	Connections["testdest"] = Connection{"testdest", Configuration{"sqlite://:memory:", map[string]string{}}}
+	Databases["testdest"] = Database{"sqlite://:memory:", map[string]string{}, false}
 	db, _ := connectDatabase("testdest")
 	defer delete(dbs, "testdest")
 

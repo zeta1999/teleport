@@ -19,27 +19,30 @@ type dataObject = map[string]interface{}
 
 var emptyResults = make([]dataObject, 0)
 
-func extractLoadAPI(endpoint string, destination string, tableName string, strategy string, strategyOpts map[string]string) {
+func extractLoadAPI(source string, destination string, endpointName string, strategy string, strategyOpts map[string]string) {
 	fnlog := log.WithFields(log.Fields{
-		"from":  endpoint,
-		"to":    destination,
-		"table": tableName,
+		"from":     source,
+		"to":       destination,
+		"endpoint": endpointName,
 	})
 	fnlog.Info("Starting extract-load-api")
 
+	var api API
+	var endpoint Endpoint
 	var destinationTable Table
 	var columns []Column
 	var results []dataObject
 	var csvfile string
 
-	destinationTableName := fmt.Sprintf("%s_%s", endpoint, tableName)
+	destinationTableName := fmt.Sprintf("%s_%s", source, endpointName)
 
 	RunWorkflow([]func() error{
+		func() error { return readAPIEndpointConfiguration(source, endpointName, &api, &endpoint) },
 		func() error { return connectDatabaseWithLogging(destination) },
 		func() error { return inspectTable(destination, destinationTableName, &destinationTable) },
-		func() error { return performAPIExtraction(endpoint, &results) },
+		func() error { return performAPIExtraction(&api, &endpoint, &results) },
 		func() error { return determineImportColumns(&destinationTable, results, &columns) },
-		func() error { return saveResultsToCSV(endpoint, results, &columns, &csvfile) },
+		func() error { return saveResultsToCSV(source, endpointName, results, &columns, &csvfile) },
 		func() error { return createStagingTable(&destinationTable) },
 		func() error { return loadDestination(&destinationTable, &columns, &csvfile) },
 		func() error { return promoteStagingTable(&destinationTable) },
@@ -48,23 +51,41 @@ func extractLoadAPI(endpoint string, destination string, tableName string, strat
 	fnlog.WithField("rows", currentWorkflow.RowCounter).Info("Completed extract-load-api 🎉")
 }
 
-func extractAPI(endpoint string) {
+func extractAPI(source string, endpointName string) {
 	log.WithFields(log.Fields{
-		"from": endpoint,
+		"from":     source,
+		"endpoint": endpointName,
 	}).Info("Starting extract-api")
 
+	var api API
+	var endpoint Endpoint
 	var results []dataObject
 	var csvfile string
 
 	RunWorkflow([]func() error{
-		func() error { return performAPIExtraction(endpoint, &results) },
-		func() error { return saveResultsToCSV(endpoint, results, nil, &csvfile) },
+		func() error { return readAPIEndpointConfiguration(source, endpointName, &api, &endpoint) },
+		func() error { return performAPIExtraction(&api, &endpoint, &results) },
+		func() error { return saveResultsToCSV(source, endpointName, results, nil, &csvfile) },
 	})
 
 	log.WithFields(log.Fields{
 		"file": csvfile,
 		"rows": currentWorkflow.RowCounter,
 	}).Info("Extract to CSV completed 🎉")
+}
+
+func readAPIEndpointConfiguration(apiName string, endpointName string, apiptr *API, endpointptr *Endpoint) error {
+	if api, ok := APIs[apiName]; ok {
+		if endpoint, ok := api.Endpoints[endpointName]; ok {
+			*apiptr = api
+			*endpointptr = endpoint
+			return nil
+		} else {
+			return fmt.Errorf("endpoint not found in configuration: api=%s endpoint=%s", apiName, endpointName)
+		}
+	}
+
+	return fmt.Errorf("api not found in configuration: api=%s", apiName)
 }
 
 func determineImportColumns(destinationTable *Table, results []dataObject, columns *[]Column) error {
@@ -88,11 +109,9 @@ func determineImportColumns(destinationTable *Table, results []dataObject, colum
 	return nil
 }
 
-func performAPIExtraction(endpointName string, results *[]dataObject) error {
-	endpoint := Endpoints[endpointName]
-
+func performAPIExtraction(api *API, endpoint *Endpoint, results *[]dataObject) error {
 	if !isValidMethod(endpoint.Method) {
-		return fmt.Errorf("method not valid, allowed values: GET")
+		return fmt.Errorf("method not valid, allowed values: GET, POST")
 	}
 	if endpoint.ResponseType != "json" {
 		return fmt.Errorf("response_type not valid, allowed values: json")
@@ -101,7 +120,7 @@ func performAPIExtraction(endpointName string, results *[]dataObject) error {
 		return fmt.Errorf("pagination_type not valid, allowed values: url-inc, none")
 	}
 
-	extractedResults, err := performAPIExtractionPaginated(endpoint)
+	extractedResults, err := performAPIExtractionPaginated(api, endpoint)
 	if err != nil {
 		return err
 	}
@@ -111,7 +130,7 @@ func performAPIExtraction(endpointName string, results *[]dataObject) error {
 	return nil
 }
 
-func performAPIExtractionPaginated(endpoint Endpoint) ([]dataObject, error) {
+func performAPIExtractionPaginated(api *API, endpoint *Endpoint) ([]dataObject, error) {
 	thread := &starlark.Thread{}
 	results := make([]dataObject, 0)
 	var itr int = 0
@@ -120,9 +139,14 @@ func performAPIExtractionPaginated(endpoint Endpoint) ([]dataObject, error) {
 			"page": itr,
 		}).Debug("Requesting page")
 
-		currentURL := strings.NewReplacer("%(page)", strconv.Itoa(itr)).Replace(endpoint.URL)
+		currentURL := strings.NewReplacer("%(page)", strconv.Itoa(itr)).Replace(strings.Join([]string{api.BaseURL, endpoint.URL}, ""))
+		headers := api.Headers
+		for k, v := range endpoint.Headers {
+			headers[k] = v
+		}
+
 		var target interface{}
-		getResponse(endpoint.Method, currentURL, endpoint.Headers, &target)
+		getResponse(endpoint.Method, currentURL, headers, &target)
 		converted, err := convertJSONNumbers(target)
 		if err != nil {
 			return emptyResults, fmt.Errorf("unable to parse response: %w", err)
@@ -141,7 +165,7 @@ func performAPIExtractionPaginated(endpoint Endpoint) ([]dataObject, error) {
 			if source, ok := Transforms[transform]; ok {
 				contents, err = starlark.ExecFile(thread, transform, source, nil)
 			} else {
-				transformfile := fmt.Sprintf("%s%s", endpointsConfigDirectory, transform)
+				transformfile := fmt.Sprintf("%s%s", apiTransformsConfigDirectory, transform)
 				contents, err = starlark.ExecFile(thread, transformfile, nil, nil)
 			}
 			if err != nil {
@@ -196,8 +220,8 @@ func performAPIExtractionPaginated(endpoint Endpoint) ([]dataObject, error) {
 	return results, nil
 }
 
-func saveResultsToCSV(endpointName string, results []dataObject, columns *[]Column, csvfile *string) error {
-	tmpfile, err := ioutil.TempFile("/tmp/", fmt.Sprintf("extract-api-%s", endpointName))
+func saveResultsToCSV(apiName string, endpointName string, results []dataObject, columns *[]Column, csvfile *string) error {
+	tmpfile, err := ioutil.TempFile("/tmp/", fmt.Sprintf("extract-api-%s-%s", apiName, endpointName))
 	if err != nil {
 		return err
 	}

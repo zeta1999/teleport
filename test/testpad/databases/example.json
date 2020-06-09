@@ -1,0 +1,5 @@
+{
+  "url": "sqlite3://tmp/example.sqlite3",
+  "readonly": true
+}
+

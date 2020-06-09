@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"database/sql"
 	"encoding/csv"
 	"fmt"
@@ -10,8 +9,6 @@ import (
 	"os"
 	"testing"
 	"time"
-
-	log "github.com/sirupsen/logrus"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -44,7 +41,7 @@ func TestLoadSourceHasAdditionalColumn(t *testing.T) {
 		destdb.Exec(widgetsWithoutDescription.generateCreateTableStatement("testsrc_widgets"))
 		importCSV("testsrc", "widgets", "test/example_widgets.csv", widgetsTableDefinition.Columns)
 
-		expectLogMessages(t, []string{"destination table does not define column", "column=description"}, func() {
+		expectLogMessages(t, []string{"destination table does not define column", "description"}, func() {
 			extractLoadDatabase("testsrc", "testdest", "widgets", "full", fullStrategyOpts)
 
 			assertRowCount(t, 3, destdb, "testsrc_widgets")
@@ -121,14 +118,14 @@ func TestDatabasePreview(t *testing.T) {
 }
 
 func runDatabaseTest(t *testing.T, testfn func(*testing.T, *sql.DB, *sql.DB)) {
-	Connections["testsrc"] = Connection{"testsrc", Configuration{"sqlite://:memory:", map[string]string{}}}
+	Databases["testsrc"] = Database{"sqlite://:memory:", map[string]string{}, true}
 	dbSrc, err := connectDatabase("testsrc")
 	if err != nil {
 		assert.FailNow(t, "%w", err)
 	}
 	defer delete(dbs, "testsrc")
 
-	Connections["testdest"] = Connection{"testdest", Configuration{"sqlite://:memory:", map[string]string{}}}
+	Databases["testdest"] = Database{"sqlite://:memory:", map[string]string{}, false}
 	dbDest, err := connectDatabase("testdest")
 	if err != nil {
 		assert.FailNow(t, "%w", err)
@@ -174,31 +171,6 @@ func assertCsvCellContents(t *testing.T, expected string, csvfilename string, ro
 		assert.EqualValues(t, expected, line[col])
 		return
 	}
-}
-
-func expectLogMessage(t *testing.T, message string, fn func()) {
-	expectLogMessages(t, []string{message}, fn)
-}
-
-func expectLogMessages(t *testing.T, messages []string, fn func()) {
-	originalLevel := log.GetLevel()
-	log.SetLevel(log.DebugLevel)
-	logBuffer := redirectLogs(t, fn)
-
-	for _, message := range messages {
-		assert.Contains(t, logBuffer.String(), message)
-	}
-	log.SetLevel(originalLevel)
-}
-
-func redirectLogs(t *testing.T, fn func()) (buffer bytes.Buffer) {
-	log.SetOutput(&buffer)
-	defer log.SetOutput(os.Stdout)
-
-	fn()
-
-	t.Log(buffer.String())
-	return
 }
 
 func setupObjectsTable(db *sql.DB) {

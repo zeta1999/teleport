@@ -246,7 +246,7 @@ func connectDatabase(source string) (*sql.DB, error) {
 		return dbs[source], nil
 	}
 
-	url := Connections[source].Config.URL
+	url := Databases[source].URL
 	database, err := dburl.Open(url)
 	if err != nil {
 		return nil, err

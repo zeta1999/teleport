@@ -48,7 +48,7 @@ func createStagingTable(destinationTable *Table) (err error) {
 		"staging_table": fmt.Sprintf("staging_%s", destinationTable.Table),
 	})
 
-	query := fmt.Sprintf(GetDialect(Connections[destinationTable.Source]).CreateStagingTableQuery, destinationTable.Table)
+	query := fmt.Sprintf(GetDialect(Databases[destinationTable.Source]).CreateStagingTableQuery, destinationTable.Table)
 
 	fnlog.Debugf("Creating staging table")
 	if Preview {
@@ -84,7 +84,7 @@ func promoteStagingTable(destinationTable *Table) (err error) {
 		"table":         destinationTable.Table,
 	})
 
-	query := fmt.Sprintf(GetDialect(Connections[destinationTable.Source]).PromoteStagingTableQuery, destinationTable.Table)
+	query := fmt.Sprintf(GetDialect(Databases[destinationTable.Source]).PromoteStagingTableQuery, destinationTable.Table)
 
 	fnlog.Debugf("Promote staging table to primary")
 	if Preview {
@@ -103,9 +103,9 @@ func importCSV(source string, table string, file string, columns []Column) (err 
 		return
 	}
 
-	switch GetDialect(Connections[source]).Key {
+	switch GetDialect(Databases[source]).Key {
 	case "redshift":
-		err = importRedshift(database, table, file, columns, Connections[source].Config.Options)
+		err = importRedshift(database, table, file, columns, Databases[source].Options)
 	case "postgres":
 		err = importPostgres(database, table, file, columns)
 	case "sqlite":

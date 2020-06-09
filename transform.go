@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"strings"
+	"path/filepath"
 )
 
 func updateTransform(source string, transformName string) {
-	contents, err := ioutil.ReadFile(strings.Join([]string{"transforms/", transformName, ".sql"}, ""))
+	contents, err := ioutil.ReadFile(filepath.Join(workingDir(), transformsConfigDirectory, transformName+".sql"))
 	if err != nil {
 		log.Fatal(err)
 	}
