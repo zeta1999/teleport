@@ -1,6 +1,9 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
+
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
@@ -23,6 +26,11 @@ func main() {
 		log.SetLevel(log.DebugLevel)
 	} else {
 		log.SetLevel(log.InfoLevel)
+	}
+
+	if opts.Command == "new" {
+		generateProjectDirectory(os.Args[2])
+		return
 	}
 
 	readConfiguration()
@@ -65,4 +73,28 @@ func main() {
 	case "transform":
 		updateTransform(opts.Source, opts.TableName)
 	}
+}
+
+func generateProjectDirectory(path string) {
+	pad := filepath.Join(workingDir(), path)
+
+	err := os.MkdirAll(pad, 0755)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	directories := []string{"apis", "apis/transforms", "databases", "transforms"}
+	for _, directory := range directories {
+		err := os.Mkdir(filepath.Join(pad, directory), 0755)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		_, err = os.Create(filepath.Join(pad, directory, ".keep"))
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	log.WithField("padpath", pad).Info("Pad generated successfully")
 }
