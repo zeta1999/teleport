@@ -22,8 +22,11 @@ var (
 	// APIs contains the configuration for all APIs
 	APIs = make(map[string]API)
 
-	// Transforms is a list of configured Starlark Transforms for endpoints to use
-	Transforms = make(map[string]string)
+	// APITransforms is a list of configured Starlark Transforms for endpoints to use
+	APITransforms = make(map[string]string)
+
+	// SQLTransforms is a list of configured SQL statements for updateTransforms to use
+	SQLTransforms = make(map[string]string)
 )
 
 type Database struct {

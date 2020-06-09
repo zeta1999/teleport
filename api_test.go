@@ -45,7 +45,7 @@ func TestPerformAPIExtraction(t *testing.T) {
 func TestSimpleTransform(t *testing.T) {
 	runAPITest(t, rootedBody, func(t *testing.T, ts *httptest.Server, destdb *sql.DB) {
 		destdb.Exec(`CREATE TABLE test_items (id INT, name VARCHAR(255))`)
-		Transforms["test/extract_items.star"] = `
+		APITransforms["test/extract_items.star"] = `
 def transform(body):
 	return body["items"]
 `

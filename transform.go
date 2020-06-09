@@ -8,9 +8,15 @@ import (
 )
 
 func updateTransform(source string, transformName string) {
-	contents, err := ioutil.ReadFile(filepath.Join(workingDir(), transformsConfigDirectory, transformName+".sql"))
-	if err != nil {
-		log.Fatal(err)
+	var contents string
+	var ok bool
+	if contents, ok = SQLTransforms[transformName+".sql"]; !ok {
+		raw, err := ioutil.ReadFile(filepath.Join(workingDir(), transformsConfigDirectory, transformName+".sql"))
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		contents = string(raw)
 	}
 
 	database, err := connectDatabase(source)

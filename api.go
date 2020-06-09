@@ -162,7 +162,7 @@ func performAPIExtractionPaginated(api *API, endpoint *Endpoint) ([]dataObject, 
 			}).Debug("Applying transform")
 
 			var contents starlark.StringDict
-			if source, ok := Transforms[transform]; ok {
+			if source, ok := APITransforms[transform]; ok {
 				contents, err = starlark.ExecFile(thread, transform, source, nil)
 			} else {
 				transformfile := fmt.Sprintf("%s%s", apiTransformsConfigDirectory, transform)
