@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -146,7 +147,10 @@ func performAPIExtractionPaginated(api *API, endpoint *Endpoint) ([]dataObject, 
 		}
 
 		var target interface{}
-		getResponse(endpoint.Method, currentURL, headers, &target)
+		err := getResponse(endpoint.Method, currentURL, headers, &target)
+		if err != nil {
+			return emptyResults, err
+		}
 		converted, err := convertJSONNumbers(target)
 		if err != nil {
 			return emptyResults, fmt.Errorf("unable to parse response: %w", err)
@@ -165,7 +169,7 @@ func performAPIExtractionPaginated(api *API, endpoint *Endpoint) ([]dataObject, 
 			if source, ok := APITransforms[transform]; ok {
 				contents, err = starlark.ExecFile(thread, transform, source, nil)
 			} else {
-				transformfile := fmt.Sprintf("%s%s", apiTransformsConfigDirectory, transform)
+				transformfile := filepath.Join(workingDir(), apiTransformsConfigDirectory, transform)
 				contents, err = starlark.ExecFile(thread, transformfile, nil, nil)
 			}
 			if err != nil {

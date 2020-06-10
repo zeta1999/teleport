@@ -11,10 +11,10 @@ import (
 )
 
 var (
-	apisConfigDirectory          = "./apis"
-	databasesConfigDirectory     = "./databases"
-	transformsConfigDirectory    = "./transforms"
-	apiTransformsConfigDirectory = "./apis/transforms"
+	apisConfigDirectory          = "./apis/"
+	databasesConfigDirectory     = "./databases/"
+	transformsConfigDirectory    = "./transforms/"
+	apiTransformsConfigDirectory = "./apis/transforms/"
 
 	// Databases contains the configuration for all databases
 	Databases = make(map[string]Database)
