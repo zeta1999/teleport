@@ -36,8 +36,9 @@ type Database struct {
 }
 
 type API struct {
-	BaseURL string
-	Headers map[string]string
+	BaseURL     string `yaml:"base_url"`
+	Headers     map[string]string
+	QueryString map[string]string `yaml:"query_string"`
 	// TODO: allow inheritance for the below 3 attributes
 	// ResponseType   string `json:"response_type"`
 	// PaginationType string `json:"pagination_type"`
@@ -49,9 +50,10 @@ type Endpoint struct {
 	URL            string
 	Method         string
 	Headers        map[string]string
-	ResponseType   string `json:"response_type"`
-	PaginationType string `json:"pagination_type"`
-	MaxPages       int    `json:"max_pages"`
+	QueryString    map[string]string `yaml:"query_string"`
+	ResponseType   string            `json:"response_type" yaml:"response_type"`
+	PaginationType string            `json:"pagination_type"`
+	MaxPages       int               `json:"max_pages"`
 	Transforms     []string
 }
 

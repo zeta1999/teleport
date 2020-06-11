@@ -141,13 +141,19 @@ func performAPIExtractionPaginated(api *API, endpoint *Endpoint) ([]dataObject, 
 		}).Debug("Requesting page")
 
 		currentURL := strings.NewReplacer("%(page)", strconv.Itoa(itr)).Replace(strings.Join([]string{api.BaseURL, endpoint.URL}, ""))
+
 		headers := api.Headers
 		for k, v := range endpoint.Headers {
 			headers[k] = v
 		}
 
+		queryString := api.QueryString
+		for k, v := range endpoint.QueryString {
+			queryString[k] = v
+		}
+
 		var target interface{}
-		err := getResponse(endpoint.Method, currentURL, headers, &target)
+		err := getResponse(endpoint.Method, currentURL, headers, queryString, &target)
 		if err != nil {
 			return emptyResults, err
 		}
@@ -292,13 +298,20 @@ func saveResultsToCSV(apiName string, endpointName string, results []dataObject,
 	return nil
 }
 
-func getResponse(method string, url string, headers map[string]string, target interface{}) error {
+func getResponse(method string, url string, headers map[string]string, queryParams map[string]string, target interface{}) error {
 	client := &http.Client{}
 
 	req, err := http.NewRequest(strings.ToUpper(method), url, nil)
+
 	for key, value := range headers {
 		req.Header.Add(key, os.ExpandEnv(value))
 	}
+
+	query := req.URL.Query()
+	for key, value := range queryParams {
+		query.Add(key, os.ExpandEnv(value))
+	}
+	req.URL.RawQuery = query.Encode()
 
 	resp, err := client.Do(req)
 	if err != nil {
