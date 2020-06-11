@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -19,6 +20,11 @@ var (
 )
 
 func main() {
+	if len(os.Args) == 1 {
+		help()
+		return
+	}
+
 	opts := parseArguments()
 	Preview = opts.Preview
 
@@ -36,6 +42,8 @@ func main() {
 	readConfiguration()
 
 	switch opts.Command {
+	case "version", "-v":
+		version()
 	case "help", "-h", "--help":
 		help()
 
@@ -72,6 +80,11 @@ func main() {
 	// Run Transform within datawarehouse
 	case "transform":
 		updateTransform(opts.Source, opts.TableName)
+
+	// Handle invalid command
+	default:
+		fmt.Printf("Error: '%s' is an invalid command\n", os.Args[1])
+		listCommands()
 	}
 }
 

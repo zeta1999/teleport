@@ -47,22 +47,63 @@ func parseArguments() CliOptions {
 	flag.BoolVar(&options.Debug, "d", false, "alias for -debug")
 	flag.BoolVar(&options.Debug, "debug", options.Debug, "enable debug log messages")
 
-	versionPtr := flag.Bool("v", false, "Show version")
 	flag.CommandLine.Parse(os.Args[2:])
-	if *versionPtr {
-		os.Exit(0)
-	}
 
 	return options
 }
 
 func help() {
-	fmt.Println("-source, -s [source]\tData source name")
-	fmt.Println("-from [source]\tData source to extract data from")
-	fmt.Println("-to [source]\tData source to load data into")
-	fmt.Println("-table, -t [table]\tName of table from data source")
-	fmt.Println("-v\t\tShow version and license information")
-	fmt.Println("-h\t\tThis help screen")
+	fmt.Println("usage: teleport [COMMAND] [OPTIONS]")
+	fmt.Println("Commands:")
+	fmt.Println("  new <path/to/pad>\tgenerate a new pad folder at the given path")
+	fmt.Println("  help\t\t\tshow this message")
+	fmt.Println("  version\t\tprint version information")
+	fmt.Println("")
+	fmt.Println("  extract\t\texport all data from a database table to CSV. Required options: -from, -table")
+	fmt.Println("  extract-api\t\texport all data from an API endpoint to CSV. Required options: -from, -endpoint")
+	fmt.Println("")
+	fmt.Println("  extract-load\t\texport all data from a table in one database to another. Required options: -from, -to, -table")
+	fmt.Println("  extract-load-api\t\texport all data from an API endpoint to a database. Required options: -from, -to, -endpoint")
+	fmt.Println("")
+	fmt.Println("  transform\t\t(re-)generate a materialized table form a sql statement. Required options: -source, -table")
+	fmt.Println("")
+	fmt.Println("  about-db\t\tshow connection information a database. Required options: -source")
+	fmt.Println("  db-terminal\t\tstart a terminal for interacting with a database. Required options: -source")
+	fmt.Println("  list-tables\t\tlist the tables in a database. Required options: -source")
+	fmt.Println("  drop-table\t\tdrop a table. Required options: -source, -table")
+	fmt.Println("  describe-table\tprint the schema for a table. Required options: -source, -table")
+	fmt.Println("")
+	fmt.Println("Options:")
+	fmt.Println("  -source, -s [source]\tdata source name")
+	fmt.Println("  -from [source]\tdata source to extract data from")
+	fmt.Println("  -to [source]\t\tdata source to load data into")
+	fmt.Println("  -table, -t [table]\tname of table in the database data source")
+	fmt.Println("  -endpoint, -e [table]\tname of endpoint in the API data source")
+	fmt.Println("  -preview, -p\t\tpreview command as a dry-run without making any changes")
+	fmt.Println("  -debug, -d\t\tenable debug log output")
+}
+
+func version() {
+	fmt.Fprintln(os.Stderr, "Teleport alpha")
+}
+
+func listCommands() {
+	fmt.Println("")
+	fmt.Println("Teleport commands")
+	fmt.Println("new\thelp\tversion")
+	fmt.Println("")
+	fmt.Println("Extract commands")
+	fmt.Println("extract\textract-api")
+	fmt.Println("")
+	fmt.Println("Extract and load commands")
+	fmt.Println("extract-load\textract-load-api")
+	fmt.Println("")
+	fmt.Println("Transform commands")
+	fmt.Println("transform")
+	fmt.Println("")
+	fmt.Println("Database commands")
+	fmt.Println("about-db\tdb-terminal\tlist-tables")
+	fmt.Println("drop-table\tdescribe-table")
 }
 
 func extractStrategyOptions(opts *CliOptions) (strategyOpts map[string]string) {
