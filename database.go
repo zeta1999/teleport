@@ -195,6 +195,8 @@ func exportCSV(source string, table string, columns []Column, whereStatement str
 				writeBuffer[i] = rawResult[i].(string)
 			case float64:
 				writeBuffer[i] = strconv.FormatFloat(rawResult[i].(float64), 'E', -1, 64)
+			case bool:
+				writeBuffer[i] = strconv.FormatBool(rawResult[i].(bool))
 			case nil:
 				writeBuffer[i] = ""
 			default:
