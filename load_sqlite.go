@@ -18,7 +18,7 @@ func importSqlite3(database *sql.DB, table string, file string, columns []Column
 
 	preparedStatement := fmt.Sprintf("INSERT INTO %s (", table)
 	for _, column := range columns {
-		preparedStatement += fmt.Sprintf("%s, ", column.Name)
+		preparedStatement += fmt.Sprintf("\"%s\", ", column.Name)
 	}
 	preparedStatement = strings.TrimSuffix(preparedStatement, ", ")
 
