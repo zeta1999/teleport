@@ -257,6 +257,8 @@ func saveResultsToCSV(apiName string, endpointName string, results []dataObject,
 				writeBuffer[i] = string(object[key].(string))
 			case nil:
 				writeBuffer[i] = ""
+			case bool:
+				writeBuffer[i] = strconv.FormatBool(object[key].(bool))
 			case map[string]interface{}:
 				writeBuffer[i] = ""
 			case []interface{}:
