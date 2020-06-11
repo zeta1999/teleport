@@ -10,6 +10,17 @@ Teleport is currently in "alpha" testing. Please give it a try and report any al
 
 See the ["Contributing"](#Contributing) section for how to get involved in Teleport's development.
 
+# Features
+
+* Manage all data source and ELT pipeline configurations in version control
+* Extract data from relational databases
+* Extract data from APIs
+* Parse API responses into a tabular data structure
+* Load data into relational databases or data warehouses
+* Detailed logging for monitoring and debugging ELT pipelines
+* SQL statements to transform raw data tables into report tables
+* All commands available in a single Command Line Interface
+
 # Installation
 
 Install Teleport via
@@ -29,6 +40,12 @@ Create a new "Pad" (Teleport's term for project directory) with and then cd to t
     $ teleport new pad-name
     $ cd pad-name
 
+Setup git version control:
+
+    $ git init
+    $ git add .
+    $ git commit -m "Generated a new Teleport pad"
+
 To see all Teleport commands, run:
 
     $ teleport help
@@ -41,12 +58,12 @@ To see all Teleport commands, run:
       extract		export all data from a database table to CSV. Required options: -from, -table
       extract-api		export all data from an API endpoint to CSV. Required options: -from, -endpoint
 
-      extract-load		export all data from a table in one database to another. Required options: -from, -to, -table
-      extract-load-api		export all data from an API endpoint to a database. Required options: -from, -to, -endpoint
+      extract-load		extract all data from a table in one database to another database. Required options: -from, -to, -table
+      extract-load-api		extract all data from an API endpoint to a database. Required options: -from, -to, -endpoint
 
       transform		(re-)generate a materialized table form a sql statement. Required options: -source, -table
 
-      about-db		show connection information a database. Required options: -source
+      about-db		show connection information for a database. Required options: -source
       db-terminal		start a terminal for interacting with a database. Required options: -source
       list-tables		list the tables in a database. Required options: -source
       drop-table		drop a table. Required options: -source, -table
@@ -91,7 +108,7 @@ Pads have this directory structure:
         |- exampletransform2.sql
         ....
 
-While the examples here are all ".yml" configuration files, Teleport supports the following formats: YAML, JSON, TOML, EDN
+While the examples here are all ".yml" configuration files, Teleport supports the following file formats: YAML, JSON, TOML, EDN
 
 When refering to a resource in a Teleport command, the name of the resource is the filename without the extension. e.g., to list the tables for the database defined in `databases/exampledb1.yml`, use `teleport list-tables -source exampledb1`
 
