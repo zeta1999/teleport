@@ -2,9 +2,9 @@
 
 One framework for all your data ingestion needs
 
-Teleport's ambition is to become the standard for building ELT data ingestion pipelines. It provides an opionate, convention-over-configuration framework to allow you to pack your data warehouse, hydrate your data lake, or add a drop to your data pond from any or all of your 1st party and 3rd party data services.
+Teleport's ambition is to become the standard for building ELT data ingestion pipelines. It provides an opionated, convention-over-configuration framework to allow you to pack your data warehouse, hydrate your data lake, or add a drop to your data pond from any or all of your 1st party and 3rd party data services.
 
-Following the guidelines of ELT, Teleport does not provide support for complex, arbitrary data workflows. Instead, Teleport serves to provide just enough tooling and standardization to get all your data where it needs to go with the "EL" steps and moves all the complexity of preparing your data for business use to the "T" step. 
+Following the guidelines of ELT, Teleport does not provide support for complex, arbitrary data workflows. Instead, Teleport serves to provide just enough tooling and standardization to get all your data where it needs to go with the "EL" (extract-load) steps and moves all the complexity of preparing your data for business use to the "T" (transform) step.
 
 Teleport is currently in "alpha" testing. Please give it a try and report any all bugs by creating an issue. 
 
@@ -32,6 +32,34 @@ Create a new "Pad" (Teleport's term for project directory) with and then cd to t
 To see all Teleport commands, run:
 
     $ teleport help
+    usage: teleport [COMMAND] [OPTIONS]
+    Commands:
+      new <path/to/pad>	generate a new pad folder at the given path
+      help			show this message
+      version		print version information
+
+      extract		export all data from a database table to CSV. Required options: -from, -table
+      extract-api		export all data from an API endpoint to CSV. Required options: -from, -endpoint
+
+      extract-load		export all data from a table in one database to another. Required options: -from, -to, -table
+      extract-load-api		export all data from an API endpoint to a database. Required options: -from, -to, -endpoint
+
+      transform		(re-)generate a materialized table form a sql statement. Required options: -source, -table
+
+      about-db		show connection information a database. Required options: -source
+      db-terminal		start a terminal for interacting with a database. Required options: -source
+      list-tables		list the tables in a database. Required options: -source
+      drop-table		drop a table. Required options: -source, -table
+      describe-table	print the schema for a table. Required options: -source, -table
+
+    Options:
+      -source, -s [source]	data source name
+      -from [source]	data source to extract data from
+      -to [source]		data source to load data into
+      -table, -t [table]	name of table in the database data source
+      -endpoint, -e [table]	name of endpoint in the API data source
+      -preview, -p		preview command as a dry-run without making any changes
+      -debug, -d		enable debug log output
 
 # Concepts
 
