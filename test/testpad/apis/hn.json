@@ -6,7 +6,7 @@
   "endpoints": {
     "search": {
       "url": "search?query=github.com&restrictSearchableAttributes=url&page=%(page)",
-      "transforms": [
+      "parsers": [
         "hn/extract_hits.star",
         "hn/filter_repos.star",
         "hn/apply_schema.star"
