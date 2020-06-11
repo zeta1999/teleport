@@ -46,12 +46,12 @@ func TestSimpleTransform(t *testing.T) {
 	runAPITest(t, rootedBody, func(t *testing.T, ts *httptest.Server, destdb *sql.DB) {
 		destdb.Exec(`CREATE TABLE test_items (id INT, name VARCHAR(255))`)
 		APITransforms["test/extract_items.star"] = `
-def transform(body):
+def parse(body):
 	return body["items"]
 `
 
-		endpoints := map[string]Endpoint{"items": Endpoint{"", "GET", make(map[string]string), "json", "none", 1, []string{"test/extract_items.star"}}}
-		APIs["test"] = API{ts.URL, make(map[string]string), endpoints}
+		endpoints := map[string]Endpoint{"items": Endpoint{"", "GET", make(map[string]string), make(map[string]string), "json", "none", 1, []string{"test/extract_items.star"}}}
+		APIs["test"] = API{ts.URL, make(map[string]string), make(map[string]string), endpoints}
 
 		// redirectLogs(t, func() {
 		extractLoadAPI("test", "testdest", "items", "full", fullStrategyOpts)
@@ -80,8 +80,8 @@ func runAPITest(t *testing.T, body string, testfn func(*testing.T, *httptest.Ser
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, body)
 	}))
-	endpoints := map[string]Endpoint{"items": Endpoint{"", "GET", make(map[string]string), "json", "none", 1, []string{}}}
-	APIs["test"] = API{ts.URL, make(map[string]string), endpoints}
+	endpoints := map[string]Endpoint{"items": Endpoint{"", "GET", make(map[string]string), make(map[string]string), "json", "none", 1, []string{}}}
+	APIs["test"] = API{ts.URL, make(map[string]string), make(map[string]string), endpoints}
 	defer ts.Close()
 
 	Databases["testdest"] = Database{"sqlite://:memory:", map[string]string{}, false}
