@@ -63,6 +63,7 @@ func readConfiguration() {
 		if err != nil {
 			log.Fatal(err)
 		}
+		database.URL = os.ExpandEnv(database.URL)
 
 		Databases[fileNameWithoutExtension(fileinfo.Name())] = database
 	}
