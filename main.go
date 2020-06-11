@@ -98,26 +98,33 @@ func main() {
 	}
 }
 
-func generateProjectDirectory(path string) {
-	pad := filepath.Join(workingDir(), path)
-
-	err := os.MkdirAll(pad, 0755)
+func generateProjectDirectory(padpath string) {
+	err := os.MkdirAll(padpath, 0755)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	directories := []string{"apis", "apis/transforms", "databases", "transforms"}
+	directories := []string{"apis", "apis/transforms", "databases", "transforms", "tmp"}
 	for _, directory := range directories {
-		err := os.Mkdir(filepath.Join(pad, directory), 0755)
+		err := os.Mkdir(filepath.Join(padpath, directory), 0755)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		_, err = os.Create(filepath.Join(pad, directory, ".keep"))
+		_, err = os.Create(filepath.Join(padpath, directory, ".keep"))
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
-	log.WithField("padpath", pad).Info("Pad generated successfully")
+	gitignorefile, err := os.Create(filepath.Join(padpath, ".gitignore"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = gitignorefile.WriteString("tmp/\n")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.WithField("padpath", padpath).Info("Pad generated successfully")
 }
