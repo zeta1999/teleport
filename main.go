@@ -20,6 +20,10 @@ var (
 )
 
 func main() {
+	if _, ok := os.LookupEnv("PADPATH"); !ok {
+		os.Setenv("PADPATH", ".")
+	}
+
 	if len(os.Args) == 1 {
 		help()
 		return
