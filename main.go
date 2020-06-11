@@ -68,6 +68,12 @@ func main() {
 		describeTable(opts.Source, opts.TableName)
 	case "table-metadata":
 		tableMetadata(opts.Source, opts.TableName)
+	case "import-csv":
+		table, err := dumpTableMetadata(opts.Source, opts.TableName)
+		if err != nil {
+			log.Fatal(err)
+		}
+		importCSV(opts.Source, opts.TableName, opts.File, table.Columns)
 
 	// Extract data from a source to csv
 	case "extract":
