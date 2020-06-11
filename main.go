@@ -104,7 +104,7 @@ func generateProjectDirectory(padpath string) {
 		log.Fatal(err)
 	}
 
-	directories := []string{"apis", "apis/transforms", "databases", "transforms", "tmp"}
+	directories := []string{"apis", "apis/parsers", "databases", "transforms", "tmp"}
 	for _, directory := range directories {
 		err := os.Mkdir(filepath.Join(padpath, directory), 0755)
 		if err != nil {

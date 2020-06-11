@@ -168,8 +168,8 @@ func performAPIExtractionPaginated(api *API, endpoint *Endpoint) ([]dataObject, 
 
 		for _, transform := range endpoint.Transforms {
 			log.WithFields(log.Fields{
-				"transform": transform,
-			}).Debug("Applying transform")
+				"parser": transform,
+			}).Debug("Applying parser")
 
 			var contents starlark.StringDict
 			if source, ok := APITransforms[transform]; ok {
@@ -182,7 +182,7 @@ func performAPIExtractionPaginated(api *API, endpoint *Endpoint) ([]dataObject, 
 				return emptyResults, fmt.Errorf("read starlark file `%s` error: %w", transform, err)
 			}
 
-			value, err = starlark.Call(thread, contents["transform"], starlark.Tuple{value}, nil)
+			value, err = starlark.Call(thread, contents["parse"], starlark.Tuple{value}, nil)
 			if err != nil {
 				return emptyResults, fmt.Errorf("transform `%s` error: %s", transform, err)
 			}

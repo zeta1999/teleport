@@ -14,7 +14,7 @@ var (
 	apisConfigDirectory          = "./apis/"
 	databasesConfigDirectory     = "./databases/"
 	transformsConfigDirectory    = "./transforms/"
-	apiTransformsConfigDirectory = "./apis/transforms/"
+	apiTransformsConfigDirectory = "./apis/parsers/"
 
 	// Databases contains the configuration for all databases
 	Databases = make(map[string]Database)
@@ -54,7 +54,7 @@ type Endpoint struct {
 	ResponseType   string            `json:"response_type" yaml:"response_type"`
 	PaginationType string            `json:"pagination_type"`
 	MaxPages       int               `json:"max_pages"`
-	Transforms     []string
+	Transforms     []string          `yaml:"parsers"`
 }
 
 func readConfiguration() {
