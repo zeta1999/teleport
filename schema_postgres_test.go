@@ -8,7 +8,7 @@ import (
 )
 
 func setupPostgres() {
-	Databases["testpostgres"] = Database{"postgres://localhost/jason?sslmode=disable", map[string]string{}, false}
+	Databases["testpostgres"] = Database{"postgres://postgres@localhost:45432/?sslmode=disable", map[string]string{}, false}
 	db, _ := connectDatabase("testpostgres")
 
 	_, err := db.Exec(`

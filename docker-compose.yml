@@ -1,0 +1,10 @@
+version: "3.7"
+services:
+  postgres:
+    image: postgres:latest
+    container_name: schema-test-postgres
+    restart: always
+    ports:
+      - 127.0.0.1:45432:5432
+    environment:
+        POSTGRES_HOST_AUTH_METHOD: trust
