@@ -18,9 +18,9 @@ var (
 	postgres = Dialect{"postgres", "PostgreSQL", "psql",
 		"CREATE TABLE %[2]s AS TABLE %[1]s WITH NO DATA",
 		`
-			ALTER TABLE %[1]s RENAME TO old_%[1]s;
+			ALTER TABLE %[1]s RENAME TO archive_%[1]s;
 			ALTER TABLE %[2]s RENAME TO %[1]s;
-			DROP TABLE old_%[1]s;
+			DROP TABLE archive_%[1]s;
 		`,
 		`
 			DELETE FROM %[1]s WHERE %[3]s IN (SELECT %[3]s FROM %[2]s);
