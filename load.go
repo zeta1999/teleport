@@ -67,6 +67,11 @@ func createStagingTable(destinationTable *Table, stagingTableName string) (err e
 		"staging_table": stagingTableName,
 	})
 
+	database, err := connectDatabase(destinationTable.Source)
+	if err != nil {
+		return
+	}
+
 	query := fmt.Sprintf(GetDialect(Databases[destinationTable.Source]).CreateStagingTableQuery, destinationTable.Table, stagingTableName)
 
 	fnlog.Debugf("Creating staging table")
@@ -75,7 +80,7 @@ func createStagingTable(destinationTable *Table, stagingTableName string) (err e
 		return
 	}
 
-	_, err = dbs[destinationTable.Source].Exec(query)
+	_, err = database.Exec(query)
 
 	return
 }
@@ -103,6 +108,11 @@ func updatePrimaryTable(destinationTable *Table, stagingTableName string, strate
 		"table":         destinationTable.Table,
 	})
 
+	database, err := connectDatabase(destinationTable.Source)
+	if err != nil {
+		return
+	}
+
 	var query string
 	switch strategyOpts.Strategy {
 	case "full":
@@ -117,7 +127,7 @@ func updatePrimaryTable(destinationTable *Table, stagingTableName string, strate
 		return
 	}
 
-	_, err = dbs[destinationTable.Source].Exec(query)
+	_, err = database.Exec(query)
 	return
 }
 
