@@ -84,7 +84,13 @@ func updatePrimaryTable(destinationTable *Table, strategyOpts StrategyOptions) (
 		"table":         destinationTable.Table,
 	})
 
-	query := fmt.Sprintf(GetDialect(Databases[destinationTable.Source]).PromoteStagingTableQuery, destinationTable.Table)
+	var query string
+	switch strategyOpts.Strategy {
+	case "full":
+		query = fmt.Sprintf(GetDialect(Databases[destinationTable.Source]).FullLoadQuery, destinationTable.Table)
+	case "modified-only":
+		query = fmt.Sprintf(GetDialect(Databases[destinationTable.Source]).FullLoadQuery, destinationTable.Table, strategyOpts.PrimaryKey)
+	}
 
 	fnlog.Debugf("Updating primary table")
 	if Preview {
