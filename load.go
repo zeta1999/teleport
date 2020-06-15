@@ -7,6 +7,23 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func load(destinationTable *Table, columns *[]Column, csvfile *string, strategyOpts StrategyOptions) error {
+	steps := []func() error{
+		func() error { return createStagingTable(destinationTable) },
+		func() error { return importToStagingTable(destinationTable, columns, csvfile) },
+		func() error { return updatePrimaryTable(destinationTable, strategyOpts) },
+	}
+
+	for _, step := range steps {
+		err := step()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func createDestinationTableIfNotExists(destination string, destinationTableName string, sourceTable *Table, destinationTable *Table) (err error) {
 	fnlog := log.WithFields(log.Fields{
 		"database": destination,

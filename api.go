@@ -44,9 +44,7 @@ func extractLoadAPI(source string, destination string, endpointName string, stra
 		func() error { return performAPIExtraction(&api, &endpoint, &results) },
 		func() error { return determineImportColumns(&destinationTable, results, &columns) },
 		func() error { return saveResultsToCSV(source, endpointName, results, &columns, &csvfile) },
-		func() error { return createStagingTable(&destinationTable) },
-		func() error { return importToStagingTable(&destinationTable, &columns, &csvfile) },
-		func() error { return updatePrimaryTable(&destinationTable, strategyOpts) },
+		func() error { return load(&destinationTable, &columns, &csvfile, strategyOpts) },
 	})
 
 	fnlog.WithField("rows", currentWorkflow.RowCounter).Info("Completed extract-load-api 🎉")
