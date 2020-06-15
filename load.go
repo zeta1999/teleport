@@ -8,10 +8,12 @@ import (
 )
 
 func load(destinationTable *Table, columns *[]Column, csvfile *string, strategyOpts StrategyOptions) error {
+	stagingTableName := fmt.Sprintf("staging_%s_%s", destinationTable.Table, randomString(6))
+
 	steps := []func() error{
-		func() error { return createStagingTable(destinationTable) },
-		func() error { return importToStagingTable(destinationTable, columns, csvfile) },
-		func() error { return updatePrimaryTable(destinationTable, strategyOpts) },
+		func() error { return createStagingTable(destinationTable, stagingTableName) },
+		func() error { return importToStagingTable(destinationTable.Source, stagingTableName, columns, csvfile) },
+		func() error { return updatePrimaryTable(destinationTable, stagingTableName, strategyOpts) },
 	}
 
 	for _, step := range steps {
@@ -59,13 +61,13 @@ func createDestinationTableIfNotExists(destination string, destinationTableName 
 	return createTable(dbs[destination], destinationTableName, destinationTable)
 }
 
-func createStagingTable(destinationTable *Table) (err error) {
+func createStagingTable(destinationTable *Table, stagingTableName string) (err error) {
 	fnlog := log.WithFields(log.Fields{
 		"database":      destinationTable.Source,
-		"staging_table": fmt.Sprintf("staging_%s", destinationTable.Table),
+		"staging_table": stagingTableName,
 	})
 
-	query := fmt.Sprintf(GetDialect(Databases[destinationTable.Source]).CreateStagingTableQuery, destinationTable.Table)
+	query := fmt.Sprintf(GetDialect(Databases[destinationTable.Source]).CreateStagingTableQuery, destinationTable.Table, stagingTableName)
 
 	fnlog.Debugf("Creating staging table")
 	if Preview {
@@ -78,10 +80,10 @@ func createStagingTable(destinationTable *Table) (err error) {
 	return
 }
 
-func importToStagingTable(destinationTable *Table, columns *[]Column, csvfile *string) (err error) {
+func importToStagingTable(source string, stagingTableName string, columns *[]Column, csvfile *string) (err error) {
 	fnlog := log.WithFields(log.Fields{
-		"database":      destinationTable.Source,
-		"staging_table": fmt.Sprintf("staging_%s", destinationTable.Table),
+		"database":      source,
+		"staging_table": stagingTableName,
 	})
 
 	if Preview {
@@ -91,22 +93,22 @@ func importToStagingTable(destinationTable *Table, columns *[]Column, csvfile *s
 
 	fnlog.Debugf("Importing CSV into staging table")
 
-	return importCSV(destinationTable.Source, fmt.Sprintf("staging_%s", destinationTable.Table), *csvfile, *columns)
+	return importCSV(source, stagingTableName, *csvfile, *columns)
 }
 
-func updatePrimaryTable(destinationTable *Table, strategyOpts StrategyOptions) (err error) {
+func updatePrimaryTable(destinationTable *Table, stagingTableName string, strategyOpts StrategyOptions) (err error) {
 	fnlog := log.WithFields(log.Fields{
 		"database":      destinationTable.Source,
-		"staging_table": fmt.Sprintf("staging_%s", destinationTable.Table),
+		"staging_table": stagingTableName,
 		"table":         destinationTable.Table,
 	})
 
 	var query string
 	switch strategyOpts.Strategy {
 	case "full":
-		query = fmt.Sprintf(GetDialect(Databases[destinationTable.Source]).FullLoadQuery, destinationTable.Table)
+		query = fmt.Sprintf(GetDialect(Databases[destinationTable.Source]).FullLoadQuery, destinationTable.Table, stagingTableName)
 	case "modified-only":
-		query = fmt.Sprintf(GetDialect(Databases[destinationTable.Source]).FullLoadQuery, destinationTable.Table, strategyOpts.PrimaryKey)
+		query = fmt.Sprintf(GetDialect(Databases[destinationTable.Source]).FullLoadQuery, destinationTable.Table, stagingTableName, strategyOpts.PrimaryKey)
 	}
 
 	fnlog.Debugf("Updating primary table")

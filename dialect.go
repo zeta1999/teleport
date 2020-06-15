@@ -16,31 +16,31 @@ type Dialect struct {
 var (
 	mysql    = Dialect{"mysql", "MySQL", "", "", "", ""}
 	postgres = Dialect{"postgres", "PostgreSQL", "psql",
-		"CREATE TABLE staging_%[1]s AS TABLE %[1]s WITH NO DATA",
+		"CREATE TABLE %[2]s AS TABLE %[1]s WITH NO DATA",
 		`
 			ALTER TABLE %[1]s RENAME TO old_%[1]s;
-			ALTER TABLE staging_%[1]s RENAME TO %[1]s;
+			ALTER TABLE %[2]s RENAME TO %[1]s;
 			DROP TABLE old_%[1]s;
 		`,
 		`
-			DELETE FROM %[1]s WHERE %[2]s IN (SELECT %[2]s FROM staging_%[1]s);
-			INSERT INTO %[1]s SELECT * FROM staging_%[1]s;
-			DROP TABLE staging_%[1]s
+			DELETE FROM %[1]s WHERE %[3]s IN (SELECT %[3]s FROM %[2]s);
+			INSERT INTO %[1]s SELECT * FROM %[2]s;
+			DROP TABLE %[2]s
 		`}
 	redshift = Dialect{"redshift", "AWS RedShift", "psql",
-		"CREATE TEMPORARY TABLE staging_%[1]s (LIKE %[1]s)",
+		"CREATE TEMPORARY TABLE %[2]s (LIKE %[1]s)",
 		`
 			BEGIN TRANSACTION;
 			DELETE FROM %[1]s;
-			INSERT INTO %[1]s SELECT * FROM staging_%[1]s;
+			INSERT INTO %[1]s SELECT * FROM %[2]s;
 			END TRANSACTION;
 		`,
 		`
-			DELETE FROM %[1]s USING staging_%[1]s WHERE %[1]s.%[2]s = staging_%[1]s.%[2]s;
-			INSERT INTO %[1]s SELECT * FROM staging_%[1]s;
+			DELETE FROM %[1]s USING %[2]s WHERE %[1]s.%[3]s = %[2]s.%[3]s;
+			INSERT INTO %[1]s SELECT * FROM %[2]s;
 		`}
 	sqlite = Dialect{"sqlite", "SQLite3", "",
-		"CREATE TABLE staging_%[1]s AS SELECT * FROM %[1]s LIMIT 0", postgres.FullLoadQuery, postgres.ModifiedOnlyLoadQuery}
+		"CREATE TABLE %[2]s AS SELECT * FROM %[1]s LIMIT 0", postgres.FullLoadQuery, postgres.ModifiedOnlyLoadQuery}
 )
 
 func GetDialect(d Database) Dialect {
