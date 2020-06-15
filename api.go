@@ -20,7 +20,7 @@ type dataObject = map[string]interface{}
 
 var emptyResults = make([]dataObject, 0)
 
-func extractLoadAPI(source string, destination string, endpointName string, strategy string, strategyOpts map[string]string) {
+func extractLoadAPI(source string, destination string, endpointName string, strategyOpts StrategyOptions) {
 	fnlog := log.WithFields(log.Fields{
 		"from":     source,
 		"to":       destination,
@@ -45,8 +45,8 @@ func extractLoadAPI(source string, destination string, endpointName string, stra
 		func() error { return determineImportColumns(&destinationTable, results, &columns) },
 		func() error { return saveResultsToCSV(source, endpointName, results, &columns, &csvfile) },
 		func() error { return createStagingTable(&destinationTable) },
-		func() error { return loadDestination(&destinationTable, &columns, &csvfile) },
-		func() error { return promoteStagingTable(&destinationTable) },
+		func() error { return importToStagingTable(&destinationTable, &columns, &csvfile) },
+		func() error { return updatePrimaryTable(&destinationTable, strategyOpts) },
 	})
 
 	fnlog.WithField("rows", currentWorkflow.RowCounter).Info("Completed extract-load-api 🎉")

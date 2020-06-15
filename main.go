@@ -83,9 +83,9 @@ func main() {
 
 	// Extract data from a source and load into datawarehouse
 	case "extract-load":
-		extractLoadDatabase(opts.FromSource, opts.ToSource, opts.TableName, opts.Strategy, extractStrategyOptions(&opts))
+		extractLoadDatabase(opts.FromSource, opts.ToSource, opts.TableName, parseStrategyOptions())
 	case "extract-load-api":
-		extractLoadAPI(opts.FromSource, opts.ToSource, opts.EndpointName, opts.Strategy, extractStrategyOptions(&opts))
+		extractLoadAPI(opts.FromSource, opts.ToSource, opts.EndpointName, parseStrategyOptions())
 
 	// Run Transform within datawarehouse
 	case "transform":

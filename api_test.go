@@ -20,7 +20,7 @@ func TestExtractLoadAPI(t *testing.T) {
 		destdb.Exec(`CREATE TABLE test_items (id INT, name VARCHAR(255))`)
 
 		redirectLogs(t, func() {
-			extractLoadAPI("test", "testdest", "items", "full", fullStrategyOpts)
+			extractLoadAPI("test", "testdest", "items", fullStrategyOpts)
 			assertRowCount(t, 2, destdb, "test_items")
 		})
 	})
@@ -54,7 +54,7 @@ def parse(body):
 		APIs["test"] = API{ts.URL, make(map[string]string), make(map[string]string), endpoints}
 
 		// redirectLogs(t, func() {
-		extractLoadAPI("test", "testdest", "items", "full", fullStrategyOpts)
+		extractLoadAPI("test", "testdest", "items", fullStrategyOpts)
 		assertRowCount(t, 2, destdb, "test_items")
 		// })
 	})
@@ -67,7 +67,7 @@ func TestAPIPreview(t *testing.T) {
 
 		redirectLogs(t, func() {
 			expectLogMessage(t, "(not executed)", func() {
-				extractLoadAPI("test", "testdest", "items", "full", fullStrategyOpts)
+				extractLoadAPI("test", "testdest", "items", fullStrategyOpts)
 			})
 
 			assertRowCount(t, 0, destdb, "test_items")

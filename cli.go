@@ -8,19 +8,22 @@ import (
 )
 
 type CliOptions struct {
-	Command          string
-	Source           string
-	FromSource       string
-	ToSource         string
-	TableName        string
-	EndpointName     string
-	File             string
+	Command      string
+	Source       string
+	FromSource   string
+	ToSource     string
+	TableName    string
+	EndpointName string
+	File         string
+	Preview      bool
+	Debug        bool
+}
+
+type StrategyOptions struct {
 	Strategy         string
 	PrimaryKey       string
 	ModifiedAtColumn string
 	HoursAgo         string
-	Preview          bool
-	Debug            bool
 }
 
 func parseArguments() CliOptions {
@@ -38,10 +41,6 @@ func parseArguments() CliOptions {
 	flag.StringVar(&options.EndpointName, "e", "", "Alias for -endpoint")
 	flag.StringVar(&options.File, "file", "", "Path to file to be used in command")
 	flag.StringVar(&options.File, "f", "", "Alias for -file")
-	flag.StringVar(&options.Strategy, "strategy", "full", "data update strategy to be used when extracting and/or loading (full, incremental)")
-	flag.StringVar(&options.PrimaryKey, "primary-key", "id", "column name of primary key to be used when updating data")
-	flag.StringVar(&options.ModifiedAtColumn, "modified-at-column", "updated_at", "column name of modified_at column to be used with incremental strategy")
-	flag.StringVar(&options.HoursAgo, "hours-ago", "36", "set the number of hours to look back for modified records")
 	flag.BoolVar(&options.Preview, "p", false, "alias for -preview")
 	flag.BoolVar(&options.Preview, "preview", options.Preview, "use preview mode to perform a dry-run with truncated data and verbose logging")
 	flag.BoolVar(&options.Debug, "d", false, "alias for -debug")
@@ -50,6 +49,22 @@ func parseArguments() CliOptions {
 	flag.CommandLine.Parse(os.Args[2:])
 
 	return options
+}
+
+func parseStrategyOptions() (strategyOpts StrategyOptions) {
+	flag.StringVar(&strategyOpts.Strategy, "strategy", "full", "data update strategy to be used when extracting and/or loading (full, modified-only)")
+	flag.StringVar(&strategyOpts.PrimaryKey, "primary-key", "id", "column name of primary key to be used when updating data")
+	flag.StringVar(&strategyOpts.ModifiedAtColumn, "modified-at-column", "updated_at", "column name of modified_at column to be used with modified-only strategy")
+	flag.StringVar(&strategyOpts.HoursAgo, "hours-ago", "36", "set the number of hours to look back for modified records")
+	flag.CommandLine.Parse(os.Args[2:])
+
+	switch strategyOpts.Strategy {
+	case "full", "modified-only":
+	default:
+		log.Fatal("Invalid strategy, acceptable options: full, modified-only")
+	}
+
+	return
 }
 
 func help() {
@@ -104,19 +119,4 @@ func listCommands() {
 	fmt.Println("Database commands")
 	fmt.Println("about-db\tdb-terminal\tlist-tables")
 	fmt.Println("drop-table\tdescribe-table")
-}
-
-func extractStrategyOptions(opts *CliOptions) (strategyOpts map[string]string) {
-	switch opts.Strategy {
-	case "full":
-		// None
-	case "incremental":
-		strategyOpts["primary_key"] = opts.PrimaryKey
-		strategyOpts["modified_at_column"] = opts.ModifiedAtColumn
-		strategyOpts["hours_ago"] = opts.HoursAgo
-	default:
-		log.Fatal("Invalid strategy, acceptable options: full, incremental")
-	}
-
-	return
 }

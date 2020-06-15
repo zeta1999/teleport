@@ -16,14 +16,15 @@ import (
 var (
 	dbs = make(map[string]*sql.DB)
 
-	fullStrategyOpts = map[string]string{}
+	fullStrategyOpts = StrategyOptions{"full", "", "", ""}
 )
 
-func extractLoadDatabase(source string, destination string, tableName string, strategy string, strategyOpts map[string]string) {
+func extractLoadDatabase(source string, destination string, tableName string, strategyOpts StrategyOptions) {
 	fnlog := log.WithFields(log.Fields{
-		"from":  source,
-		"to":    destination,
-		"table": tableName,
+		"from":     source,
+		"to":       destination,
+		"table":    tableName,
+		"strategy": strategyOpts.Strategy,
 	})
 	fnlog.Info("Starting extract-load")
 
@@ -42,11 +43,11 @@ func extractLoadDatabase(source string, destination string, tableName string, st
 			return createDestinationTableIfNotExists(destination, destinationTableName, &sourceTable, &destinationTable)
 		},
 		func() error {
-			return extractSource(&sourceTable, &destinationTable, strategy, strategyOpts, &columns, &csvfile)
+			return extractSource(&sourceTable, &destinationTable, strategyOpts, &columns, &csvfile)
 		},
 		func() error { return createStagingTable(&destinationTable) },
-		func() error { return loadDestination(&destinationTable, &columns, &csvfile) },
-		func() error { return promoteStagingTable(&destinationTable) },
+		func() error { return importToStagingTable(&destinationTable, &columns, &csvfile) },
+		func() error { return updatePrimaryTable(&destinationTable, strategyOpts) },
 	})
 
 	fnlog.WithField("rows", currentWorkflow.RowCounter).Info("Completed extract-load 🎉")
@@ -64,7 +65,7 @@ func extractDatabase(source string, tableName string) {
 	RunWorkflow([]func() error{
 		func() error { return connectDatabaseWithLogging(source) },
 		func() error { return inspectTable(source, tableName, &table) },
-		func() error { return extractSource(&table, nil, "full", fullStrategyOpts, nil, &csvfile) },
+		func() error { return extractSource(&table, nil, fullStrategyOpts, nil, &csvfile) },
 	})
 
 	log.WithFields(log.Fields{
@@ -98,10 +99,11 @@ func inspectTable(source string, tableName string, table *Table) (err error) {
 	return
 }
 
-func extractSource(sourceTable *Table, destinationTable *Table, strategy string, strategyOpts map[string]string, columns *[]Column, csvfile *string) (err error) {
+func extractSource(sourceTable *Table, destinationTable *Table, strategyOpts StrategyOptions, columns *[]Column, csvfile *string) (err error) {
 	log.WithFields(log.Fields{
 		"database": sourceTable.Source,
 		"table":    sourceTable.Table,
+		"type":     strategyOpts.Strategy,
 	}).Debug("Exporting CSV of table data")
 
 	var exportColumns []Column
@@ -113,16 +115,16 @@ func extractSource(sourceTable *Table, destinationTable *Table, strategy string,
 	}
 
 	var whereStatement string
-	switch strategy {
+	switch strategyOpts.Strategy {
 	case "full":
 		whereStatement = ""
-	case "incremental":
-		hoursAgo, err := strconv.Atoi(strategyOpts["hours_ago"])
+	case "modified-only":
+		hoursAgo, err := strconv.Atoi(strategyOpts.HoursAgo)
 		if err != nil {
-			return fmt.Errorf("invalid value `%s` for hours-ago", strategyOpts["hours_ago"])
+			return fmt.Errorf("invalid value `%s` for hours-ago", strategyOpts.HoursAgo)
 		}
 		updateTime := (time.Now().Add(time.Duration(-1*hoursAgo) * time.Hour)).Format("2006-01-02 15:04:05")
-		whereStatement = fmt.Sprintf("%s > '%s'", strategyOpts["modified_at_column"], updateTime)
+		whereStatement = fmt.Sprintf("%s > '%s'", strategyOpts.ModifiedAtColumn, updateTime)
 	}
 
 	file, err := exportCSV(sourceTable.Source, sourceTable.Table, exportColumns, whereStatement)

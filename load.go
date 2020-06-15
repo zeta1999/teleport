@@ -61,7 +61,7 @@ func createStagingTable(destinationTable *Table) (err error) {
 	return
 }
 
-func loadDestination(destinationTable *Table, columns *[]Column, csvfile *string) (err error) {
+func importToStagingTable(destinationTable *Table, columns *[]Column, csvfile *string) (err error) {
 	fnlog := log.WithFields(log.Fields{
 		"database":      destinationTable.Source,
 		"staging_table": fmt.Sprintf("staging_%s", destinationTable.Table),
@@ -77,7 +77,7 @@ func loadDestination(destinationTable *Table, columns *[]Column, csvfile *string
 	return importCSV(destinationTable.Source, fmt.Sprintf("staging_%s", destinationTable.Table), *csvfile, *columns)
 }
 
-func promoteStagingTable(destinationTable *Table) (err error) {
+func updatePrimaryTable(destinationTable *Table, strategyOpts StrategyOptions) (err error) {
 	fnlog := log.WithFields(log.Fields{
 		"database":      destinationTable.Source,
 		"staging_table": fmt.Sprintf("staging_%s", destinationTable.Table),
@@ -86,7 +86,7 @@ func promoteStagingTable(destinationTable *Table) (err error) {
 
 	query := fmt.Sprintf(GetDialect(Databases[destinationTable.Source]).PromoteStagingTableQuery, destinationTable.Table)
 
-	fnlog.Debugf("Promote staging table to primary")
+	fnlog.Debugf("Updating primary table")
 	if Preview {
 		log.Debugf("(not executed) SQL Query: \n\t%s", query)
 		return

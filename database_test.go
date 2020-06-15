@@ -23,7 +23,7 @@ func TestLoadNewTable(t *testing.T) {
 		importCSV("testsrc", "widgets", "test/example_widgets.csv", widgetsTableDefinition.Columns)
 
 		redirectLogs(t, func() {
-			extractLoadDatabase("testsrc", "testdest", "widgets", "full", fullStrategyOpts)
+			extractLoadDatabase("testsrc", "testdest", "widgets", fullStrategyOpts)
 
 			assertRowCount(t, 3, destdb, "testsrc_widgets")
 		})
@@ -42,7 +42,7 @@ func TestLoadSourceHasAdditionalColumn(t *testing.T) {
 		importCSV("testsrc", "widgets", "test/example_widgets.csv", widgetsTableDefinition.Columns)
 
 		expectLogMessages(t, []string{"destination table does not define column", "description"}, func() {
-			extractLoadDatabase("testsrc", "testdest", "widgets", "full", fullStrategyOpts)
+			extractLoadDatabase("testsrc", "testdest", "widgets", fullStrategyOpts)
 
 			assertRowCount(t, 3, destdb, "testsrc_widgets")
 		})
@@ -60,21 +60,18 @@ func TestLoadStringNotLongEnough(t *testing.T) {
 		destdb.Exec(widgetsWithShortName.generateCreateTableStatement("testsrc_widgets"))
 
 		expectLogMessage(t, "For string column `name`, destination LENGTH is too short", func() {
-			extractLoadDatabase("testsrc", "testdest", "widgets", "full", fullStrategyOpts)
+			extractLoadDatabase("testsrc", "testdest", "widgets", fullStrategyOpts)
 		})
 	})
 }
 
-func TestIncrementalStrategy(t *testing.T) {
+func TestModifiedOnlyStrategy(t *testing.T) {
 	runDatabaseTest(t, func(t *testing.T, srcdb *sql.DB, destdb *sql.DB) {
 		setupObjectsTable(srcdb)
 
 		redirectLogs(t, func() {
-			strategyOpts := make(map[string]string)
-			strategyOpts["primary_key"] = "id"
-			strategyOpts["modified_at_column"] = "updated_at"
-			strategyOpts["hours_ago"] = "36"
-			extractLoadDatabase("testsrc", "testdest", "objects", "incremental", strategyOpts)
+			strategyOpts := StrategyOptions{"modified-only", "id", "updated_at", "36"}
+			extractLoadDatabase("testsrc", "testdest", "objects", strategyOpts)
 
 			assertRowCount(t, 2, destdb, "testsrc_objects")
 		})
@@ -107,7 +104,7 @@ func TestDatabasePreview(t *testing.T) {
 
 		redirectLogs(t, func() {
 			expectLogMessage(t, "(not executed)", func() {
-				extractLoadDatabase("testsrc", "testdest", "objects", "full", fullStrategyOpts)
+				extractLoadDatabase("testsrc", "testdest", "objects", fullStrategyOpts)
 			})
 
 			actual, _ := tableExists("testdest", "testsrc_objects")
