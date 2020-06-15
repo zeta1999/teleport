@@ -36,6 +36,7 @@ const (
 	DECIMAL   DataType = "decimal"
 	FLOAT     DataType = "float"
 	STRING    DataType = "string"
+	TEXT      DataType = "text"
 	DATE      DataType = "date"
 	TIMESTAMP DataType = "timestamp"
 	BOOLEAN   DataType = "boolean"
@@ -93,6 +94,8 @@ func determineDataType(columnType *sql.ColumnType) (DataType, error) {
 	databaseTypeName := strings.ToLower(columnType.DatabaseTypeName())
 	if strings.Contains(databaseTypeName, "varchar") {
 		return STRING, nil
+	} else if strings.Contains(databaseTypeName, "text") {
+		return TEXT, nil
 	} else if strings.HasPrefix(databaseTypeName, "int") {
 		return INTEGER, nil
 	} else if strings.HasSuffix(databaseTypeName, "int") {
@@ -101,6 +104,8 @@ func determineDataType(columnType *sql.ColumnType) (DataType, error) {
 		return DECIMAL, nil
 	} else if strings.HasPrefix(databaseTypeName, "numeric") {
 		return DECIMAL, nil
+	} else if strings.Contains(databaseTypeName, "num") {
+		return FLOAT, nil
 	} else if strings.HasPrefix(databaseTypeName, "bool") {
 		return BOOLEAN, nil
 	} else if strings.HasPrefix(databaseTypeName, "datetime") {
