@@ -51,6 +51,9 @@ const (
 	BYTES     Option = "bytes"
 )
 
+// MaxLength represents the maximum possible length for the data type
+const MaxLength int = -1
+
 // Supported Data Types:
 // * INT (Number of Bytes, <8)
 // * DECIMAL (Precision)
@@ -138,9 +141,7 @@ func determineOptions(columnType *sql.ColumnType, dataType DataType) (map[Option
 			}
 			options[LENGTH] = length
 		} else {
-			// fmt.Println(columnType)
-			// return nil, fmt.Errorf("unable to determine options for: %s (%s)", columnType.Name(), columnType.DatabaseTypeName())
-			options[LENGTH] = 4096
+			options[LENGTH] = MaxLength
 		}
 	case DECIMAL:
 		precision, scale, ok := columnType.DecimalSize()
