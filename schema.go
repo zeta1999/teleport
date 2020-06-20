@@ -96,6 +96,8 @@ func determineDataType(columnType *sql.ColumnType) (DataType, error) {
 		return STRING, nil
 	} else if strings.Contains(databaseTypeName, "text") {
 		return TEXT, nil
+	} else if strings.Contains(databaseTypeName, "tinyint") {
+		return BOOLEAN, nil
 	} else if strings.HasPrefix(databaseTypeName, "int") {
 		return INTEGER, nil
 	} else if strings.HasSuffix(databaseTypeName, "int") {
