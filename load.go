@@ -180,7 +180,7 @@ func importableColumns(destinationTable *Table, sourceTable *Table) []Column {
 
 		switch destinationColumn.DataType {
 		case STRING:
-			if sourceColumn.Options[LENGTH] > destinationColumn.Options[LENGTH] {
+			if sourceColumn.Options[LENGTH] != MaxLength && sourceColumn.Options[LENGTH] > destinationColumn.Options[LENGTH] {
 				log.Warnf("For string column `%s`, destination LENGTH is too short", sourceColumn.Name)
 			}
 		case INTEGER:

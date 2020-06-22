@@ -188,6 +188,11 @@ func (column *Column) generateDataTypeExpression() string {
 	case STRING:
 		length := column.Options[LENGTH]
 
+		// For columns with LENGTH = max, use 8192 characters for now
+		if length == MaxLength {
+			length = 8192
+		}
+
 		return fmt.Sprintf("VARCHAR(%d)", length)
 	case DECIMAL:
 		precision := column.Options[PRECISION]
