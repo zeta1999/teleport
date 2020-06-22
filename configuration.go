@@ -40,9 +40,9 @@ type API struct {
 	Headers     map[string]string
 	QueryString map[string]string `yaml:"query_string"`
 	// TODO: allow inheritance for the below 3 attributes
-	// ResponseType   string `json:"response_type"`
-	// PaginationType string `json:"pagination_type"`
-	// MaxPages       int    `json:"max_pages"`
+	// ResponseType   string `json:"response_type" yaml:"response_type" toml:"response_type" edn:"response_type"`
+	// PaginationType string `json:"pagination_type" yaml:"pagination_type" toml:"pagination_type" end:"pagination_type"`
+	// MaxPages       int    `json:"max_pages" yaml:"max_pages" toml:"max_pages" edn:"max_pages"`
 	Endpoints map[string]Endpoint
 }
 
@@ -50,11 +50,11 @@ type Endpoint struct {
 	URL            string
 	Method         string
 	Headers        map[string]string
-	QueryString    map[string]string `yaml:"query_string"`
-	ResponseType   string            `json:"response_type" yaml:"response_type"`
-	PaginationType string            `json:"pagination_type"`
-	MaxPages       int               `json:"max_pages"`
-	Transforms     []string          `yaml:"parsers"`
+	QueryString    map[string]string `json:"query_string" yaml:"query_string" toml:"query_string" edn:"query_string"`
+	ResponseType   string            `json:"response_type" yaml:"response_type" toml:"response_type" edn:"response_type"`
+	PaginationType string            `json:"pagination_type" yaml:"pagination_type" toml:"pagination_type" end:"pagination_type"`
+	MaxPages       int               `json:"max_pages" yaml:"max_pages" toml:"max_pages" edn:"max_pages"`
+	Transforms     []string          `json:"parsers" yaml:"parsers" toml:"parsers" edn:"parsers"`
 }
 
 func readConfiguration() {
