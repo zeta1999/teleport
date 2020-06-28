@@ -13,6 +13,19 @@ clean:
 test:
 	@go test
 
+## release: build all binaries and release to
+release: deb rpm build
+	@mkdir -p tmp/$(NAME)_$(VERSION).macos
+	@cp teleport tmp/$(NAME)_$(VERSION).macos/
+	@cp README.md tmp/$(NAME)_$(VERSION).macos/
+	@pushd tmp && tar cvfj $(NAME)_$(VERSION).macos.tbz $(NAME)_$(VERSION).macos && popd
+	@echo Releasing $(NAME) $(VERSION)
+	@hub release create v$(VERSION) \
+		-a teleport_$(VERSION)_amd64.deb \
+		-a teleport_$(subst -,_,$(VERSION))_x86_64.rpm \
+		-a tmp/$(NAME)_$(VERSION).macos.tbz \
+		-o
+
 ## build: build the binary
 build: clean
 	@go build $(LDFLAGS) -o $(NAME)
