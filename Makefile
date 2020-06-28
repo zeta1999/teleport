@@ -1,4 +1,4 @@
-VERSION := "alpha" # $(shell git describe --tags)
+VERSION := "0.0.1-alpha.1" # $(shell git describe --tags)
 BUILD := $(shell git rev-parse --short HEAD)
 PROJECTNAME := $(shell basename "$(PWD)")
 
