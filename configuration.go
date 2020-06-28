@@ -263,7 +263,8 @@ func workingDir() (path string) {
 func readFiles(directory string) (files []os.FileInfo) {
 	items, err := ioutil.ReadDir(filepath.Join(workingDir(), directory))
 	if err != nil {
-		log.Fatal(err)
+		log.Warn(err)
+		return
 	}
 
 	for _, fileinfo := range items {
