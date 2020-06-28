@@ -79,13 +79,13 @@ func main() {
 	case "extract":
 		extractDatabase(opts.FromSource, opts.TableName)
 	case "extract-api":
-		extractAPI(opts.FromSource, opts.EndpointName)
+		extractAPI(opts.FromSource)
 
 	// Extract data from a source and load into datawarehouse
 	case "extract-load":
 		extractLoadDatabase(opts.FromSource, opts.ToSource, opts.TableName, parseStrategyOptions())
 	case "extract-load-api":
-		extractLoadAPI(opts.FromSource, opts.ToSource, opts.EndpointName, parseStrategyOptions())
+		extractLoadAPI(opts.FromSource, opts.ToSource)
 
 	// Run Transform within datawarehouse
 	case "transform":
@@ -104,7 +104,7 @@ func generateProjectDirectory(padpath string) {
 		log.Fatal(err)
 	}
 
-	directories := []string{"apis", "apis/parsers", "databases", "transforms", "tmp"}
+	directories := []string{"apis", "databases", "transforms", "tmp"}
 	for _, directory := range directories {
 		err := os.Mkdir(filepath.Join(padpath, directory), 0755)
 		if err != nil {

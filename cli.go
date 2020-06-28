@@ -8,15 +8,14 @@ import (
 )
 
 type CliOptions struct {
-	Command      string
-	Source       string
-	FromSource   string
-	ToSource     string
-	TableName    string
-	EndpointName string
-	File         string
-	Preview      bool
-	Debug        bool
+	Command    string
+	Source     string
+	FromSource string
+	ToSource   string
+	TableName  string
+	File       string
+	Preview    bool
+	Debug      bool
 }
 
 type StrategyOptions struct {
@@ -37,8 +36,6 @@ func parseArguments() CliOptions {
 	flag.StringVar(&options.ToSource, "to", "", "Data source to load data into")
 	flag.StringVar(&options.TableName, "table", "", "Name of table to perform operations on")
 	flag.StringVar(&options.TableName, "t", "", "Alias for -table")
-	flag.StringVar(&options.EndpointName, "endpoint", "", "Name of the API endpoint to perform operations on")
-	flag.StringVar(&options.EndpointName, "e", "", "Alias for -endpoint")
 	flag.StringVar(&options.File, "file", "", "Path to file to be used in command")
 	flag.StringVar(&options.File, "f", "", "Alias for -file")
 	flag.BoolVar(&options.Preview, "p", false, "alias for -preview")
@@ -93,7 +90,6 @@ func help() {
 	fmt.Println("  -from [source]\tdata source to extract data from")
 	fmt.Println("  -to [source]\t\tdata source to load data into")
 	fmt.Println("  -table, -t [table]\tname of table in the database data source")
-	fmt.Println("  -endpoint, -e [table]\tname of endpoint in the API data source")
 	fmt.Println("  -preview, -p\t\tpreview command as a dry-run without making any changes")
 	fmt.Println("  -debug, -d\t\tenable debug log output")
 }

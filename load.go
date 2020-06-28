@@ -3,12 +3,28 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 )
 
+type LoadStrategy string
+
+const (
+	Full         LoadStrategy = "Full"
+	Incremental  LoadStrategy = "Incremental"
+	ModifiedOnly LoadStrategy = "ModifiedOnly"
+)
+
+type LoadOptions struct {
+	Strategy         LoadStrategy
+	PrimaryKey       string
+	ModifiedAtColumn string
+	GoBackHours      int
+}
+
 func load(destinationTable *Table, columns *[]Column, csvfile *string, strategyOpts StrategyOptions) error {
-	stagingTableName := fmt.Sprintf("staging_%s_%s", destinationTable.Table, randomString(6))
+	stagingTableName := fmt.Sprintf("staging_%s_%s", destinationTable.Table, strings.ToLower(randomString(6)))
 
 	steps := []func() error{
 		func() error { return createStagingTable(destinationTable, stagingTableName) },
@@ -81,7 +97,6 @@ func createStagingTable(destinationTable *Table, stagingTableName string) (err e
 	}
 
 	_, err = database.Exec(query)
-
 	return
 }
 
@@ -115,10 +130,10 @@ func updatePrimaryTable(destinationTable *Table, stagingTableName string, strate
 
 	var query string
 	switch strategyOpts.Strategy {
-	case "full":
+	case "full", "Full":
 		query = fmt.Sprintf(GetDialect(Databases[destinationTable.Source]).FullLoadQuery, destinationTable.Table, stagingTableName)
-	case "modified-only":
-		query = fmt.Sprintf(GetDialect(Databases[destinationTable.Source]).FullLoadQuery, destinationTable.Table, stagingTableName, strategyOpts.PrimaryKey)
+	case "modified-only", "ModifiedOnly", "Incremental":
+		query = fmt.Sprintf(GetDialect(Databases[destinationTable.Source]).ModifiedOnlyLoadQuery, destinationTable.Table, stagingTableName, strategyOpts.PrimaryKey)
 	}
 
 	fnlog.Debugf("Updating primary table")

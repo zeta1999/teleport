@@ -1,29 +1,27 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
+	starlarkextensions "github.com/hundredwatt/teleport/starlarkextensions"
 	"github.com/ilyakaznacheev/cleanenv"
 	log "github.com/sirupsen/logrus"
+	"go.starlark.net/starlark"
 )
 
 var (
-	apisConfigDirectory          = "./apis/"
-	databasesConfigDirectory     = "./databases/"
-	transformsConfigDirectory    = "./transforms/"
-	apiTransformsConfigDirectory = "./apis/parsers/"
+	apisConfigDirectory       = "./apis/"
+	databasesConfigDirectory  = "./databases/"
+	transformsConfigDirectory = "./transforms/"
 
 	// Databases contains the configuration for all databases
 	Databases = make(map[string]Database)
-
-	// APIs contains the configuration for all APIs
-	APIs = make(map[string]API)
-
-	// APITransforms is a list of configured Starlark Transforms for endpoints to use
-	APITransforms = make(map[string]string)
 
 	// SQLTransforms is a list of configured SQL statements for updateTransforms to use
 	SQLTransforms = make(map[string]string)
@@ -35,26 +33,16 @@ type Database struct {
 	Readonly bool
 }
 
-type API struct {
-	BaseURL     string `yaml:"base_url"`
-	Headers     map[string]string
-	QueryString map[string]string `yaml:"query_string"`
-	// TODO: allow inheritance for the below 3 attributes
-	// ResponseType   string `json:"response_type" yaml:"response_type" toml:"response_type" edn:"response_type"`
-	// PaginationType string `json:"pagination_type" yaml:"pagination_type" toml:"pagination_type" end:"pagination_type"`
-	// MaxPages       int    `json:"max_pages" yaml:"max_pages" toml:"max_pages" edn:"max_pages"`
-	Endpoints map[string]Endpoint
-}
-
 type Endpoint struct {
-	URL            string
-	Method         string
-	Headers        map[string]string
-	QueryString    map[string]string `json:"query_string" yaml:"query_string" toml:"query_string" edn:"query_string"`
-	ResponseType   string            `json:"response_type" yaml:"response_type" toml:"response_type" edn:"response_type"`
-	PaginationType string            `json:"pagination_type" yaml:"pagination_type" toml:"pagination_type" end:"pagination_type"`
-	MaxPages       int               `json:"max_pages" yaml:"max_pages" toml:"max_pages" edn:"max_pages"`
-	Transforms     []string          `json:"parsers" yaml:"parsers" toml:"parsers" edn:"parsers"`
+	URL             string
+	Method          string
+	BasicAuth       *map[string]string
+	Headers         map[string]string
+	ResponseType    string
+	Functions       starlark.StringDict
+	TableDefinition *map[string]string
+	ErrorHandling   *map[errorClass]ExitCode
+	LoadOptions     LoadOptions
 }
 
 func readConfiguration() {
@@ -69,17 +57,193 @@ func readConfiguration() {
 
 		Databases[fileNameWithoutExtension(fileinfo.Name())] = database
 	}
+}
 
-	// APIs
-	for _, fileinfo := range readFiles(apisConfigDirectory) {
-		var api API
-		err := cleanenv.ReadConfig(filepath.Join(workingDir(), apisConfigDirectory, fileinfo.Name()), &api)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		APIs[fileNameWithoutExtension(fileinfo.Name())] = api
+func readEndpointConfiguration(path string, endpointptr *Endpoint) error {
+	portFile, err := findPortFile(path)
+	if err != nil {
+		return err
 	}
+
+	endpoint := Endpoint{}
+
+	configuration, err := starlark.ExecFile(GetThread(), portFile, nil, predeclared(&endpoint))
+	if err != nil {
+		return err
+	}
+	endpoint.Functions = configuration
+
+	*endpointptr = endpoint
+	return nil
+}
+
+func findPortFile(path string) (absolutePath string, err error) {
+	if strings.Contains(path, "/") {
+		absolutePath = path
+	} else {
+		absolutePath = filepath.Join(workingDir(), apisConfigDirectory, fmt.Sprintf("%s.port", path))
+	}
+	_, err = os.Stat(absolutePath)
+	if err != nil {
+		return "", err
+	}
+
+	return absolutePath, nil
+}
+
+func predeclared(endpoint *Endpoint) starlark.StringDict {
+	predeclared := starlarkextensions.GetExtensions()
+	// DSL Methods
+	predeclared["Get"] = starlark.NewBuiltin("Get", endpoint.get)
+	predeclared["BasicAuth"] = starlark.NewBuiltin("BasicAuth", endpoint.setBasicAuth)
+	predeclared["ResponseType"] = starlark.NewBuiltin("setResponseType", endpoint.setResponseType)
+	predeclared["TableDefinition"] = starlark.NewBuiltin("TableDefinition", endpoint.setTableDefinition)
+	predeclared["LoadStrategy"] = starlark.NewBuiltin("LoadStrategy", endpoint.setLoadStrategy)
+	predeclared["ErrorHandling"] = starlark.NewBuiltin("ErrorHandling", endpoint.setErrorHandling)
+
+	// Load Strategies
+	predeclared["Full"] = starlark.String(Full)
+	predeclared["Incremental"] = starlark.String(Incremental)
+	predeclared["ModifiedOnly"] = starlark.String(ModifiedOnly)
+
+	// Error Handling
+	predeclared["Fail"] = starlark.MakeInt(int(Fail))
+	predeclared["Retry"] = starlark.MakeInt(int(Retry))
+	predeclared["NetworkError"] = starlark.String("NetworkError")
+	predeclared["Http4XXError"] = starlark.String("Http4XXError")
+	predeclared["Http5XXError"] = starlark.String("Http5XXError")
+	predeclared["InvalidBodyError"] = starlark.String("InvalidBodyError")
+
+	return predeclared
+}
+
+func (endpoint *Endpoint) get(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (value starlark.Value, err error) {
+	var (
+		url starlark.String
+	)
+	if err := starlark.UnpackPositionalArgs("Get", args, kwargs, 1, &url); err != nil {
+		return nil, err
+	}
+
+	endpoint.URL = url.GoString()
+	endpoint.Method = "GET"
+
+	return starlark.None, nil
+}
+
+func (endpoint *Endpoint) setBasicAuth(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (value starlark.Value, err error) {
+	var (
+		username, password starlark.String
+	)
+	if err := starlark.UnpackPositionalArgs("BasicAuth", args, kwargs, 2, &username, &password); err != nil {
+		return nil, err
+	}
+
+	endpoint.BasicAuth = &map[string]string{
+		"username": username.GoString(),
+		"password": password.GoString(),
+	}
+
+	return starlark.None, nil
+}
+
+func (endpoint *Endpoint) setResponseType(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (value starlark.Value, err error) {
+	var (
+		responseType starlark.String
+	)
+	if err := starlark.UnpackPositionalArgs("ResponseType", args, kwargs, 1, &responseType); err != nil {
+		return nil, err
+	}
+
+	endpoint.ResponseType = responseType.GoString()
+
+	return starlark.None, nil
+}
+
+func (endpoint *Endpoint) setTableDefinition(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (value starlark.Value, err error) {
+	var (
+		tableDefinition *starlark.Dict
+	)
+	if err := starlark.UnpackPositionalArgs("TableDefinition", args, kwargs, 1, &tableDefinition); err != nil {
+		return nil, err
+	}
+
+	tableDefinitionMap := make(map[string]string)
+	for _, k := range tableDefinition.Keys() {
+		v, _, err := tableDefinition.Get(k)
+		if err != nil {
+			return nil, err
+		}
+		tableDefinitionMap[k.(starlark.String).GoString()] = v.(starlark.String).GoString()
+	}
+	endpoint.TableDefinition = &tableDefinitionMap
+
+	return starlark.None, nil
+}
+
+func (endpoint *Endpoint) setLoadStrategy(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (value starlark.Value, err error) {
+	var (
+		strategy                     starlark.String
+		primaryKey, modifiedAtColumn starlark.String
+		goBackHours                  starlark.Int
+	)
+	switch LoadStrategy(args[0].(starlark.String).GoString()) {
+	case Full:
+		if err := starlark.UnpackPositionalArgs("LoadStrategy", args, kwargs, 1, &strategy); err != nil {
+			return nil, err
+		}
+	case ModifiedOnly:
+		if err := starlark.UnpackArgs("LoadStrategy", args, kwargs, "strategy", &strategy, "primary_key", &primaryKey, "modified_at_column", &modifiedAtColumn, "go_back_hours", &goBackHours); err != nil {
+			return nil, err
+		}
+	case Incremental:
+		if err := starlark.UnpackArgs("LoadStrategy", args, kwargs, "strategy", &strategy, "primary_key", &primaryKey); err != nil {
+			return nil, err
+		}
+	default:
+		return nil, errors.New("LoadStrategy(): invalid strategy, allowed values: Full, ModifiedOnly, Incremental")
+	}
+
+	goBackHoursInt, err := strconv.Atoi(goBackHours.String())
+	if err != nil {
+		return nil, fmt.Errorf("LoadStrategy(): go_back_hours error: %w", err)
+	}
+	endpoint.LoadOptions = LoadOptions{LoadStrategy(strategy), primaryKey.GoString(), modifiedAtColumn.GoString(), goBackHoursInt}
+
+	return starlark.None, nil
+}
+
+func (endpoint *Endpoint) setErrorHandling(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (value starlark.Value, err error) {
+	var (
+		errorHandling *starlark.Dict
+	)
+	if err := starlark.UnpackPositionalArgs("ErrorHandling", args, kwargs, 1, &errorHandling); err != nil {
+		return nil, err
+	}
+
+	errorHandlingMap := make(map[errorClass]ExitCode)
+	for _, k := range errorHandling.Keys() {
+		v, _, err := errorHandling.Get(k)
+		if err != nil {
+			return nil, err
+		}
+		if i, convErr := strconv.Atoi(v.String()); convErr != nil {
+			return nil, fmt.Errorf("ErrorHandling value not supported: %s", v.String())
+		} else {
+			errorHandlingMap[errorClass(k.(starlark.String).GoString())] = ExitCode(i)
+		}
+	}
+	endpoint.ErrorHandling = &errorHandlingMap
+
+	return starlark.None, nil
+}
+
+func (endpoint *Endpoint) strategyOpts() (strategyOpts StrategyOptions) {
+	strategyOpts.Strategy = string(endpoint.LoadOptions.Strategy)
+	strategyOpts.PrimaryKey = endpoint.LoadOptions.PrimaryKey
+	strategyOpts.ModifiedAtColumn = endpoint.LoadOptions.ModifiedAtColumn
+	strategyOpts.HoursAgo = string(endpoint.LoadOptions.GoBackHours)
+	return
 }
 
 func workingDir() (path string) {

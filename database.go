@@ -46,9 +46,9 @@ func extractLoadDatabase(source string, destination string, tableName string, st
 			return extractSource(&sourceTable, &destinationTable, strategyOpts, &columns, &csvfile)
 		},
 		func() error { return load(&destinationTable, &columns, &csvfile, strategyOpts) },
+	}, func() {
+		fnlog.WithField("rows", currentWorkflow.RowCounter).Info("Completed extract-load 🎉")
 	})
-
-	fnlog.WithField("rows", currentWorkflow.RowCounter).Info("Completed extract-load 🎉")
 }
 
 func extractDatabase(source string, tableName string) {
@@ -64,12 +64,12 @@ func extractDatabase(source string, tableName string) {
 		func() error { return connectDatabaseWithLogging(source) },
 		func() error { return inspectTable(source, tableName, &table) },
 		func() error { return extractSource(&table, nil, fullStrategyOpts, nil, &csvfile) },
+	}, func() {
+		log.WithFields(log.Fields{
+			"file": csvfile,
+			"rows": currentWorkflow.RowCounter,
+		}).Info("Extract to CSV completed 🎉")
 	})
-
-	log.WithFields(log.Fields{
-		"file": csvfile,
-		"rows": currentWorkflow.RowCounter,
-	}).Info("Extract to CSV completed 🎉")
 }
 
 func connectDatabaseWithLogging(source string) (err error) {
