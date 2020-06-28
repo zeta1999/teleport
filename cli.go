@@ -95,7 +95,7 @@ func help() {
 }
 
 func version() {
-	fmt.Fprintln(os.Stderr, "Teleport alpha")
+	fmt.Fprintln(os.Stderr, fmt.Sprintf("Teleport %s (build: %s)", Version, Build))
 }
 
 func listCommands() {

@@ -17,6 +17,12 @@ var (
 
 	// PreviewLimit sets the number of rows to output while in preview mode
 	PreviewLimit int = 3
+
+	// Version sets the release version
+	Version string
+
+	// Build sets the build tag
+	Build string
 )
 
 func main() {
