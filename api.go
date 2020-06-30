@@ -294,7 +294,12 @@ func applyTransform(value interface{}, endpoint *Endpoint) (results []dataObject
 
 		value, err = starlark.Call(GetThread(), endpoint.Functions["Transform"], starlark.Tuple{value.(starlark.Value)}, nil)
 		if err != nil {
-			return nil, fmt.Errorf("Transform() error: %w", err)
+			switch err.(type) {
+			case *starlark.EvalError:
+				return nil, fmt.Errorf("Transform() error: %s", err.(*starlark.EvalError).Backtrace())
+			default:
+				return nil, fmt.Errorf("Transform() error: %w", err)
+			}
 		}
 	}
 
