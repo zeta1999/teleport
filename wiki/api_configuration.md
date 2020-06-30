@@ -117,6 +117,40 @@ Arguments:
 * `columns' - (dict) a string/string dictionary where each key is the column name and each value is
   the data type. e.g., `{ "id": "BIGINT", "name": "VARCHAR(255)", "active": "BOOLEAN" }`
 
+#### ErrorHandling(errorsToHandlingDict)
+
+Error handling determines what to do when different types of errors occur.
+
+Error Types (constants):
+
+* `NetworkError` - An error occurred when attempting to make an HTTP request to the server
+* `Http4XXError` - The server responded with a 4XX status code
+* `Http5XXError` - The server responded with a 5XX status code
+* `InvalidBodyError` - An error occurred while attempting to parse the response body using the
+  configured response type
+
+Handlers (constants):
+
+* `Fail` - stop the job and report the error
+* `Retry` - retry the current HTTP request
+
+Example:
+
+```
+ErrorHandling({
+  NetworkError: Retry,
+  Http4XXError: Fail,
+  Http5XXError: Retry,
+  InvalidBodyError: Fail,
+})
+```
+
+Arguments:
+
+* errorsToHandlingDict - (dict constant/constant) a dictionary mapping Error Type constants to 
+  Handler constants. e.g., `{ NetworkError: Retry, Http4XXError: Fail }`
+
+
 #### def Paginate(previousResponse)
 
 Paginate is a function that returns pagination values to be used in the next request. Paginate is
