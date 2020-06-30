@@ -23,15 +23,36 @@ See the ["Contributing"](#Contributing) section for how to get involved in Telep
 
 # Installation
 
-Install Teleport via
+Install the `teleport` binary on:
 
-* Homebrew
-* deb
-* rpm
-* build
-* Docker
+## Mac
 
-Details coming soon...
+One step install:
+
+```
+curl -fsSL https://raw.githubusercontent.com/teleport-data/teleport/master/scripts/install.sh | bash
+```
+
+## Linux
+
+Teleport RPM/DEB packages for any 64-bit Linux OS are available on the [Releases](https://github.com/Teleport-Data/teleport/releases) page
+
+```
+# DEB distros like Ubuntu
+dpkg -i <filename.deb>
+# RPM distros like CentOS
+yum install <filename.rpm>
+```
+
+## Docker
+
+1. Download the [Dockerfile](https://raw.githubusercontent.com/teleport-data/teleport/master/Dockerfile) to your local Pad
+2. Build the container: `docker build -t teleport`
+3. Run the container: `docker run -t teleport  -e <ENV Variables> -v $(pwd):/pad [COMMAD] [OPTIONS]`
+
+## From Source
+
+See the [Development wiki page](TODO) for instructions on how to check out the source and build it yourself.
 
 # Usage
 
