@@ -78,24 +78,59 @@ Pads have this directory structure:
     
     pad-name/
       |- apis/
-        |- exampleapi1.yml
-        |- exampleapi2.yml
-        ....
-        |- parsers/
-          |- exampleapi1/parse_body.star
-          |- exampleapi2/parse_body.star
+        |- exampleapi1.port
+        |- exampleapi2.port
+        |- ...
       |- databases/
         |- exampledb1.yml
         |- exampledb2.yml
-        ....
+        |- ...
       |- transforms/
         |- exampletrasnform1.sql
         |- exampletransform2.sql
-        ....
+        |- ...
 
-While the examples here are all ".yml" configuration files, Teleport supports the following file formats: YAML, JSON, TOML, EDN
+When refering to a resource (data source or transform) in a Teleport command, the name of the resource is the filename without the extension. e.g., to list the tables for the database defined in `databases/exampledb1.yml`, use `teleport list-tables -source exampledb1`
 
-When refering to a resource in a Teleport command, the name of the resource is the filename without the extension. e.g., to list the tables for the database defined in `databases/exampledb1.yml`, use `teleport list-tables -source exampledb1`
+For API configurations, Teleport uses its own "Port" configuration language. "Port" is a declarative, Python dialect
+used for configuration and mapping data. For full documentation on the "Port" configuration language, [visit the wiki](TODO)
+
+<details><summary>Example "Port" file for the [Holiday API](https://holidayapi.com/docs)</summary>
+
+```python
+Get("https://holidayapi.com/v1/holidays?key=$HOLIDAY_API_KEY&country=US&year=2019")
+ResponseType("json")
+LoadStrategy(Full)
+
+TableDefinition({
+  "uuid": "VARCHAR(255)",
+  "name": "VARCHAR(255)",
+  "date": "DATE",
+  "observed": "DATE",
+  "public": "BOOLEAN",
+})
+
+def Paginate(previous_response):
+  return None
+
+def Transform(response):
+  holidays = []
+  for holiday in response['holidays']:
+    holidays.append({
+      "uuid": holiday['uuid'],
+      "name": holiday['name'],
+      "date": holiday['date'],
+      "observed": holiday['observed'],
+      "public": holiday['public'],
+    })
+  return holidays
+```
+</details>
+
+
+For Database configurations, Teleport supports the following file formats: YAML, JSON, TOML, EDN. For full documentation on database configuration, [visit the wiki](TODO)
+
+For Transforms, Teleport supports SQL statements and that create a table named based on the filename without extension. To update a transform table, use `teleport transform -source <source> -table <table>`
 
 # Deployment
 
