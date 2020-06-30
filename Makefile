@@ -9,9 +9,14 @@ LDFLAGS=-ldflags "-X=main.Version=$(VERSION) -X=main.Build=$(BUILD)"
 clean:
 	@go clean
 
+## prepare: get go dependencies
+prepare:
+	@go get -t
+
 ## test: run all tests
 test:
 	@go test
+
 
 ## release: build all binaries and release to
 release: deb rpm build
@@ -27,11 +32,11 @@ release: deb rpm build
 		-o
 
 ## build: build the binary
-build: clean
+build: clean prepare
 	@go build $(LDFLAGS) -o $(NAME)
 
 ## build: build the binary for linux/amd64
-xbuild: clean
+xbuild: clean prepare
 	@GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o $(NAME)
 	@# brew install upx
 	@upx -qq ./teleport
@@ -56,7 +61,7 @@ stats:
 udocker:
 	@echo "Run setup commands in container:"
 	@echo "  apt-get update"
-	@echo "  apt-get install -y build-essential curl"
+	@echo "  apt-get install -y build-essential curl git"
 	@echo "  dpkg -i teleport_$(VERSION)_amd64.deb"
 	@docker run -it --rm -v $(shell pwd):/data -v $(shell pwd)/test/testpad:/pad -e PADPATH=/pad ubuntu:focal
 
