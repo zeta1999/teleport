@@ -40,16 +40,9 @@ Create a new "Pad" (Teleport's term for project directory) with and then cd to t
     $ teleport new pad-name
     $ cd pad-name
 
-Setup git version control:
-
-    $ git init
-    $ git add .
-    $ git commit -m "Generated a new Teleport pad"
-
-To see all Teleport commands, run:
+<details><summary>To see all Teleport commands, run `teleport help`</summary>
 
     $ teleport help
-    usage: teleport [COMMAND] [OPTIONS]
     Commands:
       new <path/to/pad>	generate a new pad folder at the given path
       help			show this message
@@ -77,15 +70,7 @@ To see all Teleport commands, run:
       -endpoint, -e [table]	name of endpoint in the API data source
       -preview, -p		preview command as a dry-run without making any changes
       -debug, -d		enable debug log output
-
-# Concepts
-
-* **API** - A data source that is accessed via an HTTP API. Can be internal or 3rd party.
-* **Data Source** - Anything that stores data to which Teleport can connect for extracting and/or loading. Currently, Teleport supports 2 kinds of data sources: APIs and Databases. Is referred to as "source" in command line arguments.
-* **Database** - A relational database that is accessed via SQL.
-* **Endpoint** - An endpoint is a specific HTTP path within an API to fetch a certain type of resource. e.g., An API to a CRM will likely have endpoints for contacts, companies, and deals.
-* **Parser** - A script that parses the response from an API and transforms it into a flat Dict object that can be easily loaded into a database table. Teleport parsers are scripts written in [Starlark](https://github.com/bazelbuild/starlark/blob/master/spec.md). Don't be scared about a new language! If you know Python, Starlark is basically a subset of Python with a smaller standard library and no modules. For a full list of differences, see [Differences with Python](https://docs.bazel.build/versions/master/skylark/language.html#differences-with-python).
-* **Transforms** - Transforms are the "T" in ELT. These are SQL statements that generate a new table based on raw input tables.
+</details>
 
 # Pad Structure
 
