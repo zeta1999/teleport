@@ -1,15 +1,18 @@
-package main
+package schema
 
 import (
+	"database/sql"
 	"log"
 	"testing"
+
+	"github.com/xo/dburl"
+	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func setup() {
-	Databases["test"] = Database{"sqlite://:memory:", map[string]string{}, false}
-	db, _ := connectDatabase("test")
+func setupSQLite3() *sql.DB {
+	db, _ := dburl.Open("sqlite://:memory:")
 
 	db.Exec(`
 		CREATE TABLE IF NOT EXISTS widgets (
@@ -24,12 +27,14 @@ func setup() {
 			created_at DATETIME NOT NULL
 		)
 	`)
+
+	return db
 }
 
 func TestDumpTableMetadataSQLite3(t *testing.T) {
-	setup()
+	db := setupSQLite3()
 
-	table, err := dumpTableMetadata("test", "widgets")
+	table, err := DumpTableMetadata(db, "widgets")
 	if err != nil {
 		log.Fatal(err)
 	}

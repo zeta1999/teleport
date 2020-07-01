@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/hundredwatt/teleport/schema"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	log "github.com/sirupsen/logrus"
@@ -75,7 +76,12 @@ func main() {
 	case "table-metadata":
 		tableMetadata(opts.Source, opts.TableName)
 	case "import-csv":
-		table, err := dumpTableMetadata(opts.Source, opts.TableName)
+		database, err := connectDatabase(opts.Source)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		table, err := schema.DumpTableMetadata(database, opts.TableName)
 		if err != nil {
 			log.Fatal(err)
 		}

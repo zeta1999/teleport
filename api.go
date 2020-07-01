@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hundredwatt/teleport/schema"
 	slutil "github.com/qri-io/starlib/util"
 	log "github.com/sirupsen/logrus"
 	"go.starlark.net/starlark"
@@ -47,8 +48,8 @@ func extractLoadAPI(endpointName string, destination string) {
 	fnlog.Info("Starting extract-load-api")
 
 	var endpoint Endpoint
-	var destinationTable Table
-	var columns []Column
+	var destinationTable schema.Table
+	var columns []schema.Column
 	var results []dataObject
 	var csvfile string
 
@@ -58,7 +59,7 @@ func extractLoadAPI(endpointName string, destination string) {
 		func() error { return readEndpointConfiguration(endpointName, &endpoint) },
 		func() error { return connectDatabaseWithLogging(destination) },
 		func() error {
-			return createEndpointDestinationTableIfNotExists(destination, destinationTableName, &endpoint)
+			return createEndpointdestinationTableIfNotExists(destination, destinationTableName, &endpoint)
 		},
 		func() error { return inspectTable(destination, destinationTableName, &destinationTable) },
 		func() error { return performAPIExtraction(&endpoint, &results) },
@@ -93,7 +94,7 @@ func extractAPI(endpointName string) {
 	})
 }
 
-func createEndpointDestinationTableIfNotExists(destination string, destinationTableName string, endpoint *Endpoint) (err error) {
+func createEndpointdestinationTableIfNotExists(destination string, destinationTableName string, endpoint *Endpoint) (err error) {
 	fnlog := log.WithFields(log.Fields{
 		"database": destination,
 		"table":    destinationTableName,
@@ -120,7 +121,7 @@ func createEndpointDestinationTableIfNotExists(destination string, destinationTa
 	statement = strings.TrimSuffix(statement, ",\n")
 	statement += "\n)"
 
-	fnlog.Infof("Destination Table does not exist, creating")
+	fnlog.Infof("Destination schema.Table does not exist, creating")
 	// if Preview {
 	// log.Debug("(not executed) SQL Query:\n" + indentString(statement))
 	// return
@@ -131,13 +132,13 @@ func createEndpointDestinationTableIfNotExists(destination string, destinationTa
 	return
 }
 
-func determineImportColumns(destinationTable *Table, results []dataObject, columns *[]Column) error {
+func determineImportColumns(destinationTable *schema.Table, results []dataObject, columns *[]schema.Column) error {
 	headers := make([]string, 0)
 	for key := range results[0] {
 		headers = append(headers, key)
 	}
 
-	importColumns := make([]Column, 0)
+	importColumns := make([]schema.Column, 0)
 	for _, column := range destinationTable.Columns {
 		for _, header := range headers {
 			if column.Name == header {
@@ -395,7 +396,7 @@ func updatePagination(response *http.Response, body interface{}, endpoint *Endpo
 	}
 }
 
-func saveResultsToCSV(endpointName string, results []dataObject, columns *[]Column, csvfile *string) error {
+func saveResultsToCSV(endpointName string, results []dataObject, columns *[]schema.Column, csvfile *string) error {
 	tmpfile, err := ioutil.TempFile("/tmp/", fmt.Sprintf("extract-api-%s-*.csv", strings.TrimSuffix(filepath.Base(endpointName), filepath.Ext(endpointName))))
 	if err != nil {
 		return err

@@ -8,9 +8,11 @@ import (
 	"io"
 	"os"
 	"strings"
+
+	"github.com/hundredwatt/teleport/schema"
 )
 
-func importSqlite3(database *sql.DB, table string, file string, columns []Column) error {
+func importSqlite3(database *sql.DB, table string, file string, columns []schema.Column) error {
 	transaction, err := database.Begin()
 	if err != nil {
 		return err

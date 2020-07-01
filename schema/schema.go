@@ -1,24 +1,19 @@
-package main
+package schema
 
 import (
 	"database/sql"
 	"fmt"
-	"io/ioutil"
-	"log"
-	"os"
-	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
-	"syscall"
 
-	"github.com/jimsmart/schema"
-	"gopkg.in/yaml.v2"
+	xschema "github.com/jimsmart/schema"
 )
 
+// Table is our representation of a Table in a relational database
 type Table struct {
 	Source  string   `yaml:"source"`
-	Table   string   `yaml:"table"`
+	Name    string   `yaml:"table"`
 	Columns []Column `yaml:"columns"`
 }
 
@@ -32,14 +27,21 @@ type Column struct {
 type DataType string
 
 const (
-	INTEGER   DataType = "integer"
-	DECIMAL   DataType = "decimal"
-	FLOAT     DataType = "float"
-	STRING    DataType = "string"
-	TEXT      DataType = "text"
+	// Numeric types
+	INTEGER DataType = "integer"
+	DECIMAL DataType = "decimal"
+	FLOAT   DataType = "float"
+
+	// String types
+	STRING DataType = "string"
+	TEXT   DataType = "text"
+
+	// Time types
 	DATE      DataType = "date"
 	TIMESTAMP DataType = "timestamp"
-	BOOLEAN   DataType = "boolean"
+
+	// Other types
+	BOOLEAN DataType = "boolean"
 )
 
 type Option string
@@ -64,14 +66,9 @@ const MaxLength int = -1
 // * Boolean
 // Future: * BLOB
 
-func dumpTableMetadata(source string, tableName string) (*Table, error) {
-	database, err := connectDatabase(source)
-	if err != nil {
-		return nil, err
-	}
-
-	table := Table{source, tableName, nil}
-	columnTypes, err := schema.Table(database, tableName)
+func DumpTableMetadata(database *sql.DB, tableName string) (*Table, error) {
+	table := Table{"", tableName, nil}
+	columnTypes, err := xschema.Table(database, tableName)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +165,7 @@ func determineOptions(columnType *sql.ColumnType, dataType DataType) (map[Option
 	return options, nil
 }
 
-func (table *Table) generateCreateTableStatement(name string) string {
+func (table *Table) GenerateCreateTableStatement(name string) string {
 	statement := fmt.Sprintf("CREATE TABLE %s (\n", name)
 	for _, column := range table.Columns {
 		statement += fmt.Sprintf("%s %s,\n", column.Name, column.generateDataTypeExpression())
@@ -204,178 +201,20 @@ func (column *Column) generateDataTypeExpression() string {
 	return strings.ToUpper(string(column.DataType))
 }
 
-func tableExists(source string, tableName string) (bool, error) {
-	database, err := connectDatabase(source)
-	if err != nil {
-		return false, err
-	}
-
-	tables, err := schema.TableNames(database)
-	if err != nil {
-		return false, err
-	}
-
-	for _, table := range tables {
-		if table == tableName {
-			return true, nil
-		}
-	}
-
-	return false, nil
-}
-
-func createTable(database *sql.DB, tableName string, table *Table) error {
-	statement := table.generateCreateTableStatement(tableName)
-
-	_, err := database.Exec(statement)
-
-	return err
-}
-
-func listTables(source string) {
-	database, err := connectDatabase(source)
-	if err != nil {
-		log.Fatal("Database Open Error:", err)
-	}
-
-	tables, err := schema.TableNames(database)
-	if err != nil {
-		log.Fatal("Database Error:", err)
-	}
-	for _, tablename := range tables {
-		fmt.Println(tablename)
-	}
-}
-
-func dropTable(source string, table string) {
-	database, err := connectDatabase(source)
-	if err != nil {
-		log.Fatal("Database Open Error:", err)
-	}
-
-	exists, err := tableExists(source, table)
-	if err != nil {
-		log.Fatal(err)
-	} else if !exists {
-		log.Fatalf("table \"%s\" not found in \"%s\"", table, source)
-	}
-
-	_, err = database.Exec(fmt.Sprintf("DROP TABLE %s", table))
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func createDestinationTable(source string, destination string, sourceTableName string) {
-	table, err := dumpTableMetadata(source, sourceTableName)
-	if err != nil {
-		log.Fatal("Table Metadata Error:", err)
-	}
-
-	destinationDatabase, err := connectDatabase(source)
-	if err != nil {
-		log.Fatal("Database Connect Error:", err)
-	}
-
-	err = createTable(destinationDatabase, fmt.Sprintf("%s_%s", source, sourceTableName), table)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func createDestinationTableFromConfigFile(source string, file string) {
-	table := readTableFromConfigFile(file)
-
-	database, err := connectDatabase(source)
-	if err != nil {
-		log.Fatal("Database Connect Error:", err)
-	}
-
-	statement := table.generateCreateTableStatement(fmt.Sprintf("%s_%s", table.Source, table.Table))
-
-	_, err = database.Exec(statement)
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func aboutDB(source string) {
-	fmt.Println("Name: ", source)
-	fmt.Printf("Type: %s\n", GetDialect(Databases[source]).HumanName)
-}
-
-func databaseTerminal(source string) {
-	command := GetDialect(Databases[source]).TerminalCommand
-	if command == "" {
-		log.Fatalf("Not implemented for this database type")
-	}
-
-	binary, err := exec.LookPath(command)
-	if err != nil {
-		log.Fatalf("command exec err (%s): %s", command, err)
-	}
-
-	env := os.Environ()
-
-	err = syscall.Exec(binary, []string{command, Databases[source].URL}, env)
-	if err != nil {
-		log.Fatalf("Syscall error: %s", err)
-	}
-
-}
-
-func describeTable(source string, tableName string) {
-	table, err := dumpTableMetadata(source, tableName)
-	if err != nil {
-		log.Fatal("Describe Table Error:", err)
-	}
-
-	fmt.Println("Source: ", table.Source)
-	fmt.Println("Table: ", table.Table)
-	fmt.Println()
-	fmt.Println("Columns:")
-	fmt.Println("========")
+func (table *Table) ContainsColumnWithSameName(c Column) bool {
 	for _, column := range table.Columns {
-		fmt.Print(column.Name, " | ", column.DataType)
-		if len(column.Options) > 0 {
-			fmt.Print(" ( ")
-			for option, value := range column.Options {
-				fmt.Print(option, ": ", value, ", ")
-
-			}
-			fmt.Print(" )")
+		if c.Name == column.Name {
+			return true
 		}
-		fmt.Println()
 	}
+	return false
 }
 
-func tableMetadata(source string, tableName string) {
-	table, err := dumpTableMetadata(source, tableName)
-	if err != nil {
-		log.Fatal("Describe Table Error:", err)
+func (table *Table) NotContainsColumnWithSameName(c Column) bool {
+	for _, column := range table.Columns {
+		if c.Name == column.Name {
+			return false
+		}
 	}
-
-	b, err := yaml.Marshal(table)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Println(string(b))
-}
-
-func readTableFromConfigFile(file string) *Table {
-	var table Table
-
-	yamlFile, err := ioutil.ReadFile(file)
-	if err != nil {
-		log.Fatalf("yamlFile.Get err   #%v ", err)
-	}
-
-	err = yaml.Unmarshal(yamlFile, &table)
-	if err != nil {
-		log.Fatalf("Unmarshal: %v", err)
-	}
-
-	return &table
+	return true
 }

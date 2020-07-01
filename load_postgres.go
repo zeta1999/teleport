@@ -7,10 +7,11 @@ import (
 	"io"
 	"os"
 
+	"github.com/hundredwatt/teleport/schema"
 	"github.com/lib/pq"
 )
 
-func importPostgres(database *sql.DB, table string, file string, columns []Column) error {
+func importPostgres(database *sql.DB, table string, file string, columns []schema.Column) error {
 	transaction, err := database.Begin()
 	if err != nil {
 		return err

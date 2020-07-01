@@ -1,15 +1,18 @@
-package main
+package schema
 
 import (
+	"database/sql"
 	"log"
 	"testing"
+
+	"github.com/xo/dburl"
+	_ "github.com/lib/pq"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func setupPostgres() {
-	Databases["testpostgres"] = Database{"postgres://postgres@localhost:45432/?sslmode=disable", map[string]string{}, false}
-	db, _ := connectDatabase("testpostgres")
+func setupPostgres() *sql.DB {
+	db, _ := dburl.Open("postgres://postgres@localhost:45432/?sslmode=disable")
 
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS widgets (
@@ -27,12 +30,14 @@ func setupPostgres() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	return db
 }
 
 func TestDumpTableMetadataPostgres(t *testing.T) {
-	setupPostgres()
+	db := setupPostgres()
 
-	table, err := dumpTableMetadata("testpostgres", "widgets")
+	table, err := DumpTableMetadata(db, "widgets")
 	if err != nil {
 		log.Fatal(err)
 	}

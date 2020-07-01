@@ -11,10 +11,6 @@ const charset = "abcdefghijklmnopqrstuvwxyz" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ012345
 var seededRand *rand.Rand = rand.New(
 	rand.NewSource(time.Now().UnixNano()))
 
-func squish(s string) string {
-	return strings.Join(strings.Fields(s), " ")
-}
-
 func indentString(s string) string {
 	return "\t" + strings.Join(strings.Split(s, "\n"), "\n\t")
 }

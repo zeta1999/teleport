@@ -54,9 +54,9 @@ rpm: xbuild
 ## stats: print code statistics
 stats:
 	@echo "LOC:       \c"
-	@ls -1 *.go | grep -v "_test.go" | xargs cat | wc -l
+	@find . -name "*.go" ! -name "*_test.go" | xargs cat | wc -l
 	@echo "Test LOC: \c" 
-	@ls -1 *_test.go | xargs cat | wc -l
+	@find . -name "*_test.go" | xargs cat | wc -l
 
 udocker:
 	@echo "Run setup commands in container:"

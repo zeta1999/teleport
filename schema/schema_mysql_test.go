@@ -1,15 +1,18 @@
-package main
+package schema
 
 import (
+	"database/sql"
 	"log"
 	"testing"
+
+	"github.com/xo/dburl"
+	_ "github.com/go-sql-driver/mysql"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func setupMySQL() {
-	Databases["testmysql"] = Database{"mysql://mysql_test_user:password@localhost:43306/test_db", map[string]string{}, false}
-	db, _ := connectDatabase("testmysql")
+func setupMySQL() *sql.DB {
+	db, _ := dburl.Open("mysql://mysql_test_user:password@localhost:43306/test_db")
 
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS widgets (
@@ -27,12 +30,14 @@ func setupMySQL() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	return db
 }
 
 func TestDumpTableMetadataMySQL(t *testing.T) {
-	setupMySQL()
+	db := setupMySQL()
 
-	table, err := dumpTableMetadata("testmysql", "widgets")
+	table, err := DumpTableMetadata(db, "widgets")
 	if err != nil {
 		log.Fatal(err)
 	}

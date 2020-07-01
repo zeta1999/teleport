@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hundredwatt/teleport/schema"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,7 +20,7 @@ var (
 
 func TestLoadNewTable(t *testing.T) {
 	runDatabaseTest(t, func(t *testing.T, srcdb *sql.DB, destdb *sql.DB) {
-		srcdb.Exec(widgetsTableDefinition.generateCreateTableStatement("widgets"))
+		srcdb.Exec(widgetsTableDefinition.GenerateCreateTableStatement("widgets"))
 		importCSV("testsrc", "widgets", "test/example_widgets.csv", widgetsTableDefinition.Columns)
 
 		redirectLogs(t, func() {
@@ -32,13 +33,13 @@ func TestLoadNewTable(t *testing.T) {
 
 func TestLoadSourceHasAdditionalColumn(t *testing.T) {
 	runDatabaseTest(t, func(t *testing.T, srcdb *sql.DB, destdb *sql.DB) {
-		// Create a new Table Definition, same as widgets, but without the `description` column
-		widgetsWithoutDescription := Table{"example", "widgets", make([]Column, 0)}
+		// Create a new schema.Table Definition, same as widgets, but without the `description` column
+		widgetsWithoutDescription := schema.Table{"example", "widgets", make([]schema.Column, 0)}
 		widgetsWithoutDescription.Columns = append(widgetsWithoutDescription.Columns, widgetsTableDefinition.Columns[:2]...)
 		widgetsWithoutDescription.Columns = append(widgetsWithoutDescription.Columns, widgetsTableDefinition.Columns[3:]...)
 
-		srcdb.Exec(widgetsTableDefinition.generateCreateTableStatement("widgets"))
-		destdb.Exec(widgetsWithoutDescription.generateCreateTableStatement("testsrc_widgets"))
+		srcdb.Exec(widgetsTableDefinition.GenerateCreateTableStatement("widgets"))
+		destdb.Exec(widgetsWithoutDescription.GenerateCreateTableStatement("testsrc_widgets"))
 		importCSV("testsrc", "widgets", "test/example_widgets.csv", widgetsTableDefinition.Columns)
 
 		expectLogMessages(t, []string{"destination table does not define column", "description"}, func() {
@@ -51,13 +52,13 @@ func TestLoadSourceHasAdditionalColumn(t *testing.T) {
 
 func TestLoadStringNotLongEnough(t *testing.T) {
 	runDatabaseTest(t, func(t *testing.T, srcdb *sql.DB, destdb *sql.DB) {
-		// Create a new Table Definition, same as widgets, but with name LENGTH changed to 32
-		widgetsWithShortName := Table{"example", "widgets", make([]Column, len(widgetsTableDefinition.Columns))}
+		// Create a new schema.Table Definition, same as widgets, but with name LENGTH changed to 32
+		widgetsWithShortName := schema.Table{"example", "widgets", make([]schema.Column, len(widgetsTableDefinition.Columns))}
 		copy(widgetsWithShortName.Columns, widgetsTableDefinition.Columns)
-		widgetsWithShortName.Columns[1] = Column{"name", STRING, map[Option]int{LENGTH: 32}}
+		widgetsWithShortName.Columns[1] = schema.Column{"name", schema.STRING, map[schema.Option]int{schema.LENGTH: 32}}
 
-		srcdb.Exec(widgetsTableDefinition.generateCreateTableStatement("widgets"))
-		destdb.Exec(widgetsWithShortName.generateCreateTableStatement("testsrc_widgets"))
+		srcdb.Exec(widgetsTableDefinition.GenerateCreateTableStatement("widgets"))
+		destdb.Exec(widgetsWithShortName.GenerateCreateTableStatement("testsrc_widgets"))
 
 		expectLogMessage(t, "For string column `name`, destination LENGTH is too short", func() {
 			extractLoadDatabase("testsrc", "testdest", "widgets", fullStrategyOpts)
@@ -80,11 +81,11 @@ func TestModifiedOnlyStrategy(t *testing.T) {
 
 func TestExportTimestamp(t *testing.T) {
 	runDatabaseTest(t, func(t *testing.T, db *sql.DB, _ *sql.DB) {
-		columns := make([]Column, 0)
-		columns = append(columns, Column{"created_at", TIMESTAMP, map[Option]int{}})
-		table := Table{"test1", "timestamps", columns}
+		columns := make([]schema.Column, 0)
+		columns = append(columns, schema.Column{"created_at", schema.TIMESTAMP, map[schema.Option]int{}})
+		table := schema.Table{"test1", "timestamps", columns}
 
-		db.Exec(table.generateCreateTableStatement("timestamps"))
+		db.Exec(table.GenerateCreateTableStatement("timestamps"))
 		db.Exec("INSERT INTO timestamps (created_at) VALUES (DATETIME(1092941466, 'unixepoch'))")
 		db.Exec("INSERT INTO timestamps (created_at) VALUES (NULL)")
 
@@ -171,12 +172,12 @@ func assertCsvCellContents(t *testing.T, expected string, csvfilename string, ro
 }
 
 func setupObjectsTable(db *sql.DB) {
-	objects := Table{"", "objects", make([]Column, 3)}
-	objects.Columns[0] = Column{"id", INTEGER, map[Option]int{BYTES: 8}}
-	objects.Columns[1] = Column{"name", STRING, map[Option]int{LENGTH: 255}}
-	objects.Columns[2] = Column{"updated_at", TIMESTAMP, map[Option]int{}}
+	objects := schema.Table{"", "objects", make([]schema.Column, 3)}
+	objects.Columns[0] = schema.Column{"id", schema.INTEGER, map[schema.Option]int{schema.BYTES: 8}}
+	objects.Columns[1] = schema.Column{"name", schema.STRING, map[schema.Option]int{schema.LENGTH: 255}}
+	objects.Columns[2] = schema.Column{"updated_at", schema.TIMESTAMP, map[schema.Option]int{}}
 
-	db.Exec(objects.generateCreateTableStatement("objects"))
+	db.Exec(objects.GenerateCreateTableStatement("objects"))
 	statement, _ := db.Prepare("INSERT INTO objects (id, name, updated_at) VALUES (?, ?, ?)")
 	statement.Exec(1, "book", time.Now().Add(-7*24*time.Hour))
 	statement.Exec(2, "tv", time.Now().Add(-1*24*time.Hour))

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hundredwatt/teleport/schema"
 	log "github.com/sirupsen/logrus"
 	"github.com/xo/dburl"
 )
@@ -28,9 +29,9 @@ func extractLoadDatabase(source string, destination string, tableName string, st
 	})
 	fnlog.Info("Starting extract-load")
 
-	var sourceTable Table
-	var destinationTable Table
-	var columns []Column
+	var sourceTable schema.Table
+	var destinationTable schema.Table
+	var columns []schema.Column
 	var csvfile string
 
 	destinationTableName := fmt.Sprintf("%s_%s", source, tableName)
@@ -57,7 +58,7 @@ func extractDatabase(source string, tableName string) {
 		"table": tableName,
 	}).Info("Extracting table data to CSV")
 
-	var table Table
+	var table schema.Table
 	var csvfile string
 
 	RunWorkflow([]func() error{
@@ -82,29 +83,32 @@ func connectDatabaseWithLogging(source string) (err error) {
 	return
 }
 
-func inspectTable(source string, tableName string, table *Table) (err error) {
+func inspectTable(source string, tableName string, table *schema.Table) (err error) {
 	log.WithFields(log.Fields{
 		"database": source,
 		"table":    tableName,
-	}).Debug("Inspecting Table")
+	}).Debug("Inspecting schema.Table")
 
-	dumpedTable, err := dumpTableMetadata(source, tableName)
+	db, _ := connectDatabase(source)
+
+	dumpedTable, err := schema.DumpTableMetadata(db, tableName)
 	if err != nil {
 		return
 	}
+	dumpedTable.Source = source
 
 	*table = *dumpedTable
 	return
 }
 
-func extractSource(sourceTable *Table, destinationTable *Table, strategyOpts StrategyOptions, columns *[]Column, csvfile *string) (err error) {
+func extractSource(sourceTable *schema.Table, destinationTable *schema.Table, strategyOpts StrategyOptions, columns *[]schema.Column, csvfile *string) (err error) {
 	log.WithFields(log.Fields{
 		"database": sourceTable.Source,
-		"table":    sourceTable.Table,
+		"table":    sourceTable.Name,
 		"type":     strategyOpts.Strategy,
 	}).Debug("Exporting CSV of table data")
 
-	var exportColumns []Column
+	var exportColumns []schema.Column
 
 	if destinationTable != nil {
 		exportColumns = importableColumns(destinationTable, sourceTable)
@@ -125,7 +129,7 @@ func extractSource(sourceTable *Table, destinationTable *Table, strategyOpts Str
 		whereStatement = fmt.Sprintf("%s > '%s'", strategyOpts.ModifiedAtColumn, updateTime)
 	}
 
-	file, err := exportCSV(sourceTable.Source, sourceTable.Table, exportColumns, whereStatement)
+	file, err := exportCSV(sourceTable.Source, sourceTable.Name, exportColumns, whereStatement)
 	if err != nil {
 		return err
 	}
@@ -137,7 +141,7 @@ func extractSource(sourceTable *Table, destinationTable *Table, strategyOpts Str
 	return
 }
 
-func exportCSV(source string, table string, columns []Column, whereStatement string) (string, error) {
+func exportCSV(source string, table string, columns []schema.Column, whereStatement string) (string, error) {
 	database, err := connectDatabase(source)
 	if err != nil {
 		return "", fmt.Errorf("Database Open Error: %w", err)

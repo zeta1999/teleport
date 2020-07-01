@@ -184,7 +184,7 @@ func (endpoint *Endpoint) setTableDefinition(thread *starlark.Thread, _ *starlar
 func (endpoint *Endpoint) setLoadStrategy(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (value starlark.Value, err error) {
 	var (
 		strategy                     starlark.String
-		primaryKey, modifiedAtColumn starlark.String
+		primaryKey, ModifiedAtColumn starlark.String
 		goBackHours                  starlark.Int
 	)
 	switch LoadStrategy(args[0].(starlark.String).GoString()) {
@@ -193,7 +193,7 @@ func (endpoint *Endpoint) setLoadStrategy(thread *starlark.Thread, _ *starlark.B
 			return nil, err
 		}
 	case ModifiedOnly:
-		if err := starlark.UnpackArgs("LoadStrategy", args, kwargs, "strategy", &strategy, "primary_key", &primaryKey, "modified_at_column", &modifiedAtColumn, "go_back_hours", &goBackHours); err != nil {
+		if err := starlark.UnpackArgs("LoadStrategy", args, kwargs, "strategy", &strategy, "primary_key", &primaryKey, "modified_at_column", &ModifiedAtColumn, "go_back_hours", &goBackHours); err != nil {
 			return nil, err
 		}
 	case Incremental:
@@ -208,7 +208,7 @@ func (endpoint *Endpoint) setLoadStrategy(thread *starlark.Thread, _ *starlark.B
 	if err != nil {
 		return nil, fmt.Errorf("LoadStrategy(): go_back_hours error: %w", err)
 	}
-	endpoint.LoadOptions = LoadOptions{LoadStrategy(strategy), primaryKey.GoString(), modifiedAtColumn.GoString(), goBackHoursInt}
+	endpoint.LoadOptions = LoadOptions{LoadStrategy(strategy), primaryKey.GoString(), ModifiedAtColumn.GoString(), goBackHoursInt}
 
 	return starlark.None, nil
 }
