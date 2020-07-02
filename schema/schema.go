@@ -199,6 +199,22 @@ func (table *Table) GenerateCreateTableStatement(name string) string {
 	return statement
 }
 
+func (table *Table) GenerateRedshiftCreateTableStatement(name string) string {
+	statement := fmt.Sprintf("CREATE TABLE %s (\n", name)
+	for _, column := range table.Columns {
+		switch column.DataType {
+		case TEXT:
+			statement += fmt.Sprintf("%s %s,\n", column.Name, "VARCHAR(max)")
+		default:
+			statement += fmt.Sprintf("%s %s,\n", column.Name, column.generateDataTypeExpression())
+		}
+	}
+	statement = strings.TrimSuffix(statement, ",\n")
+	statement += "\n);"
+
+	return statement
+}
+
 func (column *Column) generateDataTypeExpression() string {
 	switch column.DataType {
 	case INTEGER:

@@ -1,12 +1,12 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 
 	"github.com/hundredwatt/teleport/schema"
@@ -33,10 +33,22 @@ func tableExists(source string, tableName string) (bool, error) {
 	return false, nil
 }
 
-func createTable(database *sql.DB, tableName string, table *schema.Table) error {
-	statement := table.GenerateCreateTableStatement(tableName)
+func createTable(source string, tableName string, table *schema.Table) error {
+	database, err := connectDatabase(source)
+	if err != nil {
+		log.Fatal("Database Connect Error:", err)
+	}
 
-	_, err := database.Exec(statement)
+	driver := fmt.Sprintf("%T", database.Driver())
+
+	var statement string
+	if driver == "*pq.Driver" && strings.HasPrefix(Databases[source].URL, "redshift") || strings.HasPrefix(Databases[source].URL, "rs") {
+		statement = table.GenerateRedshiftCreateTableStatement(tableName)
+	} else {
+		statement = table.GenerateCreateTableStatement(tableName)
+	}
+
+	_, err = database.Exec(statement)
 
 	return err
 }
@@ -86,32 +98,17 @@ func createDestinationTable(source string, destination string, sourceTableName s
 		log.Fatal("Table Metadata Error:", err)
 	}
 
-	destinationDatabase, err := connectDatabase(source)
-	if err != nil {
-		log.Fatal("Database Connect Error:", err)
-	}
-
-	err = createTable(destinationDatabase, fmt.Sprintf("%s_%s", source, sourceTableName), table)
+	err = createTable(destination, fmt.Sprintf("%s_%s", source, sourceTableName), table)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func createDestinationTableFromConfigFile(source string, file string) {
+func createDestinationTableFromConfigFile(source string, file string) error {
 	table := readTableFromConfigFile(file)
 
-	database, err := connectDatabase(source)
-	if err != nil {
-		log.Fatal("Database Connect Error:", err)
-	}
-
-	statement := table.GenerateCreateTableStatement(fmt.Sprintf("%s_%s", table.Source, table.Name))
-
-	_, err = database.Exec(statement)
-	if err != nil {
-		log.Fatal(err)
-	}
+	return createTable(source, fmt.Sprintf("%s_%s", table.Source, table.Name), table)
 }
 
 func aboutDB(source string) {

@@ -80,7 +80,7 @@ func createDestinationTableIfNotExists(destination string, destinationTableName 
 		return
 	}
 
-	return createTable(dbs[destination], destinationTableName, destinationTable)
+	return createTable(destination, destinationTableName, destinationTable)
 }
 
 func createStagingTable(destinationTable *schema.Table, stagingTableName string) (err error) {

@@ -24,7 +24,7 @@ func TestCreateTable(t *testing.T) {
 	runDatabaseTest(t, func(t *testing.T, db *sql.DB, _ *sql.DB) {
 		table := widgetsTable()
 
-		assert.NoError(t, createTable(db, "newtable", &table))
+		assert.NoError(t, createTable("testsrc", "newtable", &table))
 		actual, _ := tableExists("testsrc", "newtable")
 		assert.True(t, actual)
 	})
