@@ -83,7 +83,7 @@ func createDestinationTable(source string, destination string, sourceTableName s
 
 	table, err := schema.DumpTableMetadata(database, sourceTableName)
 	if err != nil {
-		log.Fatal("schema.Table Metadata Error:", err)
+		log.Fatal("Table Metadata Error:", err)
 	}
 
 	destinationDatabase, err := connectDatabase(source)
@@ -147,11 +147,11 @@ func describeTable(source string, tableName string) {
 
 	table, err := schema.DumpTableMetadata(database, tableName)
 	if err != nil {
-		log.Fatal("Describe schema.Table Error:", err)
+		log.Fatal("Describe Table Error:", err)
 	}
 
 	fmt.Println("Source: ", table.Source)
-	fmt.Println("schema.Table: ", table.Name)
+	fmt.Println("Table: ", table.Name)
 	fmt.Println()
 	fmt.Println("schema.Columns:")
 	fmt.Println("========")
@@ -177,7 +177,7 @@ func tableMetadata(source string, tableName string) {
 
 	table, err := schema.DumpTableMetadata(database, tableName)
 	if err != nil {
-		log.Fatal("Describe schema.Table Error:", err)
+		log.Fatal("Describe Table Error:", err)
 	}
 
 	b, err := yaml.Marshal(table)

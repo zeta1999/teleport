@@ -52,7 +52,7 @@ func createDestinationTableIfNotExists(destination string, destinationTableName 
 	if err != nil {
 		return
 	} else if exists {
-		fnlog.Debug("Destination schema.Table already exists, inspecting")
+		fnlog.Debug("Destination Table already exists, inspecting")
 
 		database, dbErr := connectDatabase(destination)
 		if dbErr != nil {
@@ -74,7 +74,7 @@ func createDestinationTableIfNotExists(destination string, destinationTableName 
 	*destinationTable = schema.Table{destination, destinationTableName, make([]schema.Column, len(sourceTable.Columns))}
 	copy(destinationTable.Columns, sourceTable.Columns)
 
-	fnlog.Infof("Destination schema.Table does not exist, creating")
+	fnlog.Infof("Destination Table does not exist, creating")
 	if Preview {
 		log.Debug("(not executed) SQL Query:\n" + indentString(destinationTable.GenerateCreateTableStatement(destinationTableName)))
 		return

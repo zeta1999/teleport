@@ -121,7 +121,7 @@ func createEndpointdestinationTableIfNotExists(destination string, destinationTa
 	statement = strings.TrimSuffix(statement, ",\n")
 	statement += "\n)"
 
-	fnlog.Infof("Destination schema.Table does not exist, creating")
+	fnlog.Infof("Destination Table does not exist, creating")
 	// if Preview {
 	// log.Debug("(not executed) SQL Query:\n" + indentString(statement))
 	// return

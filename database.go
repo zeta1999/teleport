@@ -87,7 +87,7 @@ func inspectTable(source string, tableName string, table *schema.Table) (err err
 	log.WithFields(log.Fields{
 		"database": source,
 		"table":    tableName,
-	}).Debug("Inspecting schema.Table")
+	}).Debug("Inspecting Table")
 
 	db, _ := connectDatabase(source)
 
