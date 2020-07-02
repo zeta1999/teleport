@@ -29,6 +29,19 @@ func TestMySQLInspection(t *testing.T) {
 			},
 		})
 
+		// Numeric Aliases
+		testColumnCases(t, db, []struct {
+			originalDataTypes  []string
+			column             Column
+			createTabeDataType string
+		}{
+			{
+				[]string{"DEC(11,3)", "FIXED(11, 3)"},
+				Column{"", DECIMAL, map[Option]int{PRECISION: 11, SCALE: 3}},
+				"DECIMAL(11,3)",
+			},
+		})
+
 		// Special Types
 		testColumnCases(t, db, []struct {
 			originalDataTypes  []string
