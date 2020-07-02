@@ -140,7 +140,7 @@ var genericCases = []struct {
 		"BOOLEAN",
 	},
 
-	// // Date and Time Types
+	// Date and Time Types
 	{
 		[]string{"DATE"},
 		Column{"", DATE, map[Option]int{}},

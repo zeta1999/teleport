@@ -13,6 +13,29 @@ func TestPostgresInspection(t *testing.T) {
 
 		testColumnCases(t, db, genericStringCases)
 
+		// Serial Types
+		testColumnCases(t, db, []struct {
+			originalDataTypes  []string
+			column             Column
+			createTabeDataType string
+		}{
+			{
+				[]string{"SERIAL", "SERIAL4"},
+				Column{"", INTEGER, map[Option]int{BYTES: 8}},
+				"INT8", // TODO: options support
+			},
+			{
+				[]string{"SERIAL8", "BIGSERIAL"},
+				Column{"", INTEGER, map[Option]int{BYTES: 8}},
+				"INT8",
+			},
+			{
+				[]string{"SERIAL2", "SMALLSERIAL"},
+				Column{"", INTEGER, map[Option]int{BYTES: 8}},
+				"INT8", // TODO: options support
+			},
+		})
+
 		// Special Types
 		testColumnCases(t, db, []struct {
 			originalDataTypes  []string
