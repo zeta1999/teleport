@@ -190,6 +190,11 @@ func exportCSV(source string, table string, columns []schema.Column, whereStatem
 		IncrementRowCounter()
 
 		for i := range columns {
+			if columns[i].DataType == schema.DATE {
+				writeBuffer[i] = rawResult[i].(time.Time).Format("2006-01-02")
+				continue
+			}
+
 			switch rawResult[i].(type) {
 			case time.Time:
 				writeBuffer[i] = rawResult[i].(time.Time).Format("2006-01-02 15:04:05")
