@@ -56,16 +56,6 @@ const (
 // MaxLength represents the maximum possible length for the data type
 const MaxLength int = -1
 
-// Supported Data Types:
-// * INT (Number of Bytes, <8)
-// * DECIMAL (Precision)
-// * FLOAT (4 or 8 bytes)
-// * STRING (Length)
-// * Date
-// * Timestamp
-// * Boolean
-// Future: * BLOB
-
 func DumpTableMetadata(database *sql.DB, tableName string) (*Table, error) {
 	table := Table{"", tableName, nil}
 	columnTypes, err := xschema.Table(database, tableName)
@@ -92,41 +82,53 @@ func DumpTableMetadata(database *sql.DB, tableName string) (*Table, error) {
 
 func determineDataType(columnType *sql.ColumnType) (DataType, error) {
 	databaseTypeName := strings.ToLower(columnType.DatabaseTypeName())
-	if strings.Contains(databaseTypeName, "varchar") {
-		return STRING, nil
-	} else if strings.Contains(databaseTypeName, "text") {
-		return TEXT, nil
-	} else if strings.Contains(databaseTypeName, "tinyint") {
-		return BOOLEAN, nil
-	} else if strings.HasPrefix(databaseTypeName, "int") {
+	intRegex := regexp.MustCompile(`^(big|small|medium)?(int|integer|serial)(2|4|8)?$`)
+	floatRegex := regexp.MustCompile(`^(float|double( precision)?|real)(4|8)?$`)
+	decimalRegex := regexp.MustCompile(`^(numeric|decimal)`)
+	stringRegex := regexp.MustCompile(`(var)?char(acter)?( varying)?`)
+
+	switch {
+	case intRegex.MatchString(databaseTypeName):
 		return INTEGER, nil
-	} else if strings.HasSuffix(databaseTypeName, "int") {
-		return INTEGER, nil
-	} else if strings.HasPrefix(databaseTypeName, "decimal") {
-		return DECIMAL, nil
-	} else if strings.HasPrefix(databaseTypeName, "numeric") {
-		return DECIMAL, nil
-	} else if strings.Contains(databaseTypeName, "num") {
+	case floatRegex.MatchString(databaseTypeName):
 		return FLOAT, nil
-	} else if strings.HasPrefix(databaseTypeName, "bool") {
+	case decimalRegex.MatchString(databaseTypeName):
+		return DECIMAL, nil
+	case stringRegex.MatchString(databaseTypeName):
+		return STRING, nil
+	case strings.Contains(databaseTypeName, "text"):
+		return TEXT, nil
+	case strings.Contains(databaseTypeName, "tinyint"):
 		return BOOLEAN, nil
-	} else if strings.HasPrefix(databaseTypeName, "datetime") {
+	case strings.HasPrefix(databaseTypeName, "bool"):
+		return BOOLEAN, nil
+	case strings.HasPrefix(databaseTypeName, "datetime"):
 		return TIMESTAMP, nil
-	} else if strings.HasPrefix(databaseTypeName, "timestamp") {
+	case strings.HasPrefix(databaseTypeName, "timestamp"):
 		return TIMESTAMP, nil
-	} else if databaseTypeName == "date" {
+	case databaseTypeName == "date":
 		return DATE, nil
 	}
 
-	return "", fmt.Errorf("unable to determine data type for: %s (%s)", columnType.Name(), databaseTypeName)
+	if dt, ok := specialTypes(databaseTypeName); ok {
+		return dt, nil
+	}
+
+	return "", fmt.Errorf("unable to determine data type for: %s %s", columnType.Name(), databaseTypeName)
 }
 
 func determineOptions(columnType *sql.ColumnType, dataType DataType) (map[Option]int, error) {
+	if options, ok := specialTypeOptions(strings.ToLower(columnType.DatabaseTypeName())); ok {
+		return options, nil
+	}
+
 	options := make(map[Option]int)
 	optionsRegex, _ := regexp.Compile("\\((\\d+)(,(\\d+))?\\)$")
 	switch dataType {
 	case INTEGER:
-		options[BYTES] = 8
+		options[BYTES] = 8 // Default everything to largest, TODO: revisit
+	case FLOAT:
+		options[BYTES] = 8 // Default everything to largest, TODO: revisit
 	case STRING:
 		length, ok := columnType.Length()
 		if ok {
@@ -158,7 +160,7 @@ func determineOptions(columnType *sql.ColumnType, dataType DataType) (map[Option
 			options[PRECISION] = precision
 			options[SCALE] = scale
 		} else {
-			return nil, fmt.Errorf("unable to determine options for: %s (%s)", columnType.Name(), columnType.DatabaseTypeName())
+			return nil, fmt.Errorf("unable to determine options for: %s %s", columnType.Name(), columnType.DatabaseTypeName())
 		}
 	}
 
@@ -182,12 +184,16 @@ func (column *Column) generateDataTypeExpression() string {
 		bytes := column.Options[BYTES]
 
 		return fmt.Sprintf("INT%d", bytes)
+	case FLOAT:
+		bytes := column.Options[BYTES]
+
+		return fmt.Sprintf("FLOAT%d", bytes)
 	case STRING:
 		length := column.Options[LENGTH]
 
 		// For columns with LENGTH = max, use 8192 characters for now
 		if length == MaxLength {
-			length = 8192
+			length = 16380
 		}
 
 		return fmt.Sprintf("VARCHAR(%d)", length)
@@ -217,4 +223,78 @@ func (table *Table) NotContainsColumnWithSameName(c Column) bool {
 		}
 	}
 	return true
+}
+
+func specialTypes(databaseTypeName string) (DataType, bool) {
+	if dt, ok := postgresSpecialTypes(databaseTypeName); ok {
+		return dt, true
+	}
+
+	if dt, ok := mysqlSpecialTypes(databaseTypeName); ok {
+		return dt, true
+	}
+
+	return "", false
+}
+
+func specialTypeOptions(databaseTypeName string) (map[Option]int, bool) {
+	if options, ok := postgresSpecialTypeOptions(databaseTypeName); ok {
+		return options, true
+	}
+
+	if options, ok := mysqlSpecialTypeOptions(databaseTypeName); ok {
+		return options, true
+	}
+
+	return make(map[Option]int), false
+}
+
+func postgresSpecialTypes(databaseTypeName string) (DataType, bool) {
+	switch databaseTypeName {
+	case "money":
+		return DECIMAL, true
+	case "inet", "uuid", "cidr", "macaddr":
+		return STRING, true
+	case "xml", "json":
+		return TEXT, true
+	}
+
+	return "", false
+}
+
+func postgresSpecialTypeOptions(databaseTypeName string) (map[Option]int, bool) {
+	options := make(map[Option]int)
+
+	switch databaseTypeName {
+	case "money":
+		options[PRECISION] = 16
+		options[SCALE] = 2
+		return options, true
+	case "inet", "uuid", "cidr", "macaddr":
+		options[LENGTH] = 255
+		return options, true
+	}
+
+	return options, false
+}
+
+func mysqlSpecialTypes(databaseTypeName string) (DataType, bool) {
+	switch databaseTypeName {
+	case "time", "year":
+		return STRING, true
+	}
+
+	return "", false
+}
+
+func mysqlSpecialTypeOptions(databaseTypeName string) (map[Option]int, bool) {
+	options := make(map[Option]int)
+
+	switch databaseTypeName {
+	case "time", "year":
+		options[LENGTH] = 32
+		return options, true
+	}
+
+	return options, false
 }

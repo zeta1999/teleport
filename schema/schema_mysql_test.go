@@ -2,77 +2,54 @@ package schema
 
 import (
 	"database/sql"
-	"log"
 	"testing"
 
-	"github.com/xo/dburl"
 	_ "github.com/go-sql-driver/mysql"
-
-	"github.com/stretchr/testify/assert"
 )
 
-func setupMySQL() *sql.DB {
-	db, _ := dburl.Open("mysql://mysql_test_user:password@localhost:43306/test_db")
+func TestMySQLGenerics(t *testing.T) {
+	withDb(t, "mysql://mysql_test_user:password@localhost:43306/test_db", func(db *sql.DB) {
+		testColumnCases(t, db, genericCases)
 
-	_, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS widgets (
-			id INTEGER NOT NULL,
-			name VARCHAR(255),
-			description VARCHAR(1024),
-			price DECIMAL(10,2),
-			quantity INTEGER,
-			active BOOLEAN,
-			launch_date DATE,
-			updated_at TIMESTAMP NOT NULL,
-			created_at TIMESTAMP NOT NULL
-		)
-	`)
-	if err != nil {
-		log.Fatal(err)
-	}
+		// String Types - MySQL go db/sql adapter does not support "Length"
+		testColumnCases(t, db, []struct {
+			originalDataTypes  []string
+			column             Column
+			createTabeDataType string
+		}{
+			{
+				[]string{"VARCHAR(511)", "CHARACTER VARYING(511)"},
+				Column{"", STRING, map[Option]int{LENGTH: -1}}, // TODO: MySQL String length
+				"VARCHAR(16380)",
+			},
+			{
+				[]string{"CHAR(127)"},
+				Column{"", STRING, map[Option]int{LENGTH: -1}}, // TODO: MySQL String length
+				"VARCHAR(16380)",
+			},
+		})
 
-	return db
-}
-
-func TestDumpTableMetadataMySQL(t *testing.T) {
-	db := setupMySQL()
-
-	table, err := DumpTableMetadata(db, "widgets")
-	if err != nil {
-		log.Fatal(err)
-	}
-	assert.Len(t, table.Columns, 9)
-
-	assert.Equal(t, "id", table.Columns[0].Name)
-	assert.Equal(t, INTEGER, table.Columns[0].DataType)
-	assert.Equal(t, 8, table.Columns[0].Options[BYTES])
-
-	assert.Equal(t, "name", table.Columns[1].Name)
-	assert.Equal(t, STRING, table.Columns[1].DataType)
-	assert.Equal(t, -1, table.Columns[1].Options[LENGTH])
-
-	assert.Equal(t, "description", table.Columns[2].Name)
-	assert.Equal(t, STRING, table.Columns[2].DataType)
-	assert.Equal(t, -1, table.Columns[2].Options[LENGTH])
-
-	assert.Equal(t, "price", table.Columns[3].Name)
-	assert.Equal(t, DECIMAL, table.Columns[3].DataType)
-	assert.Equal(t, 10, table.Columns[3].Options[PRECISION])
-	assert.Equal(t, 2, table.Columns[3].Options[SCALE])
-
-	assert.Equal(t, "quantity", table.Columns[4].Name)
-	assert.Equal(t, INTEGER, table.Columns[4].DataType)
-	assert.Equal(t, 8, table.Columns[4].Options[BYTES])
-
-	assert.Equal(t, "active", table.Columns[5].Name)
-	assert.Equal(t, BOOLEAN, table.Columns[5].DataType)
-
-	assert.Equal(t, "launch_date", table.Columns[6].Name)
-	assert.Equal(t, DATE, table.Columns[6].DataType)
-
-	assert.Equal(t, "updated_at", table.Columns[7].Name)
-	assert.Equal(t, TIMESTAMP, table.Columns[7].DataType)
-
-	assert.Equal(t, "created_at", table.Columns[8].Name)
-	assert.Equal(t, TIMESTAMP, table.Columns[8].DataType)
+		// Special Types
+		testColumnCases(t, db, []struct {
+			originalDataTypes  []string
+			column             Column
+			createTabeDataType string
+		}{
+			{
+				[]string{"MEDIUMINT"},
+				Column{"", INTEGER, map[Option]int{BYTES: 8}},
+				"INT8",
+			},
+			{
+				[]string{"TINYINT"},
+				Column{"", BOOLEAN, map[Option]int{}},
+				"BOOLEAN",
+			},
+			{
+				[]string{"TIME", "YEAR"},
+				Column{"", STRING, map[Option]int{LENGTH: 32}},
+				"VARCHAR(32)",
+			},
+		})
+	})
 }
