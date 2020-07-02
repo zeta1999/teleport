@@ -10,7 +10,6 @@ import (
 	"syscall"
 
 	"github.com/hundredwatt/teleport/schema"
-	xschema "github.com/jimsmart/schema"
 	"gopkg.in/yaml.v2"
 )
 
@@ -20,7 +19,7 @@ func tableExists(source string, tableName string) (bool, error) {
 		return false, err
 	}
 
-	tables, err := xschema.TableNames(database)
+	tables, err := schema.TableNames(database)
 	if err != nil {
 		return false, err
 	}
@@ -48,7 +47,7 @@ func listTables(source string) {
 		log.Fatal("Database Open Error:", err)
 	}
 
-	tables, err := xschema.TableNames(database)
+	tables, err := schema.TableNames(database)
 	if err != nil {
 		log.Fatal("Database Error:", err)
 	}

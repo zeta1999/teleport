@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jimsmart/schema"
 	xschema "github.com/jimsmart/schema"
 )
 
@@ -55,6 +56,8 @@ const (
 
 // MaxLength represents the maximum possible length for the data type
 const MaxLength int = -1
+
+var TableNames = schema.TableNames
 
 func DumpTableMetadata(database *sql.DB, tableName string) (*Table, error) {
 	table := Table{"", tableName, nil}
