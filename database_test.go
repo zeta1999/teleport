@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	widgetsTableDefinition = readTableFromConfigFile("test/example_widgets.yaml")
+	widgetsTableDefinition = readTableFromConfigFile("test/example_widgets.yml")
 )
 
 func TestLoadNewTable(t *testing.T) {
@@ -26,7 +26,7 @@ func TestLoadNewTable(t *testing.T) {
 		redirectLogs(t, func() {
 			extractLoadDatabase("testsrc", "testdest", "widgets", fullStrategyOpts)
 
-			assertRowCount(t, 3, destdb, "testsrc_widgets")
+			assertRowCount(t, 10, destdb, "testsrc_widgets")
 		})
 	})
 }
@@ -42,10 +42,10 @@ func TestLoadSourceHasAdditionalColumn(t *testing.T) {
 		destdb.Exec(widgetsWithoutDescription.GenerateCreateTableStatement("testsrc_widgets"))
 		importCSV("testsrc", "widgets", "test/example_widgets.csv", widgetsTableDefinition.Columns)
 
-		expectLogMessages(t, []string{"destination table does not define column", "description"}, func() {
+		expectLogMessages(t, []string{"destination table does not define column", "ranking"}, func() {
 			extractLoadDatabase("testsrc", "testdest", "widgets", fullStrategyOpts)
 
-			assertRowCount(t, 3, destdb, "testsrc_widgets")
+			assertRowCount(t, 10, destdb, "testsrc_widgets")
 		})
 	})
 }
@@ -55,7 +55,7 @@ func TestLoadStringNotLongEnough(t *testing.T) {
 		// Create a new schema.Table Definition, same as widgets, but with name LENGTH changed to 32
 		widgetsWithShortName := schema.Table{"example", "widgets", make([]schema.Column, len(widgetsTableDefinition.Columns))}
 		copy(widgetsWithShortName.Columns, widgetsTableDefinition.Columns)
-		widgetsWithShortName.Columns[1] = schema.Column{"name", schema.STRING, map[schema.Option]int{schema.LENGTH: 32}}
+		widgetsWithShortName.Columns[3] = schema.Column{"name", schema.STRING, map[schema.Option]int{schema.LENGTH: 32}}
 
 		srcdb.Exec(widgetsTableDefinition.GenerateCreateTableStatement("widgets"))
 		destdb.Exec(widgetsWithShortName.GenerateCreateTableStatement("testsrc_widgets"))

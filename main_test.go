@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	log.SetLevel(log.WarnLevel)
+	log.SetLevel(log.DebugLevel)
 }
 
 func expectLogMessage(t *testing.T, message string, fn func()) {

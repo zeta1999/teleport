@@ -5,28 +5,28 @@ columns:
   datatype: integer
   options:
     bytes: 8
-- name: name
-  datatype: string
-  options:
-    length: 255
-- name: description
-  datatype: string
-  options:
-    length: 65536
 - name: price
   datatype: decimal
   options:
     precision: 10
     scale: 2
-- name: quantity
-  datatype: integer
+- name: ranking
+  datatype: float
   options:
     bytes: 8
+- name: name
+  datatype: string
+  options:
+    length: 255
 - name: active
   datatype: boolean
-- name: launch_date
+  options: {}
+- name: launched
   datatype: date
-- name: updated_at
-  datatype: timestamp
+  options: {}
 - name: created_at
   datatype: timestamp
+  options: {}
+- name: description
+  datatype: text
+  options: {}

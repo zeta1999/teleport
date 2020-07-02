@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"strings"
 
@@ -154,8 +153,7 @@ func updatePrimaryTable(destinationTable *schema.Table, stagingTableName string,
 }
 
 func importCSV(source string, table string, file string, columns []schema.Column) (err error) {
-	var database *sql.DB
-	database, err = connectDatabase(source)
+	database, err := connectDatabase(source)
 	if err != nil {
 		return
 	}
