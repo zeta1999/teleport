@@ -15,6 +15,12 @@ func TestSQLiteInspection(t *testing.T) {
 	})
 }
 
+func TestWarnAndIgnoreUnsupportedColumns(t *testing.T) {
+	withDb(t, "sqlite://:memory:", func(db *sql.DB) {
+		testSkippedColumnCases(t, db, []string{"BINARY"})
+	})
+}
+
 func TestSQLiteTableGeneration(t *testing.T) {
 	withDb(t, "sqlite://:memory:", func(db *sql.DB) {
 		testTableGeneration(t, db)

@@ -7,7 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jimsmart/schema"
+	log "github.com/sirupsen/logrus"
+
 	xschema "github.com/jimsmart/schema"
 )
 
@@ -57,7 +58,12 @@ const (
 // MaxLength represents the maximum possible length for the data type
 const MaxLength int = -1
 
-var TableNames = schema.TableNames
+var (
+	// ErrColumnNotSupported indicates Teleport does not currently support this column and will ignore it
+	ErrColumnNotSupported = fmt.Errorf("column not supported")
+)
+
+var TableNames = xschema.TableNames
 
 func DumpTableMetadata(database *sql.DB, tableName string) (*Table, error) {
 	table := Table{"", tableName, nil}
@@ -71,11 +77,21 @@ func DumpTableMetadata(database *sql.DB, tableName string) (*Table, error) {
 		column.Name = columnType.Name()
 		column.DataType, err = determineDataType(columnType)
 		if err != nil {
-			return nil, err
+			switch err {
+			case ErrColumnNotSupported:
+				continue
+			default:
+				return nil, err
+			}
 		}
 		column.Options, err = determineOptions(columnType, column.DataType)
 		if err != nil {
-			return nil, err
+			switch err {
+			case ErrColumnNotSupported:
+				continue
+			default:
+				return nil, err
+			}
 		}
 		table.Columns = append(table.Columns, column)
 	}
@@ -117,7 +133,8 @@ func determineDataType(columnType *sql.ColumnType) (DataType, error) {
 		return dt, nil
 	}
 
-	return "", fmt.Errorf("unable to determine data type for: %s %s", columnType.Name(), databaseTypeName)
+	log.Warnf("unable to determine data type for: %s %s", columnType.Name(), databaseTypeName)
+	return "", ErrColumnNotSupported
 }
 
 func determineOptions(columnType *sql.ColumnType, dataType DataType) (map[Option]int, error) {
@@ -163,7 +180,8 @@ func determineOptions(columnType *sql.ColumnType, dataType DataType) (map[Option
 			options[PRECISION] = precision
 			options[SCALE] = scale
 		} else {
-			return nil, fmt.Errorf("unable to determine options for: %s %s", columnType.Name(), columnType.DatabaseTypeName())
+			log.Warnf("unable to determine options for: %s %s", columnType.Name(), columnType.DatabaseTypeName())
+			return nil, ErrColumnNotSupported
 		}
 	}
 

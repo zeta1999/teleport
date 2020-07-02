@@ -26,7 +26,38 @@ func testColumnCases(t *testing.T, db *sql.DB, cases []struct {
 	column             Column
 	createTabeDataType string
 }) {
+	dataTypes := make([][]string, 0)
+	for _, cse := range cases {
+		dataTypes = append(dataTypes, cse.originalDataTypes)
+	}
+	withTestTable(t, db, dataTypes, func(t *testing.T, table *Table) {
+		generatedCreateTableStatement := table.GenerateCreateTableStatement("test_table")
 
+		for cidx, cse := range cases {
+			for didx, dataType := range cse.originalDataTypes {
+				var col Column
+				for _, column := range table.Columns {
+					if column.Name == fmt.Sprintf("col%d%d", cidx, didx) {
+						col = column
+						break
+					}
+				}
+				assert.Equal(t, cse.column.DataType, col.DataType, "DataType: %s, Case: %v", dataType, cse)
+				assert.Equal(t, cse.column.Options, col.Options, "DataType: %s, Case: %v", dataType, cse)
+
+				assert.Contains(t, generatedCreateTableStatement, fmt.Sprintf("col%d%d %s", cidx, didx, cse.createTabeDataType), "DataType: %s, Case: %v", dataType, cse)
+			}
+		}
+	})
+}
+
+func testSkippedColumnCases(t *testing.T, db *sql.DB, dataTypes []string) {
+	withTestTable(t, db, [][]string{dataTypes}, func(t *testing.T, table *Table) {
+		assert.Len(t, table.Columns, 0)
+	})
+}
+
+func withTestTable(t *testing.T, db *sql.DB, cases [][]string, testfn func(*testing.T, *Table)) {
 	db.Exec("DROP TABLE IF EXISTS test_table")
 	createTableStatement := `
 	CREATE TABLE test_table (
@@ -34,8 +65,8 @@ func testColumnCases(t *testing.T, db *sql.DB, cases []struct {
 	);
 `
 	columns := ""
-	for cidx, cse := range cases {
-		for didx, dataType := range cse.originalDataTypes {
+	for cidx, dataTypes := range cases {
+		for didx, dataType := range dataTypes {
 			columns += fmt.Sprintf("col%d%d %s,\n", cidx, didx, dataType)
 		}
 	}
@@ -51,24 +82,8 @@ func testColumnCases(t *testing.T, db *sql.DB, cases []struct {
 	if err != nil {
 		assert.FailNow(t, err.Error())
 	}
-	generatedCreateTableStatement := table.GenerateCreateTableStatement("test_table")
 
-	for cidx, cse := range cases {
-		for didx, dataType := range cse.originalDataTypes {
-			var col Column
-			for _, column := range table.Columns {
-				if column.Name == fmt.Sprintf("col%d%d", cidx, didx) {
-					col = column
-					break
-				}
-			}
-			assert.Equal(t, cse.column.DataType, col.DataType, "DataType: %s, Case: %v", dataType, cse)
-			assert.Equal(t, cse.column.Options, col.Options, "DataType: %s, Case: %v", dataType, cse)
-
-			assert.Contains(t, generatedCreateTableStatement, fmt.Sprintf("col%d%d %s", cidx, didx, cse.createTabeDataType), "DataType: %s, Case: %v", dataType, cse)
-		}
-
-	}
+	testfn(t, table)
 }
 
 func testTableGeneration(t *testing.T, db *sql.DB) {
