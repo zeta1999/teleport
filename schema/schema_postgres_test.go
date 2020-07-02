@@ -7,7 +7,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func TestPostgresGenerics(t *testing.T) {
+func TestPostgresInspection(t *testing.T) {
 	withDb(t, "postgres://postgres@localhost:45432/?sslmode=disable", func(db *sql.DB) {
 		testColumnCases(t, db, genericCases)
 
@@ -35,5 +35,11 @@ func TestPostgresGenerics(t *testing.T) {
 				"TEXT",
 			},
 		})
+	})
+}
+
+func TestPostgresTableGeneration(t *testing.T) {
+	withDb(t, "postgres://postgres@localhost:45432/?sslmode=disable", func(db *sql.DB) {
+		testTableGeneration(t, db)
 	})
 }

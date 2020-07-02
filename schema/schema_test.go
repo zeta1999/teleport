@@ -10,27 +10,7 @@ import (
 	"github.com/xo/dburl"
 )
 
-func TestGenerateCreateTableStatement(t *testing.T) {
-	table := widgetsTable()
-	expected := squish(`CREATE TABLE source_widgets (
-		id INT8,
-		name VARCHAR(255),
-		active BOOLEAN,
-		price DECIMAL(10,2)
-	);`)
-	assert.Equal(t, expected, squish(table.GenerateCreateTableStatement("source_widgets")))
-
-}
-
-func widgetsTable() Table {
-	columns := make([]Column, 0)
-	columns = append(columns, Column{"id", INTEGER, map[Option]int{BYTES: 8}})
-	columns = append(columns, Column{"name", STRING, map[Option]int{LENGTH: 255}})
-	columns = append(columns, Column{"active", BOOLEAN, map[Option]int{}})
-	columns = append(columns, Column{"price", DECIMAL, map[Option]int{PRECISION: 10, SCALE: 2}})
-
-	return Table{"source", "widgets", columns}
-}
+var widgetsTable = makeWidgetsTable()
 
 func withDb(t *testing.T, connectionString string, testfn func(*sql.DB)) {
 	db, err := dburl.Open(connectionString)
@@ -88,6 +68,27 @@ func testColumnCases(t *testing.T, db *sql.DB, cases []struct {
 			assert.Contains(t, generatedCreateTableStatement, fmt.Sprintf("col%d%d %s", cidx, didx, cse.createTabeDataType), "DataType: %s, Case: %v", dataType, cse)
 		}
 
+	}
+}
+
+func testTableGeneration(t *testing.T, db *sql.DB) {
+	_, err := db.Exec(widgetsTable.GenerateCreateTableStatement("new_widgets"))
+	if err != nil {
+		assert.FailNow(t, err.Error())
+	}
+	defer db.Exec(`DROP TABLE new_widgets`)
+
+	table, err := DumpTableMetadata(db, "new_widgets")
+	if err != nil {
+		assert.FailNow(t, err.Error())
+	}
+
+	for idx, widgetsColumn := range widgetsTable.Columns {
+		dumpedColumn := table.Columns[idx]
+
+		assert.Equal(t, widgetsColumn.Name, dumpedColumn.Name)
+		assert.Equal(t, widgetsColumn.DataType, dumpedColumn.DataType)
+		assert.Equal(t, widgetsColumn.Options, dumpedColumn.Options)
 	}
 }
 
@@ -168,4 +169,18 @@ var genericStringCases = []struct {
 		Column{"", STRING, map[Option]int{LENGTH: 127}},
 		"VARCHAR(127)",
 	},
+}
+
+func makeWidgetsTable() Table {
+	columns := make([]Column, 0)
+	columns = append(columns, Column{"id", INTEGER, map[Option]int{BYTES: 8}})
+	columns = append(columns, Column{"price", DECIMAL, map[Option]int{PRECISION: 10, SCALE: 2}})
+	columns = append(columns, Column{"ranking", FLOAT, map[Option]int{BYTES: 8}})
+	columns = append(columns, Column{"name", STRING, map[Option]int{LENGTH: 255}})
+	columns = append(columns, Column{"active", BOOLEAN, map[Option]int{}})
+	columns = append(columns, Column{"launched", DATE, map[Option]int{}})
+	columns = append(columns, Column{"created_at", TIMESTAMP, map[Option]int{}})
+	columns = append(columns, Column{"description", TEXT, map[Option]int{}})
+
+	return Table{"source", "widgets", columns}
 }

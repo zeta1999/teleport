@@ -7,10 +7,16 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func TestSQLiteGenerics(t *testing.T) {
+func TestSQLiteInspection(t *testing.T) {
 	withDb(t, "sqlite://:memory:", func(db *sql.DB) {
 		testColumnCases(t, db, genericCases)
 
 		testColumnCases(t, db, genericStringCases)
+	})
+}
+
+func TestSQLiteTableGeneration(t *testing.T) {
+	withDb(t, "sqlite://:memory:", func(db *sql.DB) {
+		testTableGeneration(t, db)
 	})
 }

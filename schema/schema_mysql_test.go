@@ -7,7 +7,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-func TestMySQLGenerics(t *testing.T) {
+func TestMySQLInspection(t *testing.T) {
 	withDb(t, "mysql://mysql_test_user:password@localhost:43306/test_db", func(db *sql.DB) {
 		testColumnCases(t, db, genericCases)
 
