@@ -47,6 +47,10 @@ xbuild: clean prepare
 	@# brew install upx
 	@upx -qq ./teleport
 
+## dbuild: build the docker image
+dbuild: xbuild
+	@docker build -t teleport .
+
 ## binary: package the binary
 binary: build
 	@mkdir -p tmp/$(NAME)_$(VERSION).macos
