@@ -3,7 +3,6 @@ package starlarkextensions
 import (
 	"testing"
 
-	"github.com/hundredwatt/teleport/starlarkextensions"
 	"github.com/qri-io/starlib/testdata"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
@@ -17,13 +16,8 @@ func TestFile(t *testing.T) {
 	starlarktest.SetReporter(thread, t)
 
 	// Execute test files
-	_, err := starlark.ExecFile(thread, "testdata/dig.star", nil, starlarkextensions.GetExtensions())
+	_, err := starlark.ExecFile(thread, "testdata/dig.star", nil, GetExtensions())
 	if err != nil {
 		t.Error(err)
 	}
-
-	_, err = starlark.ExecFile(thread, "testdata/time.star", nil, starlarkextensions.GetExtensions())
-	if err != nil {
-		t.Error(err)
-  }
 }

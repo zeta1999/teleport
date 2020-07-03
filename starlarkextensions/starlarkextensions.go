@@ -3,21 +3,18 @@ package starlarkextensions
 import (
 	"strconv"
 
+	time "github.com/qri-io/starlib/time"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
-	time "github.com/qri-io/starlib/time"
-	gotime "time"
 )
 
-
 // GetExtensions returns predeclared Starlark modules and functions to pass to configuration scripts
-func GetExtensions() starlark.StringDict { 
+func GetExtensions() starlark.StringDict {
 	timeLoaded, _ := time.LoadModule()
 	timeModule := timeLoaded["time"].(*starlarkstruct.Module)
-	timeModule.Members["fromtimestamp"] = starlark.NewBuiltin("fromtimestamp", fromtimestamp)
 
 	return starlark.StringDict{
-		"dig": starlark.NewBuiltin("dig", dig),
+		"dig":  starlark.NewBuiltin("dig", dig),
 		"time": timeModule,
 	}
 }
@@ -51,22 +48,4 @@ func dig(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwar
 		}
 	}
 	return
-}
-
-func fromtimestamp(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var (
-		x starlark.Int
-	)
-	if err := starlark.UnpackArgs("time", args, kwargs, "x", &x); err != nil {
-		return nil, err
-	}
-
-	i, err := strconv.ParseInt(x.String(), 10, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	t := gotime.Unix(i, 0)
-
-	return time.Time(t), nil
 }
