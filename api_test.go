@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -48,6 +49,35 @@ func TestExtractLoadAPI(t *testing.T) {
 			extractLoadAPI(portFile, "testdest")
 			assertRowCount(t, 2, destdb, "test_items")
 		})
+	})
+}
+
+func TestTransformMissingReturn(t *testing.T) {
+	configuration := `
+Get("%s")
+BasicAuth("user", "pass")
+ResponseType("json")
+
+LoadStrategy(Full)
+TableDefinition({
+	"id": "INT",
+	"name": "VARCHAR(255)"
+})
+
+def Paginate(previous_response):
+	return None
+
+def Transform(data):
+	return None
+	`
+	runAPITest(t, testBody, configuration, func(t *testing.T, portFile string, destdb *sql.DB) {
+		hook := test.NewGlobal()
+		log.SetOutput(ioutil.Discard)
+		defer log.SetOutput(os.Stdout)
+		log.StandardLogger().ExitFunc = func(int) {}
+
+		extractAPI(portFile)
+		assert.Equal(t, log.FatalLevel, hook.LastEntry().Level)
 	})
 }
 

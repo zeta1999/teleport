@@ -302,6 +302,11 @@ func applyTransform(value interface{}, endpoint *Endpoint) (results []dataObject
 				return nil, fmt.Errorf("Transform() error: %w", err)
 			}
 		}
+
+		switch value {
+		case starlark.None:
+			return nil, fmt.Errorf("Transform() error: no return statement or None returned. To return no results, use `return []`")
+		}
 	}
 
 	switch value.(type) {
