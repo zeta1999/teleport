@@ -3,7 +3,7 @@ package starlarkextensions
 import (
 	"strconv"
 
-	time "github.com/qri-io/starlib/time"
+	time "github.com/hundredwatt/starlib/time"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
