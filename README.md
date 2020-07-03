@@ -52,7 +52,7 @@ yum install <filename.rpm>
 
 ## From Source
 
-See the [Development wiki page](TODO) for instructions on how to check out the source and build it yourself.
+See the [Development wiki page](https://github.com/Teleport-Data/teleport/blob/master/wiki/development.md) for instructions on how to check out the source and build it yourself.
 
 # Usage
 
@@ -114,7 +114,7 @@ Pads have this directory structure:
 When refering to a resource (data source or transform) in a Teleport command, the name of the resource is the filename without the extension. e.g., to list the tables for the database defined in `databases/exampledb1.yml`, use `teleport list-tables -source exampledb1`
 
 For API configurations, Teleport uses its own "Port" configuration language. "Port" is a declarative, Python dialect
-used for configuration and mapping data. For full documentation on the "Port" configuration language, [visit the wiki](TODO)
+used for configuration and mapping data. For full documentation on the "Port" configuration language, [visit the wiki](https://github.com/Teleport-Data/teleport/blob/master/wiki/api_configuration.md)
 
 <details><summary>Example "Port" file for the [Holiday API](https://holidayapi.com/docs)</summary>
 
@@ -149,7 +149,7 @@ def Transform(response):
 </details>
 
 
-For Database configurations, Teleport supports the following file formats: YAML, JSON, TOML, EDN. For full documentation on database configuration, [visit the wiki](TODO)
+For Database configurations, Teleport supports the following file formats: YAML, JSON, TOML, EDN. For full documentation on database configuration, [visit the wiki](https://github.com/Teleport-Data/teleport/blob/master/wiki/database_configuration.md)
 
 For Transforms, Teleport supports SQL statements and that create a table named based on the filename without extension. To update a transform table, use `teleport transform -source <source> -table <table>`
 

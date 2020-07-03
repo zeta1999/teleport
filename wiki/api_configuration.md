@@ -5,7 +5,8 @@ can configure your test editor's syntax highlighting to use "Python" formatting 
 Here's an example "Port" file for the [Holiday API](https://holidayapi.com/docs)
 
 ```python
-Get("https://holidayapi.com/v1/holidays?key=$HOLIDAY_API_KEY&country=US&year=2019") ResponseType("json")
+Get("https://holidayapi.com/v1/holidays?key=$HOLIDAY_API_KEY&country=US&year=2019")
+ResponseType("json")
 LoadStrategy(Full)
 
 TableDefinition({
