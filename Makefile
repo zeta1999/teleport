@@ -24,6 +24,7 @@ private_release: deb rpm xbinary binary
 	@aws s3 cp --acl public-read teleport_$(subst -,_,$(VERSION))_x86_64.rpm s3://teleport-releases/v$(VERSION)/
 	@aws s3 cp --acl public-read tmp/$(NAME)_$(VERSION).macos.tbz s3://teleport-releases/v$(VERSION)/
 	@aws s3 cp --acl public-read tmp/$(NAME)_$(VERSION).linux-x86_64.tar.gz s3://teleport-releases/v$(VERSION)/
+	@aws s3 cp --acl public-read Dockerfile s3://teleport-releases/v$(VERSION)/
 	@aws s3 cp --acl public-read scripts/install.sh s3://teleport-releases/v$(VERSION)/
 	@aws s3 cp --acl public-read s3://teleport-releases/v$(VERSION)/install.sh s3://teleport-releases/latest/install.sh
 
@@ -48,7 +49,7 @@ xbuild: clean prepare
 	@upx -qq ./teleport
 
 ## dbuild: build the docker image
-dbuild: xbuild
+dbuild:
 	@docker build -t teleport .
 
 ## binary: package the binary

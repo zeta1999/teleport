@@ -49,7 +49,7 @@ yum install teleport_0.0.1_alpha.1_x86_64.rpm
 
 ## Docker
 
-1. Download the [Dockerfile](https://raw.githubusercontent.com/teleport-data/teleport/master/Dockerfile) to your local Pad
+1. Download the [Dockerfile]( https://teleport-releases.s3.amazonaws.com/v0.0.1-alpha.1/Dockerfile) to your local Pad
 2. Build the container: `docker build -t teleport`
 3. Run the container: `docker run -t teleport  -e <ENV Variables> -v $(pwd):/pad [COMMAD] [OPTIONS]`
 
