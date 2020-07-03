@@ -17,18 +17,24 @@ prepare:
 test:
 	@go test
 
+## private_release: release to S3 (until the GitHub repo is made public)
+private_release: deb rpm xbinary binary
+	@echo Releasing $(NAME) $(VERSION)
+	@aws s3 cp --acl public-read teleport_$(VERSION)_amd64.deb s3://teleport-releases/v$(VERSION)/
+	@aws s3 cp --acl public-read teleport_$(subst -,_,$(VERSION))_x86_64.rpm s3://teleport-releases/v$(VERSION)/
+	@aws s3 cp --acl public-read tmp/$(NAME)_$(VERSION).macos.tbz s3://teleport-releases/v$(VERSION)/
+	@aws s3 cp --acl public-read tmp/$(NAME)_$(VERSION).linux-x86_64.tar.gz s3://teleport-releases/v$(VERSION)/
+	@aws s3 cp --acl public-read scripts/install.sh s3://teleport-releases/v$(VERSION)/
+	@aws s3 cp --acl public-read s3://teleport-releases/v$(VERSION)/install.sh s3://teleport-releases/latest/install.sh
 
 ## release: build all binaries and release to
-release: deb rpm build
-	@mkdir -p tmp/$(NAME)_$(VERSION).macos
-	@cp teleport tmp/$(NAME)_$(VERSION).macos/
-	@cp README.md tmp/$(NAME)_$(VERSION).macos/
-	@pushd tmp && tar cvfj $(NAME)_$(VERSION).macos.tbz $(NAME)_$(VERSION).macos && popd
+release: deb rpm build xbinary binary
 	@echo Releasing $(NAME) $(VERSION)
 	@hub release create v$(VERSION) \
 		-a teleport_$(VERSION)_amd64.deb \
 		-a teleport_$(subst -,_,$(VERSION))_x86_64.rpm \
 		-a tmp/$(NAME)_$(VERSION).macos.tbz \
+		-a tmp/$(NAME)_$(VERSION).linux-x86_64.tar.gz \
 		-o
 
 ## build: build the binary
@@ -40,6 +46,20 @@ xbuild: clean prepare
 	@GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o $(NAME)
 	@# brew install upx
 	@upx -qq ./teleport
+
+## binary: package the binary
+binary: build
+	@mkdir -p tmp/$(NAME)_$(VERSION).macos
+	@cp teleport tmp/$(NAME)_$(VERSION).macos/
+	@cp README.md tmp/$(NAME)_$(VERSION).macos/
+	@pushd tmp && tar cvfj $(NAME)_$(VERSION).macos.tbz $(NAME)_$(VERSION).macos && popd
+
+## xbinary: package a linux binary
+xbinary: xbuild
+	@mkdir -p tmp/$(NAME)_$(VERSION).linux-x86_64
+	@cp teleport tmp/$(NAME)_$(VERSION).linux-x86_64/
+	@cp README.md tmp/$(NAME)_$(VERSION).linux-x86_64/
+	@pushd tmp && tar zcvf $(NAME)_$(VERSION).linux-x86_64.tar.gz $(NAME)_$(VERSION).linux-x86_64 && popd
 
 ## deb: build a deb package for debian/ubuntu
 deb: xbuild

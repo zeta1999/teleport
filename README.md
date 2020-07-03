@@ -21,27 +21,30 @@ See the ["Contributing"](#Contributing) section for how to get involved in Telep
 * SQL statements to transform raw data tables into report tables
 * All commands available in a single Command Line Interface
 
-# Installation
+# Installation (alpha)
 
 Install the `teleport` binary on:
 
-## Mac
+## Mac or Linux
 
 One step install:
 
 ```
-curl -fsSL https://raw.githubusercontent.com/teleport-data/teleport/master/scripts/install.sh | bash
+curl -fsSL  https://teleport-releases.s3.amazonaws.com/latest/install.sh | bash
 ```
 
-## Linux
+## Linux Packages
 
-Teleport RPM/DEB packages for any 64-bit Linux OS are available on the [Releases](https://github.com/Teleport-Data/teleport/releases) page
+Teleport RPM/DEB packages for any 64-bit Linux OS are available:
 
 ```
 # DEB distros like Ubuntu
-dpkg -i <filename.deb>
+curl -fsSL  https://teleport-releases.s3.amazonaws.com/v0.0.1-alpha.1/teleport_0.0.1-alpha.1_amd64.deb
+dpkg -i teleport_0.0.1-alpha.1_amd64.deb
+
 # RPM distros like CentOS
-yum install <filename.rpm>
+curl -fsSL  https://teleport-releases.s3.amazonaws.com/v0.0.1-alpha.1/teleport_0.0.1_alpha.1_x86_64.rpm
+yum install teleport_0.0.1_alpha.1_x86_64.rpm
 ```
 
 ## Docker

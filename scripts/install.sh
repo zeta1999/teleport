@@ -23,15 +23,30 @@ function copy_binary() {
 }
 
 function install_teleport() {
-  #if [[ "$BREW" != "" ]]; then
-  #    set -x
-  #    brew tap teleport-data/tap
-  #    brew install teleport-data/tap/teleport
-  #else
+  if [[ "$OSTYPE" == "linux-gnu" ]]; then
       set -x
-      curl -fsSL https://github.com/teleport-data/teleport/releases/download/v$VERSION/teleport_$VERSION.macos.tbz | tar -xzv teleport_$VERSION.macos/teleport
+      curl -fsSL https://teleport-releases.s3.amazonaws.com/v$VERSION/teleport_$VERSION.linux-x86_64.tar.gz | tar -xzv teleport_$VERSION.linux-x86_64/teleport
+      mv teleport_$VERSION.linux-x86_64/teleport teleport
+      rmdir teleport_$VERSION.linux-x86_64/
       copy_binary
-  #fi
+  elif [[ "$OSTYPE" == "darwin"* ]]; then
+    #if [[ "$BREW" != "" ]]; then
+    #    set -x
+    #    brew tap teleport-data/tap
+    #    brew install teleport-data/tap/teleport
+    #else
+        set -x
+        curl -fsSL https://teleport-releases.s3.amazonaws.com/v$VERSION/teleport_$VERSION.macos.tbz | tar -xzv teleport_$VERSION.macos/teleport
+        mv teleport_$VERSION.macos/teleport teleport
+        rmdir teleport_$VERSION.macos/
+        copy_binary
+    #fi
+  else
+    set +x
+    echo "The Teleport installer does not work for your platform: $OS"
+    echo "Please file an issue at https://github.com/teleport-dev/teleport/issues/new"
+    exit 1
+  fi
 
   set +x
 }
