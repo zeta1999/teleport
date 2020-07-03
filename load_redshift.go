@@ -29,18 +29,23 @@ func importRedshift(database *sql.DB, table string, file string, columns []schem
 		columnNames[i] = column.Name
 	}
 
+	copyOptions := ""
+	if options["s3_bucket_region"] != "" {
+		copyOptions += fmt.Sprintf("REGION '%s'", options["s3_bucket_region"])
+	}
+
+	csvOptions := "EMPTYASNULL ACCEPTINVCHARS"
+
 	log.Debug("Executing Redshift COPY command")
 	_, err = database.Exec(fmt.Sprintf(`
 		COPY %s
 		(%s)
 		FROM '%s'
 		IAM_ROLE '%s'
-		REGION '%s'
+		%s
 		CSV
-		EMPTYASNULL
-		ACCEPTINVCHARS
-		;
-	`, table, strings.Join(columnNames, ", "), s3URL, options["service_role"], options["s3_bucket_region"]))
+		%s;
+	`, table, strings.Join(columnNames, ", "), s3URL, options["service_role"], copyOptions, csvOptions))
 
 	if err != nil {
 		return fmt.Errorf("redshift copy error: %w", err)
