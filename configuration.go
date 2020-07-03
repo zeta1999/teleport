@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 	log "github.com/sirupsen/logrus"
 	"go.starlark.net/starlark"
+	"gopkg.in/validator.v2"
 )
 
 var (
@@ -34,11 +36,11 @@ type Database struct {
 }
 
 type Endpoint struct {
-	URL             string
-	Method          string
+	URL             string `validate:"regexp=^[hH][tT][tT][pP][sS]?://"`
+	Method          string `validate:"in=get|post"`
 	BasicAuth       *map[string]string
 	Headers         map[string]string
-	ResponseType    string
+	ResponseType    string `validate:"in=json"`
 	Functions       starlark.StringDict
 	TableDefinition *map[string]string
 	ErrorHandling   *map[errorClass]ExitCode
@@ -72,6 +74,10 @@ func readEndpointConfiguration(path string, endpointptr *Endpoint) error {
 		return err
 	}
 	endpoint.Functions = configuration
+
+	if err := endpoint.validate(); err != nil {
+		return err
+	}
 
 	*endpointptr = endpoint
 	return nil
@@ -115,6 +121,15 @@ func predeclared(endpoint *Endpoint) starlark.StringDict {
 	predeclared["InvalidBodyError"] = starlark.String("InvalidBodyError")
 
 	return predeclared
+}
+
+func (endpoint *Endpoint) validate() error {
+	validator.SetValidationFunc("in", validateIn)
+	if errs := validator.Validate(endpoint); errs != nil {
+		return fmt.Errorf("Invalid Configuration: %s", errs.Error())
+	}
+
+	return nil
 }
 
 func (endpoint *Endpoint) get(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (value starlark.Value, err error) {
@@ -284,4 +299,23 @@ func fileNameWithoutExtension(filename string) string {
 	extension := filepath.Ext(filename)
 
 	return filename[0 : len(filename)-len(extension)]
+}
+
+func validateIn(v interface{}, param string) error {
+	if v == nil || v == "" {
+		return nil
+	}
+
+	st := reflect.ValueOf(v)
+	if st.Kind() != reflect.String {
+		return errors.New("in only validates strings")
+	}
+
+	for _, a := range strings.Split(param, "|") {
+		if strings.ToLower(a) == strings.ToLower(v.(string)) {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("value '%s' not allowed. Allowed values: %s", v.(string), param)
 }

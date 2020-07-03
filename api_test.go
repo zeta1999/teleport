@@ -52,6 +52,25 @@ func TestExtractLoadAPI(t *testing.T) {
 	})
 }
 
+func TestInvalidConfiguration(t *testing.T) {
+	configuration := `
+# %s
+Get("borked")
+ResponseType("glorb")
+`
+	runAPITest(t, testBody, configuration, func(t *testing.T, portFile string, destdb *sql.DB) {
+		hook := test.NewGlobal()
+		log.SetOutput(ioutil.Discard)
+		defer log.SetOutput(os.Stdout)
+		log.StandardLogger().ExitFunc = func(int) {}
+
+		extractAPI(portFile)
+		lastEntry, _ := hook.LastEntry().String()
+		assert.Contains(t, lastEntry, "URL: regular expression mismatch")
+		assert.Contains(t, lastEntry, "ResponseType: value 'glorb' not allowed")
+	})
+}
+
 func TestTransformMissingReturn(t *testing.T) {
 	configuration := `
 Get("%s")
