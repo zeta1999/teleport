@@ -40,7 +40,7 @@ func importRedshift(database *sql.DB, table string, file string, columns []schem
 		EMPTYASNULL
 		ACCEPTINVCHARS
 		;
-	`, table, strings.Join(columnNames, ", "), s3URL, options["service_role"], options["s3_region"]))
+	`, table, strings.Join(columnNames, ", "), s3URL, options["service_role"], options["s3_bucket_region"]))
 
 	if err != nil {
 		return fmt.Errorf("redshift copy error: %w", err)

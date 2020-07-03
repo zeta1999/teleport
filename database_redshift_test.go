@@ -47,7 +47,7 @@ func TestRedshiftLoadTest(t *testing.T) {
 
 func fromPostgresToRedshift(t *testing.T, testfn func(*testing.T, *sql.DB, *sql.DB)) {
 	redshiftURL := os.ExpandEnv("redshift://$TEST_REDSHIFT_USER:$TEST_REDSHIFT_PASSWORD@$TEST_REDSHIFT_HOST:5439/dev")
-	options := map[string]string{"s3_bucket": "teleportdata", "s3_region": "us-east-1", "service_role": "arn:aws:iam::102693510702:role/RedshiftRole"}
+	options := map[string]string{"s3_bucket": "teleportdata", "s3_bucket_region": "us-east-1", "service_role": "arn:aws:iam::102693510702:role/RedshiftRole"}
 
 	Databases["testsrc"] = Database{"postgres://postgres@localhost:45432/?sslmode=disable", map[string]string{}, true}
 	srcdb, err := connectDatabase("testsrc")

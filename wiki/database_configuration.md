@@ -31,7 +31,7 @@ The `options` key has further key/value pairs to set adapter specific options.
 | SQLite     | sqlite    | 
 | MySQL      | mysql     | 
 | PostgresQL | postgres  | 
-| Redshift   | redshift  | s3_bucket, s3_region, service_role
+| Redshift   | redshift  | s3_bucket, s3_bucket_region, service_role
 | Snowflake  | snowflake | s3_bucket, external_stage_name
 
 ## Examples
