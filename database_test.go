@@ -191,6 +191,28 @@ func assertRowCount(t *testing.T, expected int, database *sql.DB, table string) 
 	assert.Equal(t, expected, count, "the number of rows is different than expected")
 }
 
+func assertNoNullValues(t *testing.T, database *sql.DB, table string) {
+	rows, err := database.Query(fmt.Sprintf("SELECT * FROM %s", table))
+
+	columnTypes, err := rows.ColumnTypes()
+	assert.NoError(t, err)
+
+	destination := make([]interface{}, len(columnTypes))
+	rawResult := make([]interface{}, len(columnTypes))
+	for i := range rawResult {
+		destination[i] = &rawResult[i]
+	}
+	for rows.Next() {
+		rows.Scan(destination...)
+
+		for i, val := range rawResult {
+			assert.NotEqual(t, nil, val, "row has nil value for %q: %q", columnTypes[i].Name(), rawResult)
+			return
+		}
+	}
+
+}
+
 func assertCsvCellContents(t *testing.T, expected string, csvfilename string, row int, col int) {
 	csvfile, err := os.Open(csvfilename)
 	if err != nil {

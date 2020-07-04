@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	log "github.com/sirupsen/logrus"
@@ -155,6 +156,40 @@ def Transform(data):
 		for _, entry := range hook.Entries {
 			t.Log(entry.String())
 		}
+	})
+}
+
+func TestCSVResponse(t *testing.T) {
+	headerrow := "id,price,ranking,name,active,launched,created_at,description"
+	bytes, err := ioutil.ReadFile("test/example_widgets.csv")
+	assert.NoError(t, err)
+	body := string(bytes)
+	csv := strings.Join([]string{headerrow, body}, "\n")
+	configuration := `
+Get("%s")
+BasicAuth("user", "pass")
+ResponseType("csv")
+
+LoadStrategy(Full)
+TableDefinition({
+	"id": "INT",
+	"price": "DECIMAL(10,2)",
+	"ranking": "FLOAT",
+	"name": "VARCHAR(255)",
+	"active": "BOOLEAN",
+	"launched": "DATE",
+	"created_at": "TIMESTAMP",
+	"description": "TEXT"
+})
+
+def Transform(data):
+	headers = data.pop(0)
+	return [{headers[i]: row[i] for i in range(len(headers))} for row in data]
+`
+	runAPITest(t, csv, configuration, func(t *testing.T, portFile string, destdb *sql.DB) {
+		extractLoadAPI(portFile, "testdest")
+		assertRowCount(t, 10, destdb, "test_items")
+		assertNoNullValues(t, destdb, "test_items")
 	})
 }
 

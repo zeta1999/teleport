@@ -23,6 +23,8 @@ import (
 
 type dataObject = map[string]interface{}
 
+type table [][]string
+
 type apiError struct {
 	class errorClass
 	err   error
@@ -340,7 +342,7 @@ func applyTransform(value interface{}, endpoint *Endpoint) (results []dataObject
 			IncrementRowCounter()
 			results = append(results, data)
 		}
-	case interface{}:
+	case map[interface{}]interface{}:
 		data := make(dataObject)
 		for k, v := range value.(map[interface{}]interface{}) {
 			data[k.(string)] = v
@@ -482,6 +484,14 @@ func unmarshalBody(responseType string, raw io.ReadCloser) (output interface{}, 
 	switch responseType {
 	case "json":
 		output, err = applyJSONTransform(raw)
+	case "csv":
+		reader := csv.NewReader(raw)
+		records, csverr := reader.ReadAll()
+		if csverr != nil {
+			err = csverr
+			return
+		}
+		output = table(records)
 	default:
 		err = errors.New("unsupported response type. Allowed values: json")
 	}
@@ -564,5 +574,19 @@ func convertJSONNumbers(data interface{}) (v interface{}, err error) {
 	default:
 		v = x
 	}
+	return
+}
+
+func (t table) MarshalStarlark() (v starlark.Value, err error) {
+	var itable = make([]interface{}, len(t))
+	for i, row := range t {
+		var irow = make([]interface{}, len(row))
+		for i := range row {
+			irow[i] = row[i]
+		}
+		itable[i] = irow
+	}
+	v, err = slutil.Marshal(itable)
+
 	return
 }

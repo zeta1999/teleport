@@ -40,7 +40,7 @@ type Endpoint struct {
 	Method          string `validate:"in=get|post"`
 	BasicAuth       *map[string]string
 	Headers         map[string]string
-	ResponseType    string `validate:"in=json"`
+	ResponseType    string `validate:"in=json|csv"`
 	Functions       starlark.StringDict
 	TableDefinition *map[string]string
 	ErrorHandling   *map[errorClass]ExitCode
