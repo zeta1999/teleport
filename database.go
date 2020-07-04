@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	gotime "time"
 
 	"github.com/hundredwatt/teleport/schema"
 	log "github.com/sirupsen/logrus"
@@ -197,7 +198,7 @@ func exportCSV(source string, table string, columns []schema.Column, whereStatem
 
 			switch rawResult[i].(type) {
 			case time.Time:
-				writeBuffer[i] = rawResult[i].(time.Time).Format("2006-01-02 15:04:05")
+				writeBuffer[i] = rawResult[i].(time.Time).UTC().Format(gotime.RFC3339)
 			case int64:
 				writeBuffer[i] = strconv.FormatInt(rawResult[i].(int64), 10)
 			case string:

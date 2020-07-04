@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/hundredwatt/teleport/schema"
 	"github.com/stretchr/testify/assert"
@@ -37,6 +38,20 @@ func TestRedshiftLoadTest(t *testing.T) {
 			newTable, err := schema.DumpTableMetadata(destdb, "testsrc_widgets")
 			assert.NoError(t, err)
 			assertRowCount(t, 10, destdb, "testsrc_widgets")
+
+			var (
+				created_at  time.Time
+				launched    string
+				description string
+			)
+			row := destdb.QueryRow(`SELECT created_at, launched, description FROM testsrc_widgets WHERE ID = 1`)
+			err = row.Scan(&created_at, &launched, &description)
+			assert.NoError(t, err)
+			createdAt, err := time.Parse(time.RFC3339, "2020-03-11T23:28:21-06:00")
+			assert.NoError(t, err)
+			assert.Equal(t, createdAt.UTC(), created_at.UTC())
+			assert.Contains(t, launched, "2015-11-06")
+			assert.Contains(t, description, "* Officiis. \n* Sapiente.")
 
 			expectedColumns := widgetsTableDefinition.Columns
 			expectedColumns[7] = schema.Column{"description", schema.STRING, map[schema.Option]int{schema.LENGTH: 65535}}

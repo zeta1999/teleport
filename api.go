@@ -13,9 +13,10 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
+	slutil "github.com/hundredwatt/starlib/util"
 	"github.com/hundredwatt/teleport/schema"
-	slutil "github.com/qri-io/starlib/util"
 	log "github.com/sirupsen/logrus"
 	"go.starlark.net/starlark"
 )
@@ -434,6 +435,8 @@ func saveResultsToCSV(endpointName string, results []dataObject, columns *[]sche
 				writeBuffer[i] = ""
 			case []interface{}:
 				writeBuffer[i] = ""
+			case time.Time:
+				writeBuffer[i] = object[key].(time.Time).Format(time.RFC3339)
 			default:
 				writeBuffer[i] = string(object[key].([]byte))
 			}

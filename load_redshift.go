@@ -34,7 +34,7 @@ func importRedshift(database *sql.DB, table string, file string, columns []schem
 		copyOptions += fmt.Sprintf("REGION '%s'", options["s3_bucket_region"])
 	}
 
-	csvOptions := "EMPTYASNULL ACCEPTINVCHARS"
+	csvOptions := "EMPTYASNULL ACCEPTINVCHARS TIMEFORMAT 'auto'"
 
 	log.Debug("Executing Redshift COPY command")
 	_, err = database.Exec(fmt.Sprintf(`

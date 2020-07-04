@@ -6,9 +6,11 @@ import (
 	"encoding/csv"
 	"io"
 	"os"
+	"time"
 
 	"github.com/hundredwatt/teleport/schema"
 	"github.com/lib/pq"
+	log "github.com/sirupsen/logrus"
 )
 
 func importPostgres(database *sql.DB, table string, file string, columns []schema.Column) error {
@@ -44,9 +46,17 @@ func importPostgres(database *sql.DB, table string, file string, columns []schem
 
 		writeBuffer := make([]interface{}, len(line))
 		for i, value := range line {
-			if value == "" { // Assume a blank cell is NULL
+			switch {
+			case value == "": // Assume a blank cell is NULL
 				writeBuffer[i] = nil
-			} else {
+			case columns[i].DataType == schema.TIMESTAMP:
+				if t, err := time.Parse(time.RFC3339, value); err == nil {
+					writeBuffer[i] = t.UTC().Format(time.RFC3339)
+				} else {
+					log.Warnf("unable to parse timestamp for column '%s': '%s'. Please use RFC3339 timestamp formats (e.g., '')", columns[i].Name, value)
+					writeBuffer[i] = value
+				}
+			default:
 				writeBuffer[i] = value
 			}
 		}

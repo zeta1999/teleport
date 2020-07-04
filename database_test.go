@@ -140,7 +140,7 @@ func TestExportTimestamp(t *testing.T) {
 		redirectLogs(t, func() {
 			tempfile, _ := exportCSV("testsrc", "timestamps", columns, "")
 
-			assertCsvCellContents(t, "2004-08-19 18:51:06", tempfile, 0, 0)
+			assertCsvCellContents(t, "2004-08-19T18:51:06Z", tempfile, 0, 0)
 			assertCsvCellContents(t, "", tempfile, 1, 0)
 		})
 	})

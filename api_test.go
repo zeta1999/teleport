@@ -114,6 +114,50 @@ func TestAPIPreview(t *testing.T) {
 	Preview = false
 }
 
+func TestDefaultUnmarshalFormatForTime(t *testing.T) {
+	body := `{"items": [{"id":1,"name":"Santana","created_at":1590870032},{"id":2,"name":"David Grohl","created_at":1585599636}]}`
+	configuration := `
+Get("%s")
+BasicAuth("user", "pass")
+ResponseType("json")
+
+LoadStrategy(Full)
+TableDefinition({
+	"id": "INT",
+	"name": "VARCHAR(255)",
+	"created_at": "TIMESTAMP"
+})
+
+def Paginate(previous_response):
+	return None
+
+def Transform(data):
+	items = []
+	for item in data["items"]:
+		items.append({
+			'id': item['id'],
+			'name': item['name'],
+			'created_at': time.fromtimestamp(int(item['created_at'])),
+		})
+	return items
+`
+	runAPITest(t, body, configuration, func(t *testing.T, portFile string, destdb *sql.DB) {
+		hook := test.NewGlobal()
+		log.SetOutput(ioutil.Discard)
+		defer log.SetOutput(os.Stdout)
+		log.SetLevel(log.InfoLevel)
+		defer log.SetLevel(log.WarnLevel)
+		log.StandardLogger().ExitFunc = func(int) {}
+
+		extractLoadAPI(portFile, "testdest")
+		assertRowCount(t, 2, destdb, "test_items")
+		assert.Equal(t, log.InfoLevel, hook.LastEntry().Level)
+		for _, entry := range hook.Entries {
+			t.Log(entry.String())
+		}
+	})
+}
+
 func TestInvalidBodyError(t *testing.T) {
 	runAPITest(t, `notjson`, testConfiguration, func(t *testing.T, portFile string, destdb *sql.DB) {
 		redirectLogs(t, func() {
