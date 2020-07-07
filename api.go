@@ -429,7 +429,7 @@ func saveResultsToCSV(endpointName string, results []dataObject, columns *[]sche
 			switch object[key].(type) {
 			case string:
 				writeBuffer[i] = string(object[key].(string))
-			case nil, starlark.NoneType:
+			case nil:
 				writeBuffer[i] = ""
 			case bool:
 				writeBuffer[i] = strconv.FormatBool(object[key].(bool))
