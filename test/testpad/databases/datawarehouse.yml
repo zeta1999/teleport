@@ -1,1 +1,1 @@
-url: "sqlite://tmp/datawarehouse.sqlite3"
+url: "sqlite://$PADPATH/tmp/datawarehouse.sqlite3"

@@ -1,5 +1,5 @@
 {
-  "url": "sqlite3://tmp/example.sqlite3",
+  "url": "sqlite3://$PADPATH/tmp/example.sqlite3",
   "readonly": true
 }
 
