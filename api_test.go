@@ -53,6 +53,42 @@ func TestExtractLoadAPI(t *testing.T) {
 	})
 }
 
+func TestAPIWithBearerToken(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authorization := r.Header.Values("Authorization")
+		if len(authorization) == 1 && authorization[0] == "Bearer 292b0e" {
+			fmt.Fprintln(w, testBody)
+		} else {
+			w.WriteHeader(401)
+		}
+	}))
+	configuration := `
+Get("%s")
+AddHeader("Authorization", "Bearer 292b0e")
+ResponseType("json")
+
+LoadStrategy(Full)
+TableDefinition({
+	"id": "INT",
+	"name": "VARCHAR(255)"
+})
+
+def Transform(data):
+	return data["items"]
+`
+	runAPITest(t, ts, configuration, func(t *testing.T, portFile string, destdb *sql.DB) {
+		hook := test.NewGlobal()
+		log.SetOutput(ioutil.Discard)
+		defer log.SetOutput(os.Stdout)
+		defer log.SetLevel(log.GetLevel())
+		log.SetLevel(log.DebugLevel)
+		log.StandardLogger().ExitFunc = func(int) {}
+
+		extractAPI(portFile)
+		assert.Equal(t, log.InfoLevel, hook.LastEntry().Level)
+	})
+}
+
 func TestInvalidConfiguration(t *testing.T) {
 	configuration := `
 # %s

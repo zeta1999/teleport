@@ -101,6 +101,7 @@ func predeclared(endpoint *Endpoint) starlark.StringDict {
 	predeclared := starlarkextensions.GetExtensions()
 	// DSL Methods
 	predeclared["Get"] = starlark.NewBuiltin("Get", endpoint.get)
+	predeclared["AddHeader"] = starlark.NewBuiltin("AddHeader", endpoint.addHeader)
 	predeclared["BasicAuth"] = starlark.NewBuiltin("BasicAuth", endpoint.setBasicAuth)
 	predeclared["ResponseType"] = starlark.NewBuiltin("setResponseType", endpoint.setResponseType)
 	predeclared["TableDefinition"] = starlark.NewBuiltin("TableDefinition", endpoint.setTableDefinition)
@@ -142,6 +143,23 @@ func (endpoint *Endpoint) get(thread *starlark.Thread, _ *starlark.Builtin, args
 
 	endpoint.URL = url.GoString()
 	endpoint.Method = "GET"
+
+	return starlark.None, nil
+}
+
+func (endpoint *Endpoint) addHeader(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (value starlark.Value, err error) {
+	var (
+		name, hvalue starlark.String
+	)
+	if err := starlark.UnpackPositionalArgs("BasicAuth", args, kwargs, 2, &name, &hvalue); err != nil {
+		return nil, err
+	}
+
+	if len(endpoint.Headers) == 0 {
+		endpoint.Headers = make(map[string]string)
+
+	}
+	endpoint.Headers[name.GoString()] = hvalue.GoString()
 
 	return starlark.None, nil
 }

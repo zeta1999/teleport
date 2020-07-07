@@ -1,0 +1,18 @@
+Get("http://127.0.0.1:4567/widgets.json")
+AddHeader("Authorization", "Bearer $EXAMPLE_WIDGETS_API_TOKEN")
+ResponseType("json")
+
+LoadStrategy(Full)
+TableDefinition({
+  "id": "INT",
+  "price": "DECIMAL(10,2)",
+  "ranking": "FLOAT",
+  "name": "VARCHAR(255)",
+  "active": "BOOLEAN",
+  "launched": "DATE",
+  "created_at": "TIMESTAMP",
+  "description": "TEXT"
+})
+
+def Transform(data):
+  return data["widgets"]

@@ -60,6 +60,21 @@ Arguments:
 
 * `url` - (string) the full URL of the API endpoint to be extracted. 
 
+#### AddHeader(name, value)
+
+AddHeader configures a header value to the HTTP request made to this API endpoint
+
+Example:
+
+```
+AddHeader("Authorization": "Bearer $MY_API_BEARER_TOKEN")
+```
+
+Arguments:
+
+* `name` - (string) the name of the HTTP Header
+* `value` - (string) the value for the HTTP Header
+
 #### BasicAuth(username, password)
 
 BasicAuth declares that this API endpoint will use HTTP BasicAuth authentication.
