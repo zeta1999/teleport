@@ -141,7 +141,7 @@ func (endpoint *Endpoint) get(thread *starlark.Thread, _ *starlark.Builtin, args
 		return nil, err
 	}
 
-	endpoint.URL = url.GoString()
+	endpoint.URL = os.ExpandEnv(url.GoString())
 	endpoint.Method = "GET"
 
 	return starlark.None, nil
@@ -159,7 +159,7 @@ func (endpoint *Endpoint) addHeader(thread *starlark.Thread, _ *starlark.Builtin
 		endpoint.Headers = make(map[string]string)
 
 	}
-	endpoint.Headers[name.GoString()] = hvalue.GoString()
+	endpoint.Headers[os.ExpandEnv(name.GoString())] = os.ExpandEnv(hvalue.GoString())
 
 	return starlark.None, nil
 }
@@ -173,8 +173,8 @@ func (endpoint *Endpoint) setBasicAuth(thread *starlark.Thread, _ *starlark.Buil
 	}
 
 	endpoint.BasicAuth = &map[string]string{
-		"username": username.GoString(),
-		"password": password.GoString(),
+		"username": os.ExpandEnv(username.GoString()),
+		"password": os.ExpandEnv(password.GoString()),
 	}
 
 	return starlark.None, nil

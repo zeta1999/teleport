@@ -9,7 +9,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -176,7 +175,7 @@ func performAPIExtraction(endpoint *Endpoint, finalResults *[]dataObject) error 
 }
 
 func requestAllPages(endpoint *Endpoint, finalResults *[]dataObject) error {
-	baseURL := os.ExpandEnv(endpoint.URL)
+	baseURL := endpoint.URL
 	results := make([]dataObject, 0)
 
 	var resp *http.Response
@@ -254,7 +253,7 @@ func getResponse(method string, url string, headers map[string]string, basicAuth
 	req.Header.Set("User-Agent", "Teleport")
 
 	for key, value := range headers {
-		req.Header.Add(key, os.ExpandEnv(value))
+		req.Header.Add(key, value)
 	}
 
 	if basicAuth != nil {
