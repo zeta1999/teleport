@@ -1,0 +1,20 @@
+Get("$TEST_URL?offset={offset}")
+BasicAuth("user", "pass")
+ResponseType("json")
+
+LoadStrategy(Full)
+TableDefinition({
+	"id": "INT",
+	"name": "VARCHAR(255)"
+})
+
+def Paginate(previous_response):
+	if previous_response == None: # For initial request
+		return { 'offset': 0 }
+	elif previous_response['body']['offset']: # For subsequent requests
+		return { 'offset': previous_response['body']['offset'] }
+	else: # On final request, stop
+		return None
+
+def Transform(data):
+	return data["items"]

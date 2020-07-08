@@ -1,0 +1,2 @@
+Get("$TEST_URL/500")
+BasicAuth("user", "pass")

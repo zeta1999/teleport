@@ -1,0 +1,16 @@
+Get("$TEST_URL")
+BasicAuth("user", "pass")
+ResponseType("json")
+
+LoadStrategy(Full)
+TableDefinition({
+	"id": "INT",
+	"name": "VARCHAR(255)"
+})
+
+def Paginate(previous_response):
+	return None
+
+def Transform(data):
+  data # forgot to add return
+

@@ -1,0 +1,22 @@
+Get("$TEST_URL")
+BasicAuth("user", "pass")
+ResponseType("json")
+
+LoadStrategy(Incremental, primary_key="id")
+TableDefinition({
+	"id": "INT",
+	"name": "VARCHAR(255)"
+})
+
+def Paginate(previous_response):
+	return None
+
+def Transform(data):
+	return data["items"]
+
+ErrorHandling({
+	NetworkError: Retry,
+	Http4XXError: Fail,
+	Http5XXError: Retry,
+	InvalidBodyError: Fail,
+})
