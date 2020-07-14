@@ -1,0 +1,13 @@
+Get("$TEST_URL")
+BasicAuth("user", "pass")
+ResponseType("json")
+
+LoadStrategy(Full)
+TableDefinition({
+	"id": "INT",
+})
+
+def Transform(data):
+  return [{
+    'id': int(item['id']),
+  } for item in data["items"]]

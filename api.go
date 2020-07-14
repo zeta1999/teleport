@@ -432,6 +432,10 @@ func saveResultsToCSV(endpointName string, results []dataObject, columns *[]sche
 				writeBuffer[i] = ""
 			case bool:
 				writeBuffer[i] = strconv.FormatBool(object[key].(bool))
+			case int:
+				writeBuffer[i] = strconv.Itoa(object[key].(int))
+			case int64:
+				writeBuffer[i] = strconv.FormatInt(object[key].(int64), 10)
 			case map[string]interface{}:
 				writeBuffer[i] = ""
 			case []interface{}:

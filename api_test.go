@@ -53,6 +53,12 @@ func TestAPIConfigurationCases(t *testing.T) {
 			[]string{},
 		},
 		{
+			"api_integer_data_type.port",
+			log.InfoLevel,
+			2,
+			[]string{},
+		},
+		{
 			"api_invalid_configuration.port",
 			log.FatalLevel,
 			-1,
