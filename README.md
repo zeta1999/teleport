@@ -64,6 +64,13 @@ Create a new "Pad" (Teleport's term for project directory) with and then cd to t
     $ teleport new pad-name
     $ cd pad-name
 
+After [configuring your data sources](#pad-structure), use the CLI to perform extract-load operations:
+
+    $ teleport extract-load-db -from database -to datawarehouse -table widgets
+    $ teleport extract-load-api -from api_endpoint -to datawarehouse
+
+Set the `-preview` flag with any command to perform a dry-run.
+
 <details><summary>To see all Teleport commands, run `teleport help`</summary>
 
     $ teleport help
@@ -72,11 +79,11 @@ Create a new "Pad" (Teleport's term for project directory) with and then cd to t
       help			show this message
       version		print version information
 
-      extract		export all data from a database table to CSV. Required options: -from, -table
-      extract-api		export all data from an API endpoint to CSV. Required options: -from, -endpoint
+      extract-db		export data from a database table to CSV. Required options: -from, -table
+      extract-api		export data from an API endpoint to CSV. Required options: -from
 
-      extract-load		extract all data from a table in one database to another database. Required options: -from, -to, -table
-      extract-load-api		extract all data from an API endpoint to a database. Required options: -from, -to, -endpoint
+      extract-load-db		extract data from a table in one database to another database. Required options: -from, -to, -table
+      extract-load-api		extract data from an API endpoint to a database. Required options: -from, -to
 
       transform		(re-)generate a materialized table form a sql statement. Required options: -source, -table
 
@@ -91,7 +98,6 @@ Create a new "Pad" (Teleport's term for project directory) with and then cd to t
       -from [source]	data source to extract data from
       -to [source]		data source to load data into
       -table, -t [table]	name of table in the database data source
-      -endpoint, -e [table]	name of endpoint in the API data source
       -preview, -p		preview command as a dry-run without making any changes
       -debug, -d		enable debug log output
 </details>

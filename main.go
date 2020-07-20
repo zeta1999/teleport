@@ -88,13 +88,13 @@ func main() {
 		importCSV(opts.Source, opts.TableName, opts.File, table.Columns)
 
 	// Extract data from a source to csv
-	case "extract":
+	case "extract", "extract-db":
 		extractDatabase(opts.FromSource, opts.TableName)
 	case "extract-api":
 		extractAPI(opts.FromSource)
 
 	// Extract data from a source and load into datawarehouse
-	case "extract-load":
+	case "extract-load", "extract-load-db":
 		extractLoadDatabase(opts.FromSource, opts.ToSource, opts.TableName, parseStrategyOptions())
 	case "extract-load-api":
 		extractLoadAPI(opts.FromSource, opts.ToSource)
