@@ -6,19 +6,15 @@ Teleport's ambition is to become the standard for building ELT data ingestion pi
 
 Following the guidelines of ELT, Teleport does not provide support for complex, arbitrary data workflows. Instead, Teleport serves to provide just enough tooling and standardization to get all your data where it needs to go with the "EL" (extract-load) steps and moves all the complexity of preparing your data for business use to the "T" (transform) step.
 
-Teleport is currently in "alpha" testing. Please give it a try and report any all bugs by creating an issue. 
-
-See the ["Contributing"](#Contributing) section for how to get involved in Teleport's development.
+*Teleport is currently in "alpha" testing. Please give it a try and report any all bugs by creating an issue.*
 
 # Features
 
-* Manage all data source and ELT pipeline configurations in version control
-* Extract data from relational databases
-* Extract data from APIs
-* Parse API responses into a tabular data structure
-* Load data into relational databases or data warehouses
+* Setup connectors for extracting data from any API in minutes
+* Built-in connectors for extracting data from common relational databases
+* Minimal maintenance: one configuration file per data source and no external dependencies
+* Manage all data source and pipeline configurations in version control
 * Detailed logging for monitoring and debugging ELT pipelines
-* SQL statements to transform raw data tables into report tables
 * All commands available in a single Command Line Interface
 
 # Installation (alpha)
