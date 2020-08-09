@@ -1,0 +1,6 @@
+def toPercent(value):
+  return value * 100
+
+Table("widgets") \
+  .LoadStrategy(Full) \
+  .TransformColumn("ranking", toPercent)

@@ -1,0 +1,6 @@
+def createdDate(row):
+  return row['created_at'].strftime("%F")
+
+Table("widgets") \
+  .LoadStrategy(Full) \
+  .ComputeColumn("created_date", createdDate, "DATE")

@@ -12,6 +12,18 @@ import (
 
 var widgetsTable = makeWidgetsTable()
 
+func TestParseDatabaseType(t *testing.T) {
+	for _, cse := range genericCases {
+		for _, dataTypes := range cse.originalDataTypes {
+			actualDataType, actualOptions, err := ParseDatabaseType("col", dataTypes)
+			assert.NoError(t, err)
+
+			assert.Equal(t, cse.column.DataType, actualDataType)
+			assert.Equal(t, cse.column.Options, actualOptions)
+		}
+	}
+}
+
 func withDb(t *testing.T, connectionString string, testfn func(*sql.DB)) {
 	db, err := dburl.Open(connectionString)
 	if err != nil {

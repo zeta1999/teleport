@@ -9,7 +9,7 @@ import (
 )
 
 func TestTableExists(t *testing.T) {
-	runDatabaseTest(t, func(t *testing.T, db *sql.DB, _ *sql.DB) {
+	runDatabaseTest(t, "full.port", func(t *testing.T, _ string, db *sql.DB, _ *sql.DB) {
 		db.Exec("CREATE TABLE IF NOT EXISTS animals (id integer, name varchar(255))")
 
 		actual, _ := tableExists("testsrc", "does_not_exist")
@@ -21,7 +21,7 @@ func TestTableExists(t *testing.T) {
 }
 
 func TestCreateTable(t *testing.T) {
-	runDatabaseTest(t, func(t *testing.T, db *sql.DB, _ *sql.DB) {
+	runDatabaseTest(t, "full.port", func(t *testing.T, _ string, db *sql.DB, _ *sql.DB) {
 		table := widgetsTable()
 
 		assert.NoError(t, createTable("testsrc", "newtable", &table))

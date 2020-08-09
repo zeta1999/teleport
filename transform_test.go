@@ -6,7 +6,7 @@ import (
 )
 
 func TestSQLTransform(t *testing.T) {
-	runDatabaseTest(t, func(t *testing.T, _ *sql.DB, db *sql.DB) {
+	runDatabaseTest(t, "full.port", func(t *testing.T, _ string, _ *sql.DB, db *sql.DB) {
 		setupObjectsTable(db)
 		SQLTransforms["test.sql"] = "SELECT name AS title FROM objects"
 

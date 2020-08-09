@@ -1,0 +1,8 @@
+def extractAppendFromOptions(row):
+  strippedYAML = row["options"].split("\nivars:", 1)[0]
+  options = yaml.loads(strippedYAML)
+  return dig(options, "elements", "append")
+
+Table("actions") \
+  .LoadStrategy(Full) \
+  .ComputeColumn("append", extractAppendFromOptions)

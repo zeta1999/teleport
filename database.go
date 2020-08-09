@@ -4,68 +4,83 @@ import (
 	"database/sql"
 	"encoding/csv"
 	"fmt"
-	"io/ioutil"
-	"strconv"
+	"path/filepath"
 	"strings"
 	"time"
-	gotime "time"
 
+	slutil "github.com/hundredwatt/starlib/util"
 	"github.com/hundredwatt/teleport/schema"
 	log "github.com/sirupsen/logrus"
 	"github.com/xo/dburl"
+	"go.starlark.net/starlark"
 )
 
 var (
 	dbs = make(map[string]*sql.DB)
-
-	fullStrategyOpts = StrategyOptions{"full", "", "", ""}
 )
 
-func extractLoadDatabase(source string, destination string, tableName string, strategyOpts StrategyOptions) {
+func extractLoadDatabase(sourceOrPath string, destination string, tableName string) {
+	var source string
+	if strings.Contains(sourceOrPath, "/") {
+		source = fileNameWithoutExtension(filepath.Base(sourceOrPath))
+	} else {
+		source = sourceOrPath
+	}
+
 	fnlog := log.WithFields(log.Fields{
-		"from":     source,
-		"to":       destination,
-		"table":    tableName,
-		"strategy": strategyOpts.Strategy,
+		"from":  source,
+		"to":    destination,
+		"table": tableName,
 	})
 	fnlog.Info("Starting extract-load")
 
 	var sourceTable schema.Table
 	var destinationTable schema.Table
 	var columns []schema.Column
+	var tableExtract TableExtract
 	var csvfile string
 
 	destinationTableName := fmt.Sprintf("%s_%s", source, tableName)
 
 	RunWorkflow([]func() error{
+		func() error { return readTableExtractConfiguration(sourceOrPath, tableName, &tableExtract) },
 		func() error { return connectDatabaseWithLogging(source) },
 		func() error { return connectDatabaseWithLogging(destination) },
-		func() error { return inspectTable(source, tableName, &sourceTable) },
+		func() error { return inspectTable(source, tableName, &sourceTable, tableExtract.ComputedColumns...) },
 		func() error {
 			return createDestinationTableIfNotExists(destination, destinationTableName, &sourceTable, &destinationTable)
 		},
 		func() error {
-			return extractSource(&sourceTable, &destinationTable, strategyOpts, &columns, &csvfile)
+			return extractSource(&sourceTable, &destinationTable, tableExtract, &columns, &csvfile)
 		},
-		func() error { return load(&destinationTable, &columns, &csvfile, strategyOpts) },
+		func() error { return load(&destinationTable, &columns, &csvfile, tableExtract.strategyOpts()) },
 	}, func() {
 		fnlog.WithField("rows", currentWorkflow.RowCounter).Info("Completed extract-load 🎉")
 	})
 }
 
-func extractDatabase(source string, tableName string) {
+func extractDatabase(sourceOrPath string, tableName string) {
+	var source string
+	if strings.Contains(sourceOrPath, "/") {
+		source = fileNameWithoutExtension(filepath.Base(sourceOrPath))
+	} else {
+		source = sourceOrPath
+	}
+
 	log.WithFields(log.Fields{
 		"from":  source,
 		"table": tableName,
 	}).Info("Extracting table data to CSV")
 
 	var table schema.Table
+	var tableExtract TableExtract
 	var csvfile string
 
 	RunWorkflow([]func() error{
+		func() error { return readTableExtractConfiguration(sourceOrPath, tableName, &tableExtract) },
 		func() error { return connectDatabaseWithLogging(source) },
-		func() error { return inspectTable(source, tableName, &table) },
-		func() error { return extractSource(&table, nil, fullStrategyOpts, nil, &csvfile) },
+		func() error { return inspectTable(source, tableName, &table, tableExtract.ComputedColumns...) },
+		func() error { return extractSource(&table, nil, tableExtract, nil, &csvfile) },
 	}, func() {
 		log.WithFields(log.Fields{
 			"file": csvfile,
@@ -84,7 +99,7 @@ func connectDatabaseWithLogging(source string) (err error) {
 	return
 }
 
-func inspectTable(source string, tableName string, table *schema.Table) (err error) {
+func inspectTable(source string, tableName string, table *schema.Table, computedColumns ...ComputedColumn) (err error) {
 	log.WithFields(log.Fields{
 		"database": source,
 		"table":    tableName,
@@ -98,51 +113,69 @@ func inspectTable(source string, tableName string, table *schema.Table) (err err
 	}
 	dumpedTable.Source = source
 
+	for _, computedColumn := range computedColumns {
+		column, err := computedColumn.toColumn()
+		if err != nil {
+			return err
+		}
+		dumpedTable.Columns = append(dumpedTable.Columns, column)
+	}
+
 	*table = *dumpedTable
 	return
 }
 
-func extractSource(sourceTable *schema.Table, destinationTable *schema.Table, strategyOpts StrategyOptions, columns *[]schema.Column, csvfile *string) (err error) {
+func extractSource(sourceTable *schema.Table, destinationTable *schema.Table, tableExtract TableExtract, columns *[]schema.Column, csvfile *string) (err error) {
 	log.WithFields(log.Fields{
 		"database": sourceTable.Source,
 		"table":    sourceTable.Name,
-		"type":     strategyOpts.Strategy,
+		"type":     tableExtract.LoadOptions.Strategy,
 	}).Debug("Exporting CSV of table data")
 
+	var importColumns []schema.Column
 	var exportColumns []schema.Column
+	var computedColumns []ComputedColumn
 
 	if destinationTable != nil {
-		exportColumns = importableColumns(destinationTable, sourceTable)
+		importColumns = importableColumns(destinationTable, sourceTable)
 	} else {
-		exportColumns = sourceTable.Columns
+		importColumns = sourceTable.Columns
+	}
+	for _, column := range importColumns {
+		if column.Options[schema.COMPUTED] != 1 {
+			exportColumns = append(exportColumns, column)
+		} else {
+			for _, computedColumn := range tableExtract.ComputedColumns {
+				if computedColumn.Name == column.Name {
+					computedColumns = append(computedColumns, computedColumn)
+					continue
+				}
+			}
+		}
 	}
 
 	var whereStatement string
-	switch strategyOpts.Strategy {
-	case "full":
+	switch tableExtract.LoadOptions.Strategy {
+	case Full:
 		whereStatement = ""
-	case "modified-only":
-		hoursAgo, err := strconv.Atoi(strategyOpts.HoursAgo)
-		if err != nil {
-			return fmt.Errorf("invalid value `%s` for hours-ago", strategyOpts.HoursAgo)
-		}
-		updateTime := (time.Now().Add(time.Duration(-1*hoursAgo) * time.Hour)).Format("2006-01-02 15:04:05")
-		whereStatement = fmt.Sprintf("%s > '%s'", strategyOpts.ModifiedAtColumn, updateTime)
+	case ModifiedOnly:
+		updateTime := (time.Now().Add(time.Duration(-1*tableExtract.LoadOptions.GoBackHours) * time.Hour)).Format("2006-01-02 15:04:05")
+		whereStatement = fmt.Sprintf("%s > '%s'", tableExtract.LoadOptions.ModifiedAtColumn, updateTime)
 	}
 
-	file, err := exportCSV(sourceTable.Source, sourceTable.Name, exportColumns, whereStatement)
+	file, err := exportCSV(sourceTable.Source, sourceTable.Name, exportColumns, whereStatement, tableExtract.ColumnTransforms, tableExtract.ComputedColumns)
 	if err != nil {
 		return err
 	}
 
 	*csvfile = file
 	if columns != nil {
-		*columns = exportColumns
+		*columns = importColumns
 	}
 	return
 }
 
-func exportCSV(source string, table string, columns []schema.Column, whereStatement string) (string, error) {
+func exportCSV(source string, table string, columns []schema.Column, whereStatement string, columnTransforms map[string][]*starlark.Function, computedColumns []ComputedColumn) (string, error) {
 	database, err := connectDatabase(source)
 	if err != nil {
 		return "", fmt.Errorf("Database Open Error: %w", err)
@@ -160,11 +193,6 @@ func exportCSV(source string, table string, columns []schema.Column, whereStatem
 		columnNames[i] = column.Name
 	}
 
-	tmpfile, err := ioutil.TempFile("/tmp/", fmt.Sprintf("extract-%s-%s", table, source))
-	if err != nil {
-		return "", err
-	}
-
 	query := fmt.Sprintf("SELECT %s FROM %s", strings.Join(columnNames, ", "), table)
 	if whereStatement != "" {
 		query += fmt.Sprintf(" WHERE %s", whereStatement)
@@ -175,82 +203,59 @@ func exportCSV(source string, table string, columns []schema.Column, whereStatem
 		return "", err
 	}
 
-	writer := csv.NewWriter(tmpfile)
-	destination := make([]interface{}, len(columnNames))
-	rawResult := make([]interface{}, len(columnNames))
-	writeBuffer := make([]string, len(columnNames))
-	for i := range rawResult {
-		destination[i] = &rawResult[i]
-	}
-	for rows.Next() {
-		err := rows.Scan(destination...)
-		if err != nil {
-			return "", err
+	return generateCSV(columnNames, fmt.Sprintf("extract-%s-%s-*.csv", table, source), func(writer *csv.Writer) error {
+		destination := make([]interface{}, len(columnNames))
+		rawResult := make([]interface{}, len(columnNames))
+		writeBuffer := make([]string, len(columnNames)+len(computedColumns))
+		for i := range rawResult {
+			destination[i] = &rawResult[i]
 		}
 
-		IncrementRowCounter()
-
-		for i := range columns {
-			if columns[i].DataType == schema.DATE {
-				writeBuffer[i] = rawResult[i].(time.Time).Format("2006-01-02")
-				continue
+		for rows.Next() {
+			err := rows.Scan(destination...)
+			if err != nil {
+				return err
 			}
 
-			switch rawResult[i].(type) {
-			case time.Time:
-				writeBuffer[i] = rawResult[i].(time.Time).UTC().Format(gotime.RFC3339)
-			case int64:
-				writeBuffer[i] = strconv.FormatInt(rawResult[i].(int64), 10)
-			case string:
-				writeBuffer[i] = rawResult[i].(string)
-			case float64:
-				writeBuffer[i] = strconv.FormatFloat(rawResult[i].(float64), 'E', -1, 64)
-			case bool:
-				writeBuffer[i] = strconv.FormatBool(rawResult[i].(bool))
-			case nil:
-				writeBuffer[i] = ""
-			default:
-				writeBuffer[i] = string(rawResult[i].([]byte))
+			IncrementRowCounter()
+
+			for i := range columns {
+				value, err := applyColumnTransforms(rawResult[i], columnTransforms[columns[i].Name])
+				if err != nil {
+					return err
+				}
+
+				writeBuffer[i] = formatForDatabaseCSV(value, columns[i].DataType)
+			}
+
+			for j, computedColumn := range computedColumns {
+				i := len(columns) + j
+
+				value, err := computeColumn(rawResult, columns, computedColumn)
+				if err != nil {
+					return err
+				}
+
+				computedColumnColumn, err := computedColumn.toColumn()
+				if err != nil {
+					return err
+				}
+
+				writeBuffer[i] = formatForDatabaseCSV(value, computedColumnColumn.DataType)
+			}
+
+			err = writer.Write(writeBuffer)
+			if err != nil {
+				return err
+			}
+
+			if Preview && GetRowCounter() >= int64(PreviewLimit) {
+				break
 			}
 		}
 
-		err = writer.Write(writeBuffer)
-		if err != nil {
-			return "", err
-		}
-
-		if Preview && GetRowCounter() >= int64(PreviewLimit) {
-			break
-		}
-	}
-
-	writer.Flush()
-
-	if err := tmpfile.Close(); err != nil {
-		return "", err
-	}
-
-	if Preview {
-		content, err := ioutil.ReadFile(tmpfile.Name())
-		if err != nil {
-			return "", err
-		}
-
-		log.WithFields(log.Fields{
-			"limit": PreviewLimit,
-			"file":  tmpfile.Name(),
-		}).Debug("Results CSV Generated")
-
-		log.Debug(fmt.Sprintf(`CSV Contents:
-	Headers:
-	%s
-
-	Body:
-%s
-				`, strings.Join(columnNames, ","), indentString(string(content))))
-	}
-
-	return tmpfile.Name(), nil
+		return nil
+	})
 }
 
 func connectDatabase(source string) (*sql.DB, error) {
@@ -271,4 +276,66 @@ func connectDatabase(source string) (*sql.DB, error) {
 
 	dbs[source] = database
 	return dbs[source], nil
+}
+
+func applyColumnTransforms(value interface{}, columnTransforms []*starlark.Function) (interface{}, error) {
+	if len(columnTransforms) == 0 {
+		return value, nil
+	}
+
+	slvalue, err := slutil.Marshal(value)
+	if err != nil {
+		return "", err
+	}
+
+	for _, function := range columnTransforms {
+		slvalue, err = starlark.Call(GetThread(), function, starlark.Tuple{slvalue}, nil)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	value, err = slutil.Unmarshal(slvalue)
+	if err != nil {
+		return "", err
+	}
+
+	return value, nil
+}
+
+func computeColumn(rawResult []interface{}, columns []schema.Column, computedColumn ComputedColumn) (interface{}, error) {
+	row := make(map[string]interface{})
+	for i := range columns {
+		row[columns[i].Name] = rawResult[i]
+	}
+
+	arg, err := slutil.Marshal(row)
+	if err != nil {
+		return "", err
+	}
+
+	slvalue, err := starlark.Call(GetThread(), computedColumn.Function, starlark.Tuple{arg}, nil)
+	if err != nil {
+		return "", err
+	}
+
+	value, err := slutil.Unmarshal(slvalue)
+	if err != nil {
+		return "", err
+	}
+
+	return value, nil
+}
+
+func formatForDatabaseCSV(value interface{}, dataType schema.DataType) string {
+	if dataType == schema.DATE {
+		switch value.(type) {
+		case string:
+			return value.(string)
+		case time.Time:
+			return value.(time.Time).Format("2006-01-02")
+		}
+	}
+
+	return formatForCSV(value)
 }

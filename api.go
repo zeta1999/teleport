@@ -10,9 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
-	"strconv"
 	"strings"
-	"time"
 
 	slutil "github.com/hundredwatt/starlib/util"
 	"github.com/hundredwatt/teleport/schema"
@@ -404,11 +402,6 @@ func updatePagination(response *http.Response, body interface{}, endpoint *Endpo
 }
 
 func saveResultsToCSV(endpointName string, results []dataObject, columns *[]schema.Column, csvfile *string) error {
-	tmpfile, err := ioutil.TempFile("/tmp/", fmt.Sprintf("extract-api-%s-*.csv", strings.TrimSuffix(filepath.Base(endpointName), filepath.Ext(endpointName))))
-	if err != nil {
-		return err
-	}
-
 	headers := make([]string, 0)
 	if columns == nil {
 		for key := range results[0] {
@@ -420,67 +413,27 @@ func saveResultsToCSV(endpointName string, results []dataObject, columns *[]sche
 		}
 	}
 
-	writer := csv.NewWriter(tmpfile)
-	writeBuffer := make([]string, len(headers))
+	name := fmt.Sprintf("extract-api-%s-*.csv", strings.TrimSuffix(filepath.Base(endpointName), filepath.Ext(endpointName)))
 
-	for _, object := range results {
-		for i, key := range headers {
-			switch object[key].(type) {
-			case string:
-				writeBuffer[i] = string(object[key].(string))
-			case nil:
-				writeBuffer[i] = ""
-			case bool:
-				writeBuffer[i] = strconv.FormatBool(object[key].(bool))
-			case int:
-				writeBuffer[i] = strconv.Itoa(object[key].(int))
-			case int64:
-				writeBuffer[i] = strconv.FormatInt(object[key].(int64), 10)
-			case map[string]interface{}:
-				writeBuffer[i] = ""
-			case []interface{}:
-				writeBuffer[i] = ""
-			case time.Time:
-				writeBuffer[i] = object[key].(time.Time).Format(time.RFC3339)
-			default:
-				writeBuffer[i] = string(object[key].([]byte))
+	filename, err := generateCSV(headers, name, func(writer *csv.Writer) error {
+		writeBuffer := make([]string, len(headers))
+
+		for _, object := range results {
+			for i, key := range headers {
+				writeBuffer[i] = formatForCSV(object[key])
+			}
+
+			err := writer.Write(writeBuffer)
+			if err != nil {
+				return err
 			}
 		}
-		err = writer.Write(writeBuffer)
-		if err != nil {
-			return err
-		}
-	}
 
-	writer.Flush()
+		return nil
+	})
+	*csvfile = filename
 
-	if err := tmpfile.Close(); err != nil {
-		return err
-	}
-
-	if Preview {
-		content, err := ioutil.ReadFile(tmpfile.Name())
-		if err != nil {
-			return err
-		}
-
-		log.WithFields(log.Fields{
-			"limit": PreviewLimit,
-			"file":  tmpfile.Name(),
-		}).Debug("Results CSV Generated")
-
-		log.Debug(fmt.Sprintf(`CSV Contents:
-	Headers:
-	%s
-
-	Body:
-%s
-				`, strings.Join(headers, ","), indentString(string(content))))
-	}
-
-	*csvfile = tmpfile.Name()
-
-	return nil
+	return err
 }
 
 func unmarshalBody(responseType string, raw io.ReadCloser) (output interface{}, err error) {

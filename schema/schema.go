@@ -53,6 +53,7 @@ const (
 	PRECISION Option = "precision"
 	SCALE     Option = "scale"
 	BYTES     Option = "bytes"
+	COMPUTED  Option = "computed"
 )
 
 // MaxLength represents the maximum possible length for the data type
@@ -99,7 +100,25 @@ func DumpTableMetadata(database *sql.DB, tableName string) (*Table, error) {
 	return &table, nil
 }
 
-func determineDataType(columnType *sql.ColumnType) (DataType, error) {
+func ParseDatabaseType(name string, databaseType string) (DataType, map[Option]int, error) {
+	computedColumn := computedColumn{name, databaseType}
+
+	options := make(map[Option]int)
+
+	dataType, err := determineDataType(&computedColumn)
+	if err != nil {
+		return dataType, options, err
+	}
+
+	options, err = determineOptions(&computedColumn, dataType)
+	if err != nil {
+		return dataType, options, err
+	}
+
+	return dataType, options, nil
+}
+
+func determineDataType(columnType sqlColumn) (DataType, error) {
 	databaseTypeName := strings.ToLower(columnType.DatabaseTypeName())
 	intRegex := regexp.MustCompile(`^(big|small|medium)?(int|integer|serial)(2|4|8)?$`)
 	floatRegex := regexp.MustCompile(`^(float|double( precision)?|real)(4|8)?$`)
@@ -137,7 +156,7 @@ func determineDataType(columnType *sql.ColumnType) (DataType, error) {
 	return "", ErrColumnNotSupported
 }
 
-func determineOptions(columnType *sql.ColumnType, dataType DataType) (map[Option]int, error) {
+func determineOptions(columnType sqlColumn, dataType DataType) (map[Option]int, error) {
 	if options, ok := specialTypeOptions(strings.ToLower(columnType.DatabaseTypeName())); ok {
 		return options, nil
 	}
@@ -334,4 +353,32 @@ func mysqlSpecialTypeOptions(databaseTypeName string) (map[Option]int, bool) {
 	}
 
 	return options, false
+}
+
+type sqlColumn interface {
+	DatabaseTypeName() string
+	Name() string
+	Length() (int64, bool)
+	DecimalSize() (int64, int64, bool)
+}
+
+type computedColumn struct {
+	name             string
+	databaseTypeName string
+}
+
+func (cc *computedColumn) Name() string {
+	return cc.name
+}
+
+func (cc *computedColumn) DatabaseTypeName() string {
+	return cc.databaseTypeName
+}
+
+func (cc *computedColumn) Length() (int64, bool) {
+	return -1, false
+}
+
+func (cc *computedColumn) DecimalSize() (int64, int64, bool) {
+	return -1, -1, false
 }

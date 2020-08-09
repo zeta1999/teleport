@@ -1,12 +1,18 @@
 package main
 
 import (
-	"bytes"
+	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
+)
+
+var (
+	hook = test.NewGlobal()
 )
 
 func init() {
@@ -18,24 +24,36 @@ func expectLogMessage(t *testing.T, message string, fn func()) {
 }
 
 func expectLogMessages(t *testing.T, messages []string, fn func()) {
-	originalLevel := log.GetLevel()
-	log.SetLevel(log.DebugLevel)
-	logBuffer := redirectLogs(t, fn)
+	redirectLogs(t, fn)
 
 	for _, message := range messages {
-		assert.Contains(t, logBuffer.String(), message)
+		for _, entry := range hook.Entries {
+			logMessage, err := entry.String()
+			assert.NoError(t, err)
+
+			if strings.Contains(logMessage, message) {
+				return
+			}
+		}
 	}
-	log.SetLevel(originalLevel)
+
+	assert.Fail(t, "%s not found in logs", messages)
 }
 
-func redirectLogs(t *testing.T, fn func()) (buffer bytes.Buffer) {
-	log.SetOutput(&buffer)
+func redirectLogs(t *testing.T, fn func()) {
+	log.SetOutput(ioutil.Discard)
 	defer log.SetOutput(os.Stdout)
+
+	defer log.SetLevel(log.GetLevel())
 	log.SetLevel(log.DebugLevel)
-	defer log.SetLevel(log.WarnLevel)
+
+	log.StandardLogger().ExitFunc = func(int) {}
+
+	hook.Reset()
 
 	fn()
 
-	t.Log(buffer.String())
-	return
+	for _, entry := range hook.Entries {
+		t.Log(entry.String())
+	}
 }

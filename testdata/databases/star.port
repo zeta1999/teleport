@@ -1,0 +1,2 @@
+Table("*") \
+  .LoadStrategy(ModifiedOnly, primary_key='id', modified_at_column='updated_at', go_back_hours=36)

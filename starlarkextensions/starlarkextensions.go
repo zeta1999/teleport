@@ -4,6 +4,8 @@ import (
 	"strconv"
 
 	time "github.com/hundredwatt/starlib/time"
+	json "github.com/hundredwatt/starlib/encoding/json"
+	yaml "github.com/hundredwatt/starlib/encoding/yaml"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 )
@@ -13,9 +15,17 @@ func GetExtensions() starlark.StringDict {
 	timeLoaded, _ := time.LoadModule()
 	timeModule := timeLoaded["time"].(*starlarkstruct.Module)
 
+	jsonLoaded, _ := json.LoadModule()
+	jsonModule := jsonLoaded["json"].(*starlarkstruct.Module)
+
+	yamlLoaded, _ := yaml.LoadModule()
+	yamlModule := yamlLoaded["yaml"].(*starlarkstruct.Module)
+
 	return starlark.StringDict{
 		"dig":  starlark.NewBuiltin("dig", dig),
 		"time": timeModule,
+		"json": jsonModule,
+		"yaml": yamlModule,
 	}
 }
 

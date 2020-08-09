@@ -101,7 +101,7 @@ Set the `-preview` flag with any command to perform a dry-run.
 # Pad Structure
 
 Pads have this directory structure:
-    
+
     pad-name/
       |- apis/
         |- exampleapi1.port
@@ -109,7 +109,9 @@ Pads have this directory structure:
         |- ...
       |- databases/
         |- exampledb1.yml
+        |- exampledb1.port
         |- exampledb2.yml
+        |- exampledb2.port
         |- ...
       |- transforms/
         |- exampletrasnform1.sql
@@ -154,7 +156,35 @@ def Transform(response):
 </details>
 
 
-For Database configurations, Teleport supports the following file formats: YAML, JSON, TOML, EDN. For full documentation on database configuration, [visit the wiki](https://github.com/hundredwatt/teleport/wiki/Database-Configuration)
+For Database configurations, 2 files are used:
+
+1. A connection file that configurations the connection options. Teleport supports the following file formats: YAML, JSON, TOML, EDN.
+2. A "Port" file for configuration extraction options for individual tables when using the database as an extract source.
+
+
+For full documentation on database configuration, [visit the wiki](https://github.com/hundredwatt/teleport/wiki/Database-Configuration)
+
+<details><summary>Example "Port" file for extracting a database table</summary>
+
+```python
+def createdDate(row):
+  return row['created_at'].strftime("%F")
+
+def toPercent(value):
+  return value * 100
+
+Table("widgets") \
+  .LoadStrategy(Full) \
+  .ComputeColumn("created_date", createdDate, "DATE")
+
+Table("users") \
+  .LoadStrategy(ModifiedOnly, primary_key='id', modified_at_column='updated_at', go_back_hours=36) \
+  .TransformColumn("ranking", toPercent)
+
+Table("*") \ # Configures all other tables
+  .LoadStrategy(Incremental, primary_key='id')
+```
+</details>
 
 For Transforms, Teleport supports SQL statements and that create a table named based on the filename without extension. To update a transform table, use `teleport transform -source <source> -table <table>`
 

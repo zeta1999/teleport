@@ -50,7 +50,7 @@ func main() {
 		return
 	}
 
-	readConfiguration()
+	readDatabaseConnectionConfiguration()
 
 	switch opts.Command {
 	case "version", "-v":
@@ -95,7 +95,7 @@ func main() {
 
 	// Extract data from a source and load into datawarehouse
 	case "extract-load", "extract-load-db":
-		extractLoadDatabase(opts.FromSource, opts.ToSource, opts.TableName, parseStrategyOptions())
+		extractLoadDatabase(opts.FromSource, opts.ToSource, opts.TableName)
 	case "extract-load-api":
 		extractLoadAPI(opts.FromSource, opts.ToSource)
 

@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 )
 
@@ -46,22 +45,6 @@ func parseArguments() CliOptions {
 	flag.CommandLine.Parse(os.Args[2:])
 
 	return options
-}
-
-func parseStrategyOptions() (strategyOpts StrategyOptions) {
-	flag.StringVar(&strategyOpts.Strategy, "strategy", "full", "data update strategy to be used when extracting and/or loading (full, modified-only)")
-	flag.StringVar(&strategyOpts.PrimaryKey, "primary-key", "id", "column name of primary key to be used when updating data")
-	flag.StringVar(&strategyOpts.ModifiedAtColumn, "modified-at-column", "updated_at", "column name of modified_at column to be used with modified-only strategy")
-	flag.StringVar(&strategyOpts.HoursAgo, "hours-ago", "36", "set the number of hours to look back for modified records")
-	flag.CommandLine.Parse(os.Args[2:])
-
-	switch strategyOpts.Strategy {
-	case "full", "modified-only":
-	default:
-		log.Fatal("Invalid strategy, acceptable options: full, modified-only")
-	}
-
-	return
 }
 
 func help() {

@@ -1,0 +1,7 @@
+def extractTimeZoneFromSettings(row):
+  object = json.loads(row['options'])
+  return object['time_zone']
+
+Table("actions") \
+  .LoadStrategy(Full) \
+  .ComputeColumn("time_zone", extractTimeZoneFromSettings)
