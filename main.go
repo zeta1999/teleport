@@ -7,6 +7,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/hundredwatt/teleport/schema"
+	"github.com/hundredwatt/teleport/secrets"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	log "github.com/sirupsen/logrus"
@@ -24,6 +25,9 @@ var (
 
 	// Build sets the build tag
 	Build string
+
+	// SecretsFile sets the location of the secrets file in the Pad directory
+	SecretsFile string = "secrets.txt"
 )
 
 func main() {
@@ -33,6 +37,11 @@ func main() {
 
 	if len(os.Args) == 1 {
 		help()
+		return
+	}
+
+	if os.Args[1] == "secrets" {
+		secretsCLI()
 		return
 	}
 
@@ -50,6 +59,7 @@ func main() {
 		return
 	}
 
+	setEnvironmentValuesFromSecretsFile()
 	readDatabaseConnectionConfiguration()
 
 	switch opts.Command {
@@ -139,4 +149,31 @@ func generateProjectDirectory(padpath string) {
 	}
 
 	log.WithField("padpath", padpath).Info("Pad generated successfully")
+}
+
+func secretsSettings() secrets.Settings {
+	return secrets.Settings{
+		"TELEPORT (https://github.com/hundredwatt/teleport)",
+		"TELEPORT_SECRET_KEY",
+		filepath.Join(os.Getenv("PADPATH"), SecretsFile),
+	}
+}
+
+func setEnvironmentValuesFromSecretsFile() {
+	settings := secretsSettings()
+
+	_, err := os.Stat(settings.SecretsFile)
+	if err != nil {
+		// secrets file not found
+		return
+	}
+
+	body, err := secrets.ReadSecretsFile(secretsSettings())
+	if err != nil {
+		log.Warnf("unable to decrypt secrets file: %s", err)
+	}
+
+	for _, variable := range body {
+		os.Setenv(variable.Key, variable.Value)
+	}
 }

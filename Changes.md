@@ -6,6 +6,7 @@
 * (API) Helper method for formatting timestamps as strings using C-style strftime: `time.strftime()`
 * (Database) Configuration language for extracting from databases
 * (Database) ComputeColumn() and TransformColumn() configuration methods
+* CLI command `teleport secrets` to manage storing encrypted ENV secrets
 
 ## 0.0.1-alpha.1
 

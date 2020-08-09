@@ -4,6 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
+
+	"github.com/hundredwatt/teleport/secrets"
+	log "github.com/sirupsen/logrus"
 )
 
 type CliOptions struct {
@@ -51,6 +54,7 @@ func help() {
 	fmt.Println("usage: teleport [COMMAND] [OPTIONS]")
 	fmt.Println("Commands:")
 	fmt.Println("  new <path/to/pad>\tgenerate a new pad folder at the given path")
+	fmt.Println("  secrets <command>\tmanage encrypted ENV variables for your pad")
 	fmt.Println("  help\t\t\tshow this message")
 	fmt.Println("  version\t\tprint version information")
 	fmt.Println("")
@@ -84,7 +88,7 @@ func version() {
 func listCommands() {
 	fmt.Println("")
 	fmt.Println("Teleport commands")
-	fmt.Println("new\thelp\tversion")
+	fmt.Println("new\tsecrets\thelp\tversion")
 	fmt.Println("")
 	fmt.Println("Extract commands")
 	fmt.Println("extract-db\textract-api")
@@ -98,4 +102,83 @@ func listCommands() {
 	fmt.Println("Database commands")
 	fmt.Println("about-db\tdb-terminal\tlist-tables")
 	fmt.Println("drop-table\tdescribe-table")
+}
+
+func secretsCLI() {
+	if len(os.Args) < 3 {
+		secretsHelp()
+		return
+	}
+
+	switch os.Args[2] {
+	case "generate_secret_key":
+		secretKey, err := secrets.GenerateSecretKey()
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println("# Store this ENV value somewhere safe, do not commit it to the repository in plain text.")
+		fmt.Println("# This ENV value must be set in all environments that will need to use the decrypted secrets.")
+		fmt.Println()
+		fmt.Printf("%s=%s\n", "TELEPORT_SECRET_KEY", secretKey)
+	case "init":
+		err := secrets.InitializeSecretsFile(secretsSettings())
+		if err != nil {
+			log.Fatal(err)
+		}
+	case "show":
+		body, err := secrets.ReadSecretsFile(secretsSettings())
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for _, variable := range body {
+			fmt.Println(variable.ToEnvFormat())
+		}
+	case "set":
+		var (
+			key   string
+			value string
+		)
+		switch len(os.Args) {
+		case 4:
+			// TODO prompt user for secret
+			fmt.Println("Not implemented yet")
+			return
+		case 5:
+			key = os.Args[3]
+			value = os.Args[4]
+
+			err := secrets.UpdateSecret(secretsSettings(), key, value)
+			if err != nil {
+				log.Fatal(err)
+			}
+		default:
+			fmt.Println("Wrong number of options provided to `teleport secrets set`")
+			fmt.Println("Syntax:")
+			fmt.Println("  teleport secrets set [KEY] <[VALUE]>")
+		}
+	case "delete":
+		if len(os.Args) != 4 {
+			fmt.Println("Wrong number of options provided to `teleport secrets delete`")
+			fmt.Println("Syntax:")
+			fmt.Println("  teleport secrets delete [KEY]")
+			return
+		}
+		err := secrets.DeleteSecret(secretsSettings(), os.Args[3])
+		if err != nil {
+			log.Fatal(err)
+		}
+	default:
+		secretsHelp()
+	}
+}
+
+func secretsHelp() {
+	fmt.Println("usage: teleport secrets [COMMAND] <[ARGS]...>")
+	fmt.Println("Commands:")
+	fmt.Println("  generate_secret_key\tgenerate and print a random string to use as the encryption secret key")
+	fmt.Println("  initialize\t\tadd an empty encrypted secrets file to the current Pad directory")
+	fmt.Println("  show\t\t\tdecrypt and print all the items in the secrets file")
+	fmt.Println("  set [KEY] <[VALUE]>\tcreate or update a secret by key; password prompt will be used if VALUE is not provided in the command")
+	fmt.Println("  delete [KEY]\t\tdelete a secret by key")
 }
