@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"os"
+	"syscall"
 
 	"github.com/hundredwatt/teleport/secrets"
 	log "github.com/sirupsen/logrus"
@@ -141,9 +143,16 @@ func secretsCLI() {
 		)
 		switch len(os.Args) {
 		case 4:
-			// TODO prompt user for secret
-			fmt.Println("Not implemented yet")
-			return
+			key = os.Args[3]
+			value, err := promptForValue()
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			err = secrets.UpdateSecret(secretsSettings(), key, value)
+			if err != nil {
+				log.Fatal(err)
+			}
 		case 5:
 			key = os.Args[3]
 			value = os.Args[4]
@@ -181,4 +190,44 @@ func secretsHelp() {
 	fmt.Println("  show\t\t\tdecrypt and print all the items in the secrets file")
 	fmt.Println("  set [KEY] <[VALUE]>\tcreate or update a secret by key; password prompt will be used if VALUE is not provided in the command")
 	fmt.Println("  delete [KEY]\t\tdelete a secret by key")
+}
+
+func promptForValue() (string, error) {
+	fmt.Print("Value: ")
+
+	attrs := syscall.ProcAttr{
+		Dir:   "",
+		Env:   []string{},
+		Files: []uintptr{os.Stdin.Fd(), os.Stdout.Fd(), os.Stderr.Fd()},
+		Sys:   nil}
+	var ws syscall.WaitStatus
+
+	pid, err := syscall.ForkExec(
+		"/bin/stty",
+		[]string{"stty", "-echo"},
+		&attrs)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = syscall.Wait4(pid, &ws, 0, nil)
+	if err != nil {
+		return "", err
+	}
+
+	reader := bufio.NewReader(os.Stdin)
+	value, err := reader.ReadString('\n')
+	if err != nil {
+		return "", err
+	}
+
+	pid, err = syscall.ForkExec(
+		"/bin/stty",
+		[]string{"stty", "echo"},
+		&attrs)
+	if err != nil {
+		return "", err
+	}
+
+	return value, nil
 }
