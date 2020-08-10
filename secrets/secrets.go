@@ -8,6 +8,7 @@ import (
 	"crypto/sha512"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -36,6 +37,8 @@ type Body []Variable
 type Variable struct {
 	Key   string
 	Value string
+
+	encryptedValue string
 }
 
 type header struct {
@@ -43,9 +46,13 @@ type header struct {
 	Salt    string
 }
 
+var nonceSize = 12
+
 // InitializeSecretsFile creates an empty secrets file
 func InitializeSecretsFile(settings Settings) error {
-	return writeSecretsFile(settings, make(Body, 0))
+	header := header{Version, ""}
+	header.resetSalt()
+	return writeSecretsFile(settings, header, make(Body, 0))
 }
 
 // GenerateSecretKey generates a random string for use as the Secret Key
@@ -57,7 +64,7 @@ func GenerateSecretKey() (string, error) {
 	for i := range secret {
 		randint, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
 		if err != nil {
-      return "", err
+			return "", err
 		}
 		secret[i] = charset[randint.Int64()]
 	}
@@ -67,14 +74,19 @@ func GenerateSecretKey() (string, error) {
 
 // UpdateSecret adds updates the secret corresponding to key with the given value
 func UpdateSecret(settings Settings, key string, value string) error {
+	header, err := readHeader(settings)
+	if err != nil {
+		return err
+	}
+
 	body, err := ReadSecretsFile(settings)
 	if err != nil {
 		return err
 	}
 
-	body = append(body, Variable{key, value})
+	body = append(body, Variable{Key: key, Value: value})
 
-	err = writeSecretsFile(settings, body)
+	err = writeSecretsFile(settings, header, body)
 	if err != nil {
 		return err
 	}
@@ -84,6 +96,11 @@ func UpdateSecret(settings Settings, key string, value string) error {
 
 // DeleteSecret deletes the secret with the given key
 func DeleteSecret(settings Settings, key string) error {
+	header, err := readHeader(settings)
+	if err != nil {
+		return err
+	}
+
 	body, err := ReadSecretsFile(settings)
 	if err != nil {
 		return err
@@ -103,7 +120,7 @@ func DeleteSecret(settings Settings, key string) error {
 	newBody := body[:index]
 	newBody = append(newBody, body[index+1:]...)
 
-	err = writeSecretsFile(settings, newBody)
+	err = writeSecretsFile(settings, header, newBody)
 	if err != nil {
 		return err
 	}
@@ -236,12 +253,17 @@ func (v *Variable) ToEnvFormat() string {
 }
 
 func (v *Variable) encryptValueAndEncode(key []byte) (string, error) {
-	encryptedValue, err := encrypt(key, v.Value)
-	if err != nil {
-		return "", err
-	}
+	secretData := make([]string, 2)
+	if v.encryptedValue != "" {
+		secretData = []string{v.Key, v.encryptedValue}
+	} else {
+		encryptedValue, err := encrypt(key, v.Value)
+		if err != nil {
+			return "", err
+		}
 
-	secretData := []string{v.Key, encryptedValue}
+		secretData = []string{v.Key, encryptedValue}
+	}
 
 	secretBytes, err := json.Marshal(secretData)
 	if err != nil {
@@ -260,17 +282,15 @@ func decodeAndDecryptVariable(key []byte, encoded string) (variable Variable, er
 	}
 
 	variable.Key = secretData[0]
-
 	variable.Value, err = decrypt(key, secretData[1])
+	variable.encryptedValue = secretData[1]
 
 	return
 }
 
-func writeSecretsFile(settings Settings, body Body) error {
-	header := header{Version, ""}
-	err := header.resetSalt()
-	if err != nil {
-		return err
+func writeSecretsFile(settings Settings, header header, body Body) error {
+	if len(header.Salt) < 32 {
+		return errors.New("secrets file not initialized, run `secrets init` first")
 	}
 
 	headerBytes, err := json.Marshal(&header)
@@ -309,7 +329,7 @@ func encrypt(key []byte, plaintext string) (string, error) {
 		return "", err
 	}
 
-	nonce := make([]byte, 12)
+	nonce := make([]byte, nonceSize)
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
 		return "", err
 	}
@@ -335,8 +355,8 @@ func decrypt(key []byte, ciphertextString string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	nonce := ciphertext[:12]
-	ciphertext = ciphertext[12:]
+	nonce := ciphertext[:nonceSize]
+	ciphertext = ciphertext[nonceSize:]
 
 	aesgcm, err := cipher.NewGCM(block)
 	if err != nil {

@@ -96,6 +96,29 @@ func TestErrorOnWrongSecretKey(t *testing.T) {
 	})
 }
 
+func TestDoesNotReEncryptAllValuesOnUpdate(t *testing.T) {
+	withSecretsFile(t, func(settings secrets.Settings) {
+		err := secrets.UpdateSecret(settings, "ATOKEN", "SAMPLEFVePBeox1G")
+		assert.NoError(t, err)
+		err = secrets.UpdateSecret(settings, "BTOKEN", "SAMPLEFtp0Hx1j3q")
+		assert.NoError(t, err)
+		originalContents, err := ioutil.ReadFile(settings.SecretsFile)
+		assert.NoError(t, err)
+
+		err = secrets.UpdateSecret(settings, "CTOKEN", "SAMPLEinUglz69ZhE")
+		assert.NoError(t, err)
+		finalContents, err := ioutil.ReadFile(settings.SecretsFile)
+		assert.NoError(t, err)
+
+		// Since keys are sorted alphabetically and updating a new secret does not
+		// modify the encryptedValues of the other secrets, the original file contents
+		// (with ATOKEN and BTOKEN) should still be intact when we add a key that comes
+		// later in the alphabet to the end of the file.
+		assert.Contains(t, string(finalContents), string(originalContents))
+	})
+
+}
+
 func withSecretsFile(t *testing.T, testfn func(secrets.Settings)) {
 	tmpFile, err := ioutil.TempFile(os.TempDir(), "secrets")
 	if err != nil {

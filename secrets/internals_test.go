@@ -1,7 +1,6 @@
 package secrets
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -24,7 +23,7 @@ func TestVariableEncryptAndDecrypt(t *testing.T) {
 	key, err := deriveKey(settings.KeyEnvVariable, salt)
 	assert.NoError(t, err)
 
-	variable := Variable{sampleKey, sampleValue}
+	variable := Variable{Key: sampleKey, Value: sampleValue}
 	encoded, err := variable.encryptValueAndEncode(key)
 	assert.NoError(t, err)
 
@@ -51,37 +50,4 @@ func TestDoesNotReuseNonce(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.NotEqual(t, ciphertext2, ciphertext1)
-}
-
-func TestResetsSaltOnEachUpdate(t *testing.T) {
-	withSecretsFile(t, func(settings Settings) {
-		header, err := readHeader(settings)
-		assert.NoError(t, err)
-		salt1 := header.Salt
-
-		err = UpdateSecret(settings, sampleKey, sampleValue)
-		assert.NoError(t, err)
-
-		header, err = readHeader(settings)
-		assert.NoError(t, err)
-		salt2 := header.Salt
-
-		assert.NotEqual(t, salt2, salt1)
-	})
-}
-
-func withSecretsFile(t *testing.T, testfn func(Settings)) {
-	tmpFile, err := ioutil.TempFile(os.TempDir(), "secrets")
-	if err != nil {
-		t.Fatal("cannot create temporary file:", err)
-	}
-	defer os.Remove(tmpFile.Name())
-
-	os.Setenv(settings.KeyEnvVariable, "SAMPLExU1lBMkZtS2czMUR3")
-	defer os.Unsetenv(settings.KeyEnvVariable)
-
-	settings.SecretsFile = tmpFile.Name()
-	InitializeSecretsFile(settings)
-
-	testfn(settings)
 }
