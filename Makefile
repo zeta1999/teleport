@@ -1,5 +1,5 @@
 NAME=teleport
-VERSION=0.0.1-alpha.1
+VERSION=0.0.1-alpha.2
 BUILD=$(shell git rev-parse --short HEAD)
 
 # Use linker flags to provide version/build settings
@@ -17,26 +17,15 @@ prepare:
 test:
 	@go test
 
-## private_release: release to S3 (until the GitHub repo is made public)
-private_release: deb rpm xbinary binary
-	@echo Releasing $(NAME) $(VERSION)
-	@aws s3 cp --acl public-read teleport_$(VERSION)_amd64.deb s3://teleport-releases/v$(VERSION)/
-	@aws s3 cp --acl public-read teleport_$(subst -,_,$(VERSION))_x86_64.rpm s3://teleport-releases/v$(VERSION)/
-	@aws s3 cp --acl public-read tmp/$(NAME)_$(VERSION).macos.tbz s3://teleport-releases/v$(VERSION)/
-	@aws s3 cp --acl public-read tmp/$(NAME)_$(VERSION).linux-x86_64.tar.gz s3://teleport-releases/v$(VERSION)/
-	@aws s3 cp --acl public-read Dockerfile s3://teleport-releases/v$(VERSION)/
-	@aws s3 cp --acl public-read scripts/install.sh s3://teleport-releases/v$(VERSION)/
-	@aws s3 cp --acl public-read s3://teleport-releases/v$(VERSION)/install.sh s3://teleport-releases/latest/install.sh
-
 ## release: build all binaries and release to
 release: deb rpm build xbinary binary
 	@echo Releasing $(NAME) $(VERSION)
-	@hub release create v$(VERSION) \
-		-a teleport_$(VERSION)_amd64.deb \
-		-a teleport_$(subst -,_,$(VERSION))_x86_64.rpm \
-		-a tmp/$(NAME)_$(VERSION).macos.tbz \
-		-a tmp/$(NAME)_$(VERSION).linux-x86_64.tar.gz \
-		-o
+	# @hub release create v$(VERSION) \
+	# 	-a teleport_$(VERSION)_amd64.deb \
+	# 	-a teleport_$(subst -,_,$(VERSION))_x86_64.rpm \
+	# 	-a tmp/$(NAME)_$(VERSION).macos.tbz \
+	# 	-a tmp/$(NAME)_$(VERSION).linux-x86_64.tar.gz \
+	# 	-o
 
 ## build: build the binary
 build: clean prepare

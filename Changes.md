@@ -2,6 +2,8 @@
 
 ## HEAD
 
+## 0.0.1-alpha.2
+
 * (API) New Response Type `"csv"` for parsing a CSV to table format
 * (API) Helper method for formatting timestamps as strings using C-style strftime: `time.strftime()`
 * (Database) Configuration language for extracting from databases

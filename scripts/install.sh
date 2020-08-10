@@ -7,7 +7,7 @@
 
 # When releasing Teleport, the releaser should update this version number
 # AFTER they upload new binaries.
-VERSION="0.0.1-alpha.1"
+VERSION="0.0.1-alpha.2"
 BREW=$(command -v brew)
 
 set -e
@@ -25,7 +25,7 @@ function copy_binary() {
 function install_teleport() {
   if [[ "$OSTYPE" == "linux-gnu" ]]; then
       set -x
-      curl -fsSL https://teleport-releases.s3.amazonaws.com/v$VERSION/teleport_$VERSION.linux-x86_64.tar.gz | tar -xzv teleport_$VERSION.linux-x86_64/teleport
+      curl -fsSL https://github.com/hundredwatt/teleport/releases/download/v$VERSION/teleport_$VERSION.linux-x86_64.tar.gz | tar -xzv teleport_$VERSION.linux-x86_64/teleport
       mv teleport_$VERSION.linux-x86_64/teleport teleport
       rmdir teleport_$VERSION.linux-x86_64/
       copy_binary
@@ -36,7 +36,7 @@ function install_teleport() {
     #    brew install teleport-data/tap/teleport
     #else
         set -x
-        curl -fsSL https://teleport-releases.s3.amazonaws.com/v$VERSION/teleport_$VERSION.macos.tbz | tar -xzv teleport_$VERSION.macos/teleport
+        curl -fsSL https://github.com/hundredwatt/teleport/releases/download/v$VERSION/teleport_$VERSION.macos.tbz | tar -xzv teleport_$VERSION.macos/teleport
         mv teleport_$VERSION.macos/teleport teleport
         rmdir teleport_$VERSION.macos/
         copy_binary
