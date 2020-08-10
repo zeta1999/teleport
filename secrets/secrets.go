@@ -21,7 +21,7 @@ import (
 )
 
 // Version contains the current encryption process version
-var Version = 1
+var Version = 2
 
 // Settings contains application-specific settings
 type Settings struct {
@@ -47,6 +47,8 @@ type header struct {
 }
 
 var nonceSize = 12
+
+var applicationSalt = "3p7cGstorIAZUeSOiOf60yWeYKi2wPpyvfAjMnH+dbM="
 
 // InitializeSecretsFile creates an empty secrets file
 func InitializeSecretsFile(settings Settings) error {
@@ -158,7 +160,7 @@ func ReadSecretsFile(settings Settings) (body Body, err error) {
 				return body, headererr
 			}
 
-			key, headererr = deriveKey(settings.KeyEnvVariable, header.Salt)
+			key, headererr = deriveKey(settings, header)
 			if headererr != nil {
 				return body, headererr
 			}
@@ -175,6 +177,16 @@ func ReadSecretsFile(settings Settings) (body Body, err error) {
 	}
 
 	return body, nil
+}
+
+// EncryptionVersion returns the encryption version used in the secrets file
+func EncryptionVersion(settings Settings) (int, error) {
+	header, err := readHeader(settings)
+	if err != nil {
+		return -1, err
+	}
+
+	return header.Version, nil
 }
 
 func readHeader(settings Settings) (header header, err error) {
@@ -293,6 +305,16 @@ func writeSecretsFile(settings Settings, header header, body Body) error {
 		return errors.New("secrets file not initialized, run `secrets init` first")
 	}
 
+	if header.Version < Version {
+		// update header version
+		header.Version = Version
+
+		// reset cached encryped values
+		for i := range body {
+			body[i].encryptedValue = ""
+		}
+	}
+
 	headerBytes, err := json.Marshal(&header)
 	headerString := strings.Join(split(base64.StdEncoding.EncodeToString(headerBytes), 64), "\n")
 
@@ -306,7 +328,7 @@ func writeSecretsFile(settings Settings, header header, body Body) error {
 -- BODY --
 `, settings.AppName, settings.KeyEnvVariable, headerString)
 
-	key, err := deriveKey(settings.KeyEnvVariable, header.Salt)
+	key, err := deriveKey(settings, header)
 	if err != nil {
 		return err
 	}
@@ -371,15 +393,19 @@ func decrypt(key []byte, ciphertextString string) (string, error) {
 	return string(plaintext), nil
 }
 
-func deriveKey(envVariable string, saltString string) ([]byte, error) {
-	secret, found := os.LookupEnv(envVariable)
+func deriveKey(settings Settings, header header) ([]byte, error) {
+	secret, found := os.LookupEnv(settings.KeyEnvVariable)
 	if !found {
-		return []byte{}, fmt.Errorf("%s not set", envVariable)
+		return []byte{}, fmt.Errorf("%s not set", settings.KeyEnvVariable)
 	}
 
-	salt, err := base64.StdEncoding.DecodeString(saltString)
+	salt, err := base64.StdEncoding.DecodeString(header.Salt)
 	if err != nil {
 		return []byte{}, err
+	}
+
+	if header.Version >= 2 {
+		salt = append(salt, applicationSalt...)
 	}
 
 	key := pbkdf2.Key([]byte(secret), salt, 64_000, 32, sha512.New)

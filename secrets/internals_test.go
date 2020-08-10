@@ -19,8 +19,7 @@ func TestVariableEncryptAndDecrypt(t *testing.T) {
 
 	header := header{}
 	header.resetSalt()
-	salt := header.Salt
-	key, err := deriveKey(settings.KeyEnvVariable, salt)
+	key, err := deriveKey(settings, header)
 	assert.NoError(t, err)
 
 	variable := Variable{Key: sampleKey, Value: sampleValue}
@@ -40,8 +39,7 @@ func TestDoesNotReuseNonce(t *testing.T) {
 
 	header := header{}
 	header.resetSalt()
-	salt := header.Salt
-	key, err := deriveKey(settings.KeyEnvVariable, salt)
+	key, err := deriveKey(settings, header)
 	assert.NoError(t, err)
 
 	ciphertext1, err := encrypt(key, sampleValue)
