@@ -26,7 +26,7 @@ Install the `teleport` binary on:
 One step install:
 
 ```
-curl -fsSL https://github.com/hundredwatt/teleport/blob/master/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/hundredwatt/teleport/master/scripts/install.sh | bash
 ```
 
 ## Linux Packages
