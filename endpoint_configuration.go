@@ -237,6 +237,11 @@ func findEndpointPortFile(path string) (absolutePath string, err error) {
 	}
 	_, err = os.Stat(absolutePath)
 	if err != nil {
+		legacyAbsolutePath := filepath.Join(workingDir(), legacyApisConfigDirectory, fmt.Sprintf("%s.port", path))
+		if _, legacyErr := os.Stat(legacyAbsolutePath); legacyErr == nil {
+			return legacyAbsolutePath, nil
+		}
+
 		return "", err
 	}
 

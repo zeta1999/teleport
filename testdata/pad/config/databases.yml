@@ -1,0 +1,6 @@
+connections:
+  datawarehouse:
+    url: sqlite://$PADPATH/tmp/datawarehouse.sqlite3
+  example:
+    url: sqlite3://$PADPATH/tmp/example.sqlite3
+    readonly: true

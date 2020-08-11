@@ -2,6 +2,9 @@
 
 ## HEAD
 
+* New pad directory structure: `apis/` and `databases/` folders now live under `sources/` and database
+  connection settings have been moved to a single file: `config/databases.yml`
+
 ## 0.0.1-alpha.2
 
 * (API) New Response Type `"csv"` for parsing a CSV to table format

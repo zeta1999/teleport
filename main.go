@@ -27,7 +27,9 @@ var (
 	Build string
 
 	// SecretsFile sets the location of the secrets file in the Pad directory
-	SecretsFile string = "secrets.txt"
+	SecretsFile string = "config/secrets.txt.enc"
+
+	legacySecretsFile string = "secrets.txt"
 )
 
 func main() {
@@ -126,11 +128,16 @@ func generateProjectDirectory(padpath string) {
 		log.Fatal(err)
 	}
 
-	directories := []string{"apis", "databases", "transforms", "tmp"}
+	directories := []string{"config", "sources", "sources/apis", "sources/databases", "transforms", "tmp"}
 	for _, directory := range directories {
 		err := os.Mkdir(filepath.Join(padpath, directory), 0755)
 		if err != nil {
 			log.Fatal(err)
+		}
+
+		// No .keep file in sources/
+		if directory == "sources" {
+			continue
 		}
 
 		_, err = os.Create(filepath.Join(padpath, directory, ".keep"))
@@ -148,14 +155,34 @@ func generateProjectDirectory(padpath string) {
 		log.Fatal(err)
 	}
 
+	err = secrets.InitializeSecretsFile(secretsSettings())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	databasesConfigFile, err := os.Create(filepath.Join(padpath, "config", "databases.yml"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = databasesConfigFile.WriteString("# db1:\n#   url: postgres://$USER:$PASS@$HOST/$DBNAME")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	log.WithField("padpath", padpath).Info("Pad generated successfully")
 }
 
 func secretsSettings() secrets.Settings {
+	secretsFilePath := filepath.Join(os.Getenv("PADPATH"), SecretsFile)
+
+	if _, err := os.Stat(filepath.Join(os.Getenv("PADPATH"), legacySecretsFile)); err == nil {
+		secretsFilePath = filepath.Join(os.Getenv("PADPATH"), legacySecretsFile)
+	}
+
 	return secrets.Settings{
 		"TELEPORT (https://github.com/hundredwatt/teleport)",
 		"TELEPORT_SECRET_KEY",
-		filepath.Join(os.Getenv("PADPATH"), SecretsFile),
+		secretsFilePath,
 	}
 }
 

@@ -44,15 +44,44 @@ type ComputedColumn struct {
 	Function *starlark.Function
 }
 
+type databasesConfig struct {
+	Connections map[string]Database `yaml:"connections",json:"connections",toml:"connections",edn:"connections"`
+}
+
 func readDatabaseConnectionConfiguration() {
-	// Databases
-	for _, fileinfo := range readFiles(databasesConfigDirectory) {
+	files, err := readFiles(configDirectory)
+	if err != nil {
+		log.Warn(err)
+	}
+	for _, fileinfo := range files {
+		if fileNameWithoutExtension(fileinfo.Name()) != "databases" {
+			continue
+		}
+
+		config := databasesConfig{}
+		err := cleanenv.ReadConfig(filepath.Join(workingDir(), configDirectory, fileinfo.Name()), &config)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for key, database := range config.Connections {
+			database.URL = os.ExpandEnv(database.URL)
+
+			Databases[key] = database
+		}
+	}
+
+	// Legacy connection configuration in ./databases
+	if files, err = readFiles(legacyDatabasesConfigDirectory); err != nil {
+		return
+	}
+	for _, fileinfo := range files {
 		if strings.HasSuffix(fileinfo.Name(), ".port") {
 			continue
 		}
 
 		var database Database
-		err := cleanenv.ReadConfig(filepath.Join(workingDir(), databasesConfigDirectory, fileinfo.Name()), &database)
+		err := cleanenv.ReadConfig(filepath.Join(workingDir(), legacyDatabasesConfigDirectory, fileinfo.Name()), &database)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -239,6 +268,11 @@ func findTableExtractPortFile(path string) (absolutePath string, err error) {
 	}
 	_, err = os.Stat(absolutePath)
 	if err != nil {
+		legacyAbsolutePath := filepath.Join(workingDir(), legacyDatabasesConfigDirectory, fmt.Sprintf("%s.port", path))
+		if _, legacyErr := os.Stat(legacyAbsolutePath); legacyErr == nil {
+			return legacyAbsolutePath, nil
+		}
+
 		return "", err
 	}
 

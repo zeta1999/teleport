@@ -102,22 +102,22 @@ Set the `-preview` flag with any command to perform a dry-run.
 Pads have this directory structure:
 
     pad-name/
-      |- apis/
-        |- exampleapi1.port
-        |- exampleapi2.port
-        |- ...
-      |- databases/
-        |- exampledb1.yml
-        |- exampledb1.port
-        |- exampledb2.yml
-        |- exampledb2.port
-        |- ...
+      |- config/
+        |- databases.yml
+      |- sources/
+        |- apis/
+          |- exampleapi1.port
+          |- exampleapi2.port
+          |- ...
+        |- databases/
+          |- exampledb1.port
+          |- exampledb2.port
       |- transforms/
         |- exampletrasnform1.sql
         |- exampletransform2.sql
         |- ...
 
-When refering to a resource (data source or transform) in a Teleport command, the name of the resource is the filename without the extension. e.g., to list the tables for the database defined in `databases/exampledb1.yml`, use `teleport list-tables -source exampledb1`
+When refering to a resource (data source or transform) in a Teleport command, the name of the resource is the filename without the extension. e.g., to export a CSV from the API endpoint defined in `sources/apis/exampleapi1.port`, use `teleport extract-api -from exampleapi1`
 
 For API configurations, Teleport uses its own "Port" configuration language. "Port" is a declarative, Python dialect
 used for configuration and mapping data. For full documentation on the "Port" configuration language, [visit the wiki](https://github.com/hundredwatt/teleport/wiki/API-Configuration)
@@ -155,11 +155,7 @@ def Transform(response):
 </details>
 
 
-For Database configurations, 2 files are used:
-
-1. A connection file that configurations the connection options. Teleport supports the following file formats: YAML, JSON, TOML, EDN.
-2. A "Port" file for configuration extraction options for individual tables when using the database as an extract source.
-
+For Database configurations, the database connection settings (i.e., host, username, password, etc) are configured in `config/databases.yml` and the extraction options for individual tables within a database are configured in that database's "Port" file.
 
 For full documentation on database configuration, [visit the wiki](https://github.com/hundredwatt/teleport/wiki/Database-Configuration)
 

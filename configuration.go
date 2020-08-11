@@ -13,27 +13,17 @@ import (
 )
 
 var (
-	apisConfigDirectory       = "./apis/"
-	databasesConfigDirectory  = "./databases/"
+	configDirectory                = "./config/"
+	apisConfigDirectory            = "./sources/apis/"
+	databasesConfigDirectory       = "./sources/databases/"
+	legacyApisConfigDirectory      = "./apis/"
+	legacyDatabasesConfigDirectory = "./databases/"
+
 	transformsConfigDirectory = "./transforms/"
 
 	// SQLTransforms is a list of configured SQL statements for updateTransforms to use
 	SQLTransforms = make(map[string]string)
 )
-
-func findApiPortFile(path string) (absolutePath string, err error) {
-	if strings.Contains(path, "/") {
-		absolutePath = path
-	} else {
-		absolutePath = filepath.Join(workingDir(), apisConfigDirectory, fmt.Sprintf("%s.port", path))
-	}
-	_, err = os.Stat(absolutePath)
-	if err != nil {
-		return "", err
-	}
-
-	return absolutePath, nil
-}
 
 func workingDir() (path string) {
 	path, ok := os.LookupEnv("PADPATH")
@@ -49,11 +39,10 @@ func workingDir() (path string) {
 	return
 }
 
-func readFiles(directory string) (files []os.FileInfo) {
+func readFiles(directory string) (files []os.FileInfo, err error) {
 	items, err := ioutil.ReadDir(filepath.Join(workingDir(), directory))
 	if err != nil {
-		log.Warn(err)
-		return
+		return make([]os.FileInfo, 0), err
 	}
 
 	for _, fileinfo := range items {
