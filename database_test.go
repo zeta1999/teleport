@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	widgetsTableDefinition = readTableFromConfigFile("test/example_widgets.yml")
+	widgetsTableDefinition = readTableFromConfigFile("testdata/example_widgets.yml")
 )
 
 func TestDatabaseConfigurationCases(t *testing.T) {
@@ -186,7 +186,7 @@ func xTestSQLiteLoadExtractLoadConsistency(t *testing.T) {
 	runDatabaseTest(t, "full.port", func(t *testing.T, _ string, srcdb *sql.DB, destdb *sql.DB) {
 		srcdb.Exec(widgetsTableDefinition.GenerateCreateTableStatement("widgets"))
 
-		err := importCSV("testsrc", "widgets", "test/example_widgets.csv", widgetsTableDefinition.Columns)
+		err := importCSV("testsrc", "widgets", "testdata/example_widgets.csv", widgetsTableDefinition.Columns)
 		assert.NoError(t, err)
 		extractLoadDatabase("testsrc", "testdest", "widgets")
 
@@ -218,7 +218,7 @@ func TestPostgreLoadExtractLoadConsistency(t *testing.T) {
 	srcdb.Exec(widgetsTableDefinition.GenerateCreateTableStatement("widgets"))
 
 	redirectLogs(t, func() {
-		err = importCSV("testsrc", "widgets", "test/example_widgets.csv", widgetsTableDefinition.Columns)
+		err = importCSV("testsrc", "widgets", "testdata/example_widgets.csv", widgetsTableDefinition.Columns)
 		assert.NoError(t, err)
 		extractLoadDatabase("testsrc", "testdest", "widgets")
 
@@ -238,7 +238,7 @@ func TestLoadSourceHasAdditionalColumn(t *testing.T) {
 
 		srcdb.Exec(widgetsTableDefinition.GenerateCreateTableStatement("widgets"))
 		destdb.Exec(widgetsWithoutDescription.GenerateCreateTableStatement("testsrc_widgets"))
-		importCSV("testsrc", "widgets", "test/example_widgets.csv", widgetsTableDefinition.Columns)
+		importCSV("testsrc", "widgets", "testdata/example_widgets.csv", widgetsTableDefinition.Columns)
 
 		expectLogMessages(t, []string{"destination table does not define column", "ranking"}, func() {
 			extractLoadDatabase("testsrc", "testdest", "widgets")
@@ -398,7 +398,7 @@ func setupTable(db *sql.DB, tableName string) {
 	switch tableName {
 	case "widgets":
 		db.Exec(widgetsTableDefinition.GenerateCreateTableStatement("widgets"))
-		importCSV("testsrc", "widgets", "test/example_widgets.csv", widgetsTableDefinition.Columns)
+		importCSV("testsrc", "widgets", "testdata/example_widgets.csv", widgetsTableDefinition.Columns)
 	case "objects":
 		setupObjectsTable(db)
 	case "actions":

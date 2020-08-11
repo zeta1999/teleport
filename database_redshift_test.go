@@ -31,7 +31,7 @@ func TestRedshiftLoadTest(t *testing.T) {
 		srcdb.Exec(widgetsTableDefinition.GenerateCreateTableStatement("widgets"))
 
 		redirectLogs(t, func() {
-			err := importCSV("testsrc", "widgets", "test/example_widgets.csv", widgetsTableDefinition.Columns)
+			err := importCSV("testsrc", "widgets", "testdata/example_widgets.csv", widgetsTableDefinition.Columns)
 			assert.NoError(t, err)
 			extractLoadDatabase("testsrc", "testdest", "widgets")
 

@@ -184,7 +184,7 @@ func testServer() *httptest.Server {
 			fmt.Fprintln(w, "Hello, world!")
 		case "/widgets.csv":
 			headerrow := "id,price,ranking,name,active,launched,created_at,description"
-			bytes, _ := ioutil.ReadFile("test/example_widgets.csv")
+			bytes, _ := ioutil.ReadFile("testdata/example_widgets.csv")
 			body := string(bytes)
 			csv := strings.Join([]string{headerrow, body}, "\n")
 
