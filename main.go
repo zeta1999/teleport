@@ -43,14 +43,22 @@ func main() {
 	}
 
 	switch os.Args[1] {
+
+	// Basic CLI commands
 	case "version", "-v":
 		version()
 		return
 	case "help", "-h", "--help":
 		help()
 		return
-	case "secrets":
-		secretsCLI()
+	case "new":
+		if len(os.Args) == 3 {
+			generateProjectDirectory(os.Args[2])
+		} else {
+			fmt.Println("Wrong number of options provided to `teleport new`")
+			fmt.Println("Syntax:")
+			fmt.Println("  teleport new </path/to/pad-name>")
+		}
 		return
 	}
 
@@ -63,21 +71,15 @@ func main() {
 		log.SetLevel(log.InfoLevel)
 	}
 
-	if opts.Command == "new" {
-		if len(os.Args) == 3 {
-			generateProjectDirectory(os.Args[2])
-		} else {
-			fmt.Println("Wrong number of options provided to `teleport new`")
-			fmt.Println("Syntax:")
-			fmt.Println("  teleport new </path/to/pad-name>")
-		}
-		return
-	}
-
 	setEnvironmentValuesFromSecretsFile()
 	readDatabaseConnectionConfiguration()
 
 	switch opts.Command {
+
+	// Secrets
+	case "secrets":
+		secretsCLI()
+		return
 
 	// Database Interactions
 	case "about-db":
