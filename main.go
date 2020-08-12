@@ -42,7 +42,14 @@ func main() {
 		return
 	}
 
-	if os.Args[1] == "secrets" {
+	switch os.Args[1] {
+	case "version", "-v":
+		version()
+		return
+	case "help", "-h", "--help":
+		help()
+		return
+	case "secrets":
 		secretsCLI()
 		return
 	}
@@ -65,10 +72,6 @@ func main() {
 	readDatabaseConnectionConfiguration()
 
 	switch opts.Command {
-	case "version", "-v":
-		version()
-	case "help", "-h", "--help":
-		help()
 
 	// Database Interactions
 	case "about-db":
