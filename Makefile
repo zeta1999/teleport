@@ -30,7 +30,9 @@ release: deb rpm build xbinary binary
 ## drelease: build a docker image and release to DockerHub
 drelease: dbuild
 	@docker tag $(NAME):v$(VERSION) teleportdata/$(NAME):v$(VERSION)
+	@docker tag $(NAME):v$(VERSION) teleportdata/$(NAME):latest
 	@docker push teleportdata/$(NAME):v$(VERSION)
+	@docker push teleportdata/$(NAME):latest
 
 ## build: build the binary
 build: clean prepare
