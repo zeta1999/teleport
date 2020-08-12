@@ -1,11 +1,13 @@
 FROM alpine:3.12.0
 RUN apk add --no-cache sqlite-dev mariadb-connector-c libpq
 
-ADD https://github.com/hundredwatt/teleport/releases/download/v0.0.1-alpha.2/teleport_0.0.1-alpha.2.linux-x86_64.tar.gz /tmp/
-RUN tar xzvf /tmp/teleport_0.0.1-alpha.2.linux-x86_64.tar.gz teleport_0.0.1-alpha.2.linux-x86_64/teleport
-RUN mv /teleport_0.0.1-alpha.2.linux-x86_64/teleport /teleport
-RUN rmdir /teleport_0.0.1-alpha.2.linux-x86_64/
-RUN rm /tmp/teleport_0.0.1-alpha.2.linux-x86_64.tar.gz
+ARG VERSION=0.0.1-alpha.3
+
+ADD https://github.com/hundredwatt/teleport/releases/download/v${VERSION}/teleport_${VERSION}.linux-x86_64.tar.gz /tmp/
+RUN tar xzvf /tmp/teleport_${VERSION}.linux-x86_64.tar.gz teleport_${VERSION}.linux-x86_64/teleport
+RUN mv /teleport_${VERSION}.linux-x86_64/teleport /teleport
+RUN rmdir /teleport_${VERSION}.linux-x86_64/
+RUN rm /tmp/teleport_${VERSION}.linux-x86_64.tar.gz
 
 RUN mkdir /pad
 

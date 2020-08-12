@@ -2,6 +2,8 @@
 
 ## HEAD
 
+## 0.0.1-alpha.3
+
 * New pad directory structure: `apis/` and `databases/` folders now live under `sources/` and database
   connection settings have been moved to a single file: `config/databases.yml`
 

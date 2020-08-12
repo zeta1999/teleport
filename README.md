@@ -35,18 +35,18 @@ Teleport RPM/DEB packages for any 64-bit Linux OS are available:
 
 ```
 # DEB distros like Ubuntu
-curl -fsSL https://github.com/hundredwatt/teleport/releases/download/v0.0.1-alpha.2/teleport_0.0.1-alpha.2_amd64.deb
-dpkg -i teleport_0.0.1-alpha.2_amd64.deb
+curl -fsSL https://github.com/hundredwatt/teleport/releases/download/v0.0.1-alpha.3/teleport_0.0.1-alpha.3_amd64.deb
+dpkg -i teleport_0.0.1-alpha.3_amd64.deb
 
 # RPM distros like CentOS
-curl -fsSL https://github.com/hundredwatt/teleport/releases/download/v0.0.1-alpha.2/teleport_0.0.1_alpha.2_x86_64.rpm
+curl -fsSL https://github.com/hundredwatt/teleport/releases/download/v0.0.1-alpha.3/teleport_0.0.1_alpha.3_x86_64.rpm
 yum install teleport_0.0.1_alpha.2_x86_64.rpm
 ```
 
 ## Docker
 
-1. Download the container: `docker pull teleportdata/teleport:v0.0.1-alpha.2`
-3. Run the container: `docker run -t teleportdata/teleport:v0.0.1-alpha.2  -e <ENV Variables> -v $(pwd):/pad [COMMAD] [OPTIONS]`
+1. Download the container: `docker pull teleportdata/teleport:v0.0.1-alpha.3`
+3. Run the container: `docker run teleportdata/teleport:v0.0.1-alpha.3 -e <ENV Variables> -v $(pwd):/pad [COMMAD] [OPTIONS]`
 
 ## From Source
 

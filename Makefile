@@ -1,5 +1,5 @@
 NAME=teleport
-VERSION=0.0.1-alpha.2
+VERSION=0.0.1-alpha.3
 BUILD=$(shell git rev-parse --short HEAD)
 
 # Use linker flags to provide version/build settings
@@ -20,50 +20,52 @@ test:
 ## release: build all binaries and release to
 release: deb rpm build xbinary binary
 	@echo Releasing $(NAME) $(VERSION)
-	# @hub release create v$(VERSION) \
-	# 	-a teleport_$(VERSION)_amd64.deb \
-	# 	-a teleport_$(subst -,_,$(VERSION))_x86_64.rpm \
-	# 	-a tmp/$(NAME)_$(VERSION).macos.tbz \
-	# 	-a tmp/$(NAME)_$(VERSION).linux-x86_64.tar.gz \
-	# 	-o
+	@hub release create v$(VERSION) \
+		-a pkg/teleport_$(VERSION)_amd64.deb \
+		-a pkg/teleport_$(subst -,_,$(VERSION))_x86_64.rpm \
+		-a pkg/$(NAME)_$(VERSION).macos.tbz \
+		-a pkg/$(NAME)_$(VERSION).linux-x86_64.tar.gz \
+		-o
 
 ## build: build the binary
 build: clean prepare
-	@go build $(LDFLAGS) -o $(NAME)
+	@mkdir -p pkg/$(VERSION)/
+	@go build $(LDFLAGS) -o pkg/$(VERSION)/$(NAME)
 
 ## build: build the binary for linux/amd64
 xbuild: clean prepare
-	@GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o $(NAME)
+	@mkdir -p pkg/$(VERSION).amd64
+	@GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o pkg/$(VERSION).amd64/$(NAME)
 	@# brew install upx
-	@upx -qq ./teleport
+	@upx -qq ./pkg/$(VERSION).amd64/$(NAME)
 
 ## dbuild: build the docker image
 dbuild:
-	@docker build -t teleport .
+	@docker build -t $(NAME):v$(VERSION) .
 
 ## binary: package the binary
 binary: build
-	@mkdir -p tmp/$(NAME)_$(VERSION).macos
-	@cp teleport tmp/$(NAME)_$(VERSION).macos/
-	@cp README.md tmp/$(NAME)_$(VERSION).macos/
-	@pushd tmp && tar cvfj $(NAME)_$(VERSION).macos.tbz $(NAME)_$(VERSION).macos && popd
+	@mkdir -p pkg/$(NAME)_$(VERSION).macos
+	@cp pkg/$(VERSION)/$(NAME) pkg/$(NAME)_$(VERSION).macos/
+	@cp README.md pkg/$(NAME)_$(VERSION).macos/
+	@pushd pkg && tar cvfj $(NAME)_$(VERSION).macos.tbz $(NAME)_$(VERSION).macos && popd
 
 ## xbinary: package a linux binary
 xbinary: xbuild
-	@mkdir -p tmp/$(NAME)_$(VERSION).linux-x86_64
-	@cp teleport tmp/$(NAME)_$(VERSION).linux-x86_64/
-	@cp README.md tmp/$(NAME)_$(VERSION).linux-x86_64/
-	@pushd tmp && tar zcvf $(NAME)_$(VERSION).linux-x86_64.tar.gz $(NAME)_$(VERSION).linux-x86_64 && popd
+	@mkdir -p pkg/$(NAME)_$(VERSION).linux-x86_64
+	@cp ./pkg/$(VERSION).amd64/$(NAME) pkg/$(NAME)_$(VERSION).linux-x86_64/
+	@cp README.md pkg/$(NAME)_$(VERSION).linux-x86_64/
+	@pushd pkg && tar zcvf $(NAME)_$(VERSION).linux-x86_64.tar.gz $(NAME)_$(VERSION).linux-x86_64 && popd
 
 ## deb: build a deb package for debian/ubuntu
 deb: xbuild
-	@docker run --rm -v $(shell pwd):/data skandyla/fpm -s dir -t deb -n $(NAME) -v $(VERSION) -p /data/teleport_VERSION_ARCH.deb \
-		/data/teleport=/usr/bin/teleport
+	@docker run --rm -v $(shell pwd):/data skandyla/fpm -s dir -t deb -n $(NAME) -v $(VERSION) -p /data/pkg/teleport_VERSION_ARCH.deb \
+		/data/pkg/$(VERSION).amd64/$(NAME)=/usr/bin/teleport
 
 ## rpm: build an rpm package for redhat/centos
 rpm: xbuild
-	@docker run --rm -v $(shell pwd):/data skandyla/fpm -s dir -t rpm -n $(NAME) -v $(VERSION) -p /data/teleport_VERSION_ARCH.rpm \
-		/data/teleport=/usr/bin/teleport
+	@docker run --rm -v $(shell pwd):/data skandyla/fpm -s dir -t rpm -n $(NAME) -v $(VERSION) -p /data/pkg/teleport_VERSION_ARCH.rpm \
+		/data/pkg/$(VERSION).amd64/$(NAME)=/usr/bin/teleport
 
 ## stats: print code statistics
 stats:
@@ -74,9 +76,8 @@ stats:
 
 udocker:
 	@echo "Run setup commands in container:"
-	@echo "  apt-get update"
-	@echo "  apt-get install -y build-essential curl git"
-	@echo "  dpkg -i teleport_$(VERSION)_amd64.deb"
+	@echo "  apt-get update && apt-get install -y build-essential curl git"
+	@echo "  dpkg -i /data/pkg/teleport_$(VERSION)_amd64.deb"
 	@docker run -it --rm -v $(shell pwd):/data -v $(shell pwd)/test/testpad:/pad -e PADPATH=/pad ubuntu:focal
 
 deb_reload:
@@ -86,7 +87,7 @@ deb_reload:
 cdocker:
 	@echo "Run setup commands in container:"
 	@echo "  yum groupinstall \"Development Tools\" -y"
-	@echo "  yum install -y teleport_$(subst -,_,$(VERSION))_x86_64.rpm"
+	@echo "  yum install -y /data/pkg/teleport_$(subst -,_,$(VERSION))_x86_64.rpm"
 	@docker run -it --rm -v $(shell pwd):/data -v $(shell pwd)/test/testpad:/pad -e PADPATH=/pad centos:centos8
 
 rpm_reload:
