@@ -7,7 +7,7 @@
 
 # When releasing Teleport, the releaser should update this version number
 # AFTER they upload new binaries.
-VERSION="0.0.1-alpha.3"
+VERSION="0.0.1-alpha.4"
 BREW=$(command -v brew)
 
 set -e
@@ -53,7 +53,7 @@ function install_teleport() {
 
 function version_check() {
   VERSION="$(teleport version 2>&1 || true)"
-  TELEPORT_VERSION_PATTERN='Teleport [0-9]+\.[0-9]+\.[0-9]([^ ]+)? \(build: [0-9a-zA-Z]+\)$'
+  TELEPORT_VERSION_PATTERN='^Teleport [0-9]+\.[0-9]+\.[0-9]([^ ]+)? \(build: [0-9a-zA-Z]+\)$'
   if ! [[ $VERSION =~ $TELEPORT_VERSION_PATTERN ]]; then
     echo "Teleport installed!"
     echo

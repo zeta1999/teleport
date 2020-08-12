@@ -2,6 +2,8 @@
 
 ## HEAD
 
+## 0.0.1-alpha.4
+
 * Disable secrets initialization in `teleport new` (for now until secret key dependence is fixed)
 
 ## 0.0.1-alpha.3

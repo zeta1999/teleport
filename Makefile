@@ -1,5 +1,5 @@
 NAME=teleport
-VERSION=0.0.1-alpha.3
+VERSION=0.0.1-alpha.4
 BUILD=$(shell git rev-parse --short HEAD)
 
 # Use linker flags to provide version/build settings
