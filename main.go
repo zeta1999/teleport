@@ -166,10 +166,10 @@ func generateProjectDirectory(padpath string) {
 		log.Fatal(err)
 	}
 
-	err = secrets.InitializeSecretsFile(secretsSettings())
-	if err != nil {
-		log.Fatal(err)
-	}
+	// err = secrets.InitializeSecretsFile(secretsSettings())
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 
 	databasesConfigFile, err := os.Create(filepath.Join(padpath, "config", "databases.yml"))
 	if err != nil {

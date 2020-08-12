@@ -2,6 +2,8 @@
 
 ## HEAD
 
+* Disable secrets initialization in `teleport new` (for now until secret key dependence is fixed)
+
 ## 0.0.1-alpha.3
 
 * New pad directory structure: `apis/` and `databases/` folders now live under `sources/` and database
