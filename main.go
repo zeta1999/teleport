@@ -64,7 +64,13 @@ func main() {
 	}
 
 	if opts.Command == "new" {
-		generateProjectDirectory(os.Args[2])
+		if len(os.Args) == 3 {
+			generateProjectDirectory(os.Args[2])
+		} else {
+			fmt.Println("Wrong number of options provided to `teleport new`")
+			fmt.Println("Syntax:")
+			fmt.Println("  teleport new </path/to/pad-name>")
+		}
 		return
 	}
 
