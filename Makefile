@@ -17,7 +17,7 @@ prepare:
 test:
 	@go test
 
-## release: build all binaries and release to
+## release: build all binaries and release to GitHub
 release: deb rpm build xbinary binary
 	@echo Releasing $(NAME) $(VERSION)
 	@hub release create v$(VERSION) \
@@ -26,6 +26,11 @@ release: deb rpm build xbinary binary
 		-a pkg/$(NAME)_$(VERSION).macos.tbz \
 		-a pkg/$(NAME)_$(VERSION).linux-x86_64.tar.gz \
 		-o
+
+## drelease: build a docker image and release to DockerHub
+drelease: dbuild
+	@docker tag $(NAME):v$(VERSION) teleportdata/$(NAME):v$(VERSION)
+	@docker push teleportdata/$(NAME):v$(VERSION)
 
 ## build: build the binary
 build: clean prepare
