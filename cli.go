@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"syscall"
 
 	"github.com/hundredwatt/teleport/secrets"
@@ -220,6 +221,8 @@ func promptForValue() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	value = strings.TrimSuffix(value, "\n")
 
 	pid, err = syscall.ForkExec(
 		"/bin/stty",
