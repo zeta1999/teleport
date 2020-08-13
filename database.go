@@ -109,7 +109,7 @@ func inspectTable(source string, tableName string, table *schema.Table, computed
 
 	dumpedTable, err := schema.DumpTableMetadata(db, tableName)
 	if err != nil {
-		return
+		return err
 	}
 	dumpedTable.Source = source
 
