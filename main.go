@@ -180,7 +180,7 @@ func generateProjectDirectory(padpath string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	_, err = databasesConfigFile.WriteString("# db1:\n#   url: postgres://$USER:$PASS@$HOST/$DBNAME")
+	_, err = databasesConfigFile.WriteString("connections:\n# db1:\n#   url: postgres://$USER:$PASS@$HOST/$DBNAME")
 	if err != nil {
 		log.Fatal(err)
 	}
