@@ -77,7 +77,7 @@ rpm: xbuild
 ## stats: print code statistics
 stats:
 	@echo "LOC:       \c"
-	@find . -name "*.go" ! -name "*_test.go" | xargs cat | wc -l
+	@find . -name "*.go" ! -name "*_test.go" ! -name "bindata.go" | xargs cat | wc -l
 	@echo "Test LOC: \c" 
 	@find . -name "*_test.go" | xargs cat | wc -l
 

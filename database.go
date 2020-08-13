@@ -264,6 +264,14 @@ func connectDatabase(source string) (*sql.DB, error) {
 	}
 
 	url := Databases[source].URL
+
+	if strings.HasPrefix(url, "mysql") {
+		err := registerRDSMysqlCerts()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	database, err := dburl.Open(url)
 	if err != nil {
 		return nil, err
