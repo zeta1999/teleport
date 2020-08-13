@@ -14,6 +14,7 @@ import (
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	log "github.com/sirupsen/logrus"
+	"go.starlark.net/resolve"
 )
 
 var (
@@ -76,6 +77,7 @@ func main() {
 
 	setEnvironmentValuesFromSecretsFile()
 	readDatabaseConnectionConfiguration()
+	configureStarlark()
 
 	switch opts.Command {
 
@@ -235,4 +237,9 @@ func registerRDSMysqlCerts() error {
 		return err
 	}
 	return nil
+}
+
+func configureStarlark() {
+	resolve.AllowLambda = true
+	resolve.AllowNestedDef = true
 }
