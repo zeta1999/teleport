@@ -1,0 +1,4 @@
+Table("objects") \
+  .LoadStrategy(Full) \
+  .ComputeColumn("updated_on", lambda row: row['updated_at'].strftime('%F'), "DATE")
+

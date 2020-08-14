@@ -298,6 +298,28 @@ func TestDatabasePreview(t *testing.T) {
 }
 
 func runDatabaseTest(t *testing.T, testfile string, testfn func(*testing.T, string, *sql.DB, *sql.DB)) {
+	withTestDatabasePortFile(t, "testsrc", testfile, func(t *testing.T, filename string) {
+		Databases["testsrc"] = Database{"sqlite://:memory:", map[string]string{}, true}
+		dbSrc, err := connectDatabase("testsrc")
+		if err != nil {
+			assert.FailNow(t, "%w", err)
+		}
+		defer delete(dbs, "testsrc")
+
+		Databases["testdest"] = Database{"sqlite://:memory:", map[string]string{}, false}
+		dbDest, err := connectDatabase("testdest")
+		if err != nil {
+			assert.FailNow(t, "%w", err)
+		}
+		defer delete(dbs, "testdest")
+
+		redirectLogs(t, func() {
+			testfn(t, filename, dbSrc, dbDest)
+		})
+	})
+}
+
+func withTestDatabasePortFile(t *testing.T, source string, testfile string, fn func(*testing.T, string)) {
 	bytes, err := ioutil.ReadFile(filepath.Join("testdata/databases", testfile))
 	if err != nil {
 		t.Fatal(err)
@@ -314,24 +336,7 @@ func runDatabaseTest(t *testing.T, testfile string, testfn func(*testing.T, stri
 		t.Fatal("failed to write to temporary file:", err)
 	}
 
-	Databases["testsrc"] = Database{"sqlite://:memory:", map[string]string{}, true}
-	dbSrc, err := connectDatabase("testsrc")
-	if err != nil {
-		assert.FailNow(t, "%w", err)
-	}
-	defer delete(dbs, "testsrc")
-
-	Databases["testdest"] = Database{"sqlite://:memory:", map[string]string{}, false}
-	dbDest, err := connectDatabase("testdest")
-	if err != nil {
-		assert.FailNow(t, "%w", err)
-	}
-	defer delete(dbs, "testdest")
-
-	redirectLogs(t, func() {
-		testfn(t, tmpFile.Name(), dbSrc, dbDest)
-	})
-
+	fn(t, tmpFile.Name())
 }
 
 func assertRowCount(t *testing.T, expected int, database *sql.DB, table string) {

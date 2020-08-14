@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -225,7 +226,7 @@ func exportCSV(source string, table string, columns []schema.Column, whereStatem
 			IncrementRowCounter()
 
 			for i := range columns {
-				value, err := applyColumnTransforms(rawResult[i], columnTransforms[columns[i].Name])
+				value, err := applyColumnTransforms(parseFromDatabase(rawResult[i], columns[i].DataType), columnTransforms[columns[i].Name])
 				if err != nil {
 					return err
 				}
@@ -333,7 +334,7 @@ func applyColumnTransforms(value interface{}, columnTransforms []*starlark.Funct
 func computeColumn(rawResult []interface{}, columns []schema.Column, computedColumn ComputedColumn) (interface{}, error) {
 	row := make(map[string]interface{})
 	for i := range columns {
-		row[columns[i].Name] = rawResult[i]
+		row[columns[i].Name] = parseFromDatabase(rawResult[i], columns[i].DataType)
 	}
 
 	arg, err := slutil.Marshal(row)
@@ -365,6 +366,25 @@ func formatForDatabaseCSV(value interface{}, dataType schema.DataType) string {
 	}
 
 	return formatForCSV(value)
+}
+
+func parseFromDatabase(value interface{}, dataType schema.DataType) interface{} {
+	switch value.(type) {
+	case []uint8:
+		str := string(value.([]uint8))
+		switch dataType {
+		case schema.INTEGER:
+			if int, err := strconv.ParseInt(str, 10, 64); err == nil {
+				return int
+			} else {
+				return str
+			}
+		default:
+			return str
+		}
+	default:
+		return value
+	}
 }
 
 func registerRDSMysqlCerts() error {
