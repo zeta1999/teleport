@@ -319,7 +319,7 @@ func applyColumnTransforms(value interface{}, columnTransforms []*starlark.Funct
 	for _, function := range columnTransforms {
 		slvalue, err = starlark.Call(GetThread(), function, starlark.Tuple{slvalue}, nil)
 		if err != nil {
-			return "", err
+			return "", appendBackTraceToStarlarkError(err)
 		}
 	}
 
@@ -344,7 +344,7 @@ func computeColumn(rawResult []interface{}, columns []schema.Column, computedCol
 
 	slvalue, err := starlark.Call(GetThread(), computedColumn.Function, starlark.Tuple{arg}, nil)
 	if err != nil {
-		return "", err
+		return "", appendBackTraceToStarlarkError(err)
 	}
 
 	value, err := slutil.Unmarshal(slvalue)

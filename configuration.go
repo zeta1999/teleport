@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
+	"go.starlark.net/starlark"
 )
 
 var (
@@ -105,4 +106,13 @@ func validateIn(v interface{}, param string) error {
 	}
 
 	return fmt.Errorf("value '%s' not allowed. Allowed values: %s", v.(string), param)
+}
+
+func appendBackTraceToStarlarkError(err error) error {
+	switch err.(type) {
+	case *starlark.EvalError:
+		return fmt.Errorf("Transform() error: %s", err.(*starlark.EvalError).Backtrace())
+	default:
+		return fmt.Errorf("Transform() error: %w", err)
+	}
 }

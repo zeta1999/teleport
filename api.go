@@ -295,12 +295,7 @@ func applyTransform(value interface{}, endpoint *Endpoint) (results []dataObject
 
 		value, err = starlark.Call(GetThread(), endpoint.Functions["Transform"], starlark.Tuple{value.(starlark.Value)}, nil)
 		if err != nil {
-			switch err.(type) {
-			case *starlark.EvalError:
-				return nil, fmt.Errorf("Transform() error: %s", err.(*starlark.EvalError).Backtrace())
-			default:
-				return nil, fmt.Errorf("Transform() error: %w", err)
-			}
+			return nil, appendBackTraceToStarlarkError(err)
 		}
 
 		switch value {
@@ -380,7 +375,7 @@ func updatePagination(response *http.Response, body interface{}, endpoint *Endpo
 
 	result, err := starlark.Call(GetThread(), endpoint.Functions["Paginate"], args, nil)
 	if err != nil {
-		return null, true, fmt.Errorf("Paginate() error: %w", err)
+		return null, true, fmt.Errorf("Paginate() error: %w", appendBackTraceToStarlarkError(err))
 	}
 
 	switch result.(type) {
