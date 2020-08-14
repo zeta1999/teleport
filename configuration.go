@@ -58,6 +58,30 @@ func readFiles(directory string) (files []os.FileInfo, err error) {
 	return
 }
 
+func findPortFile(path string, directories []string) (absolutePath string, err error) {
+	possiblePaths := make([]string, 0)
+	if strings.Contains(path, "/") {
+		possiblePaths = append(possiblePaths, path)
+	} else {
+		for _, directory := range directories {
+			possiblePaths = append(possiblePaths, filepath.Join(workingDir(), directory, fmt.Sprintf("%s.port", path)))
+			possiblePaths = append(possiblePaths, filepath.Join(workingDir(), directory, fmt.Sprintf("%s.port.py", path)))
+		}
+	}
+
+	for _, path := range possiblePaths {
+		_, err = os.Stat(path)
+
+		if err == nil {
+			return path, nil
+		} else if len(possiblePaths) == 1 { // Aboslute path provided
+			return "", err
+		}
+	}
+
+	return "", fmt.Errorf("port configuration file for '%s' not found in '%s'", path, directories[0]) // Any directory besides the first is considered obsolete
+}
+
 func fileNameWithoutExtension(filename string) string {
 	extension := filepath.Ext(filename)
 

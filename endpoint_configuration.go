@@ -4,9 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
-	"strings"
 
 	starlarkextensions "github.com/hundredwatt/teleport/starlarkextensions"
 	"go.starlark.net/starlark"
@@ -26,7 +24,7 @@ type Endpoint struct {
 }
 
 func readEndpointConfiguration(path string, endpointptr *Endpoint) error {
-	portFile, err := findEndpointPortFile(path)
+	portFile, err := findPortFile(path, []string{apisConfigDirectory, legacyApisConfigDirectory})
 	if err != nil {
 		return err
 	}
@@ -227,23 +225,4 @@ func (endpoint *Endpoint) strategyOpts() (strategyOpts StrategyOptions) {
 	strategyOpts.ModifiedAtColumn = endpoint.LoadOptions.ModifiedAtColumn
 	strategyOpts.HoursAgo = string(endpoint.LoadOptions.GoBackHours)
 	return
-}
-
-func findEndpointPortFile(path string) (absolutePath string, err error) {
-	if strings.Contains(path, "/") {
-		absolutePath = path
-	} else {
-		absolutePath = filepath.Join(workingDir(), apisConfigDirectory, fmt.Sprintf("%s.port", path))
-	}
-	_, err = os.Stat(absolutePath)
-	if err != nil {
-		legacyAbsolutePath := filepath.Join(workingDir(), legacyApisConfigDirectory, fmt.Sprintf("%s.port", path))
-		if _, legacyErr := os.Stat(legacyAbsolutePath); legacyErr == nil {
-			return legacyAbsolutePath, nil
-		}
-
-		return "", err
-	}
-
-	return absolutePath, nil
 }

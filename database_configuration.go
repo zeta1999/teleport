@@ -95,7 +95,7 @@ func readTableExtractConfiguration(path string, tableName string, tableExtractpt
 	databaseExtract := DatabaseExtract{}
 	databaseExtract.TableExtracts = make(map[string]*TableExtract)
 
-	portFile, err := findTableExtractPortFile(path)
+	portFile, err := findPortFile(path, []string{databasesConfigDirectory, legacyDatabasesConfigDirectory})
 	if err != nil {
 		log.Warn("No database configuration found")
 		tableExtract := &TableExtract{}
@@ -258,23 +258,4 @@ func (computedColumn *ComputedColumn) toColumn() (column schema.Column, err erro
 	column.Options[schema.COMPUTED] = 1
 
 	return
-}
-
-func findTableExtractPortFile(path string) (absolutePath string, err error) {
-	if strings.Contains(path, "/") {
-		absolutePath = path
-	} else {
-		absolutePath = filepath.Join(workingDir(), databasesConfigDirectory, fmt.Sprintf("%s.port", path))
-	}
-	_, err = os.Stat(absolutePath)
-	if err != nil {
-		legacyAbsolutePath := filepath.Join(workingDir(), legacyDatabasesConfigDirectory, fmt.Sprintf("%s.port", path))
-		if _, legacyErr := os.Stat(legacyAbsolutePath); legacyErr == nil {
-			return legacyAbsolutePath, nil
-		}
-
-		return "", err
-	}
-
-	return absolutePath, nil
 }

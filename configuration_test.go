@@ -23,9 +23,9 @@ func TestPadStructure(t *testing.T) {
 		defer os.Unsetenv(key)
 
 		currentWorkflow = &Workflow{make([]func() error, 0), func() {}, 0, &starlark.Thread{}}
+		var endpoint Endpoint
 
 		// API files in ./sources/apis
-		var endpoint Endpoint
 		err := readEndpointConfiguration("example_widgets", &endpoint)
 		assert.NoError(t, err)
 		assert.Equal(t, "http://127.0.0.1:4567/widgets.json", endpoint.URL)
@@ -39,6 +39,11 @@ func TestPadStructure(t *testing.T) {
 		err = readTableExtractConfiguration("example", "objects", &tableExtract)
 		assert.NoError(t, err)
 		assert.Equal(t, Full, tableExtract.LoadOptions.Strategy)
+
+		// Port files can have .port or .port.py extensions
+		err = readEndpointConfiguration("worldtimeapi_ip_times", &endpoint)
+		assert.NoError(t, err)
+		assert.Equal(t, "http://worldtimeapi.org/api/ip", endpoint.URL)
 
 		// Secrets file at ./config/secrets.txt.enc
 		setEnvironmentValuesFromSecretsFile()
