@@ -181,7 +181,7 @@ func importableColumns(destinationTable *schema.Table, sourceTable *schema.Table
 
 	destinationOnly = filterColumns(destinationTable.Columns, sourceTable.NotContainsColumnWithSameName)
 	sourceOnly = filterColumns(sourceTable.Columns, destinationTable.NotContainsColumnWithSameName)
-	both = filterColumns(destinationTable.Columns, sourceTable.ContainsColumnWithSameName)
+	both = filterColumns(sourceTable.Columns, destinationTable.ContainsColumnWithSameName)
 
 	for _, column := range destinationOnly {
 		log.WithFields(log.Fields{
