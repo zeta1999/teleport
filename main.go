@@ -1,14 +1,11 @@
 package main
 
 import (
-	"crypto/tls"
-	"crypto/x509"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
-	mysqldriver "github.com/go-sql-driver/mysql"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/hundredwatt/teleport/schema"
 	"github.com/hundredwatt/teleport/secrets"
 	_ "github.com/lib/pq"
@@ -219,24 +216,6 @@ func setEnvironmentValuesFromSecretsFile() {
 	for _, variable := range body {
 		os.Setenv(variable.Key, variable.Value)
 	}
-}
-
-func registerRDSMysqlCerts() error {
-	pem, err := Asset("rds-combined-ca-bundle.pem")
-	if err != nil {
-		// Asset was not found.
-	}
-
-	rootCertPool := x509.NewCertPool()
-	if ok := rootCertPool.AppendCertsFromPEM(pem); !ok {
-		return errors.New("couldn't append certs from pem")
-	}
-
-	err = mysqldriver.RegisterTLSConfig("rds", &tls.Config{RootCAs: rootCertPool, InsecureSkipVerify: true})
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func configureStarlark() {

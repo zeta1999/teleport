@@ -1,12 +1,17 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
+
+	mysqldriver "github.com/go-sql-driver/mysql"
 
 	slutil "github.com/hundredwatt/starlib/util"
 	"github.com/hundredwatt/teleport/schema"
@@ -265,14 +270,28 @@ func connectDatabase(source string) (*sql.DB, error) {
 
 	url := Databases[source].URL
 
-	if strings.HasPrefix(url, "mysql") {
+	u, err := dburl.Parse(url)
+	if err != nil {
+		return nil, err
+	}
+
+	if u.Driver == "mysql" {
 		err := registerRDSMysqlCerts()
 		if err != nil {
 			return nil, err
 		}
+
+		mysqlconfig, err := mysqldriver.ParseDSN(u.DSN)
+		if err != nil {
+			return nil, err
+		}
+
+		mysqlconfig.ParseTime = true
+
+		u.DSN = mysqlconfig.FormatDSN()
 	}
 
-	database, err := dburl.Open(url)
+	database, err := sql.Open(u.Driver, u.DSN)
 	if err != nil {
 		return nil, err
 	}
@@ -346,4 +365,22 @@ func formatForDatabaseCSV(value interface{}, dataType schema.DataType) string {
 	}
 
 	return formatForCSV(value)
+}
+
+func registerRDSMysqlCerts() error {
+	pem, err := Asset("rds-combined-ca-bundle.pem")
+	if err != nil {
+		return err
+	}
+
+	rootCertPool := x509.NewCertPool()
+	if ok := rootCertPool.AppendCertsFromPEM(pem); !ok {
+		return errors.New("couldn't append certs from pem")
+	}
+
+	err = mysqldriver.RegisterTLSConfig("rds", &tls.Config{RootCAs: rootCertPool, InsecureSkipVerify: true})
+	if err != nil {
+		return err
+	}
+	return nil
 }
