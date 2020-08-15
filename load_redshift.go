@@ -19,7 +19,7 @@ import (
 
 func importRedshift(database *sql.DB, table string, file string, columns []schema.Column, options map[string]string) error {
 	log.Debug("Uploading CSV to S3")
-	s3URL, err := uploadFileToS3(options["s3_bucket"], file)
+	s3URL, err := uploadFileToS3(options["s3_bucket_region"], options["s3_bucket"], file)
 	if err != nil {
 		return fmt.Errorf("s3 upload error: %w", err)
 	}
@@ -54,7 +54,7 @@ func importRedshift(database *sql.DB, table string, file string, columns []schem
 	return nil
 }
 
-func uploadFileToS3(bucket string, filename string) (string, error) {
+func uploadFileToS3(region string, bucket string, filename string) (string, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return "", err
@@ -63,7 +63,15 @@ func uploadFileToS3(bucket string, filename string) (string, error) {
 	keyElements := []string{"teleport", time.Now().Format(time.RFC3339), filepath.Base(filename)}
 	key := strings.Join(keyElements, "/")
 
-	svc := s3.New(session.New())
+	sess, err := session.NewSession(&aws.Config{
+		Region: aws.String(region),
+	})
+	if err != nil {
+		return "", err
+	}
+
+	svc := s3.New(sess)
+
 	input := &s3.PutObjectInput{
 		Body:   file,
 		Bucket: aws.String(bucket),
