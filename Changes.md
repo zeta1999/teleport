@@ -4,6 +4,7 @@
 
 * (Database) Support TLS for Amazon RDS MySQL instances
 * Support '.port.py' extension for Port configuration files to simplify enabling IDE syntax highlight
+* (Database) Add optional 3rd argument "column_type" to TransformColumn()
 
 ## 0.0.1-alpha.4
 

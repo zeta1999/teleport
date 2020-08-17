@@ -86,15 +86,22 @@ func TestColumnTransforms(t *testing.T) {
 		testFile                       string
 		table                          string
 		transformedColumnName          string
-		transformedColumnIndex         int
-		transformedColumnFirstRowValue string
+		transformedColumnFirstRowValue interface{}
+		transformedColumnType          schema.DataType
 	}{
 		{
 			"transform_column.port",
 			"widgets",
 			"ranking",
-			2,
-			"6.219171468260465E+01",
+			62.19171468260465,
+			schema.FLOAT,
+		},
+		{
+			"transform_column_and_change_type.port",
+			"widgets",
+			"ranking",
+			int64(62),
+			schema.INTEGER,
 		},
 	}
 
@@ -103,10 +110,23 @@ func TestColumnTransforms(t *testing.T) {
 			runDatabaseTest(t, cse.testFile, func(t *testing.T, portFile string, dbSrc *sql.DB, dbDest *sql.DB) {
 				setupTable(dbSrc, cse.table)
 
-				extractDatabase(portFile, cse.table)
+				extractLoadDatabase(portFile, "testdest", cse.table)
 
-				csvfile := hook.LastEntry().Data["file"].(string)
-				assertCsvCellContents(t, cse.transformedColumnFirstRowValue, csvfile, 0, cse.transformedColumnIndex, "`%s` column value not equal", cse.transformedColumnName)
+				if hook.LastEntry().Level != log.InfoLevel {
+					assert.FailNow(t, "unexpect log level encountered")
+				}
+				var value interface{}
+				err := dbDest.QueryRow(fmt.Sprintf("SELECT %s FROM testsrc_%s LIMIT 1", cse.transformedColumnName, cse.table)).Scan(&value)
+				assert.NoError(t, err)
+				assert.Equal(t, cse.transformedColumnFirstRowValue, value)
+
+				table, err := schema.DumpTableMetadata(dbDest, fmt.Sprintf("testsrc_%s", cse.table))
+				assert.NoError(t, err)
+				for _, column := range table.Columns {
+					if column.Name == cse.transformedColumnName {
+						assert.Equal(t, cse.transformedColumnType, table.Columns[2].DataType)
+					}
+				}
 			})
 		})
 	}
@@ -120,6 +140,7 @@ func TestComputedColumns(t *testing.T) {
 		computedColumnName          string
 		computedColumnIndex         int
 		computedColumnFirstRowValue string
+		computedColumnType          schema.DataType
 	}{
 		{
 			"compute_column.port",
@@ -128,6 +149,7 @@ func TestComputedColumns(t *testing.T) {
 			"created_date",
 			8,
 			"2020-03-11",
+			schema.DATE,
 		},
 		{
 			"deserialize_json_column.port",
@@ -136,6 +158,7 @@ func TestComputedColumns(t *testing.T) {
 			"time_zone",
 			3,
 			"Mountain Time (US & Canada)",
+			schema.TEXT,
 		},
 		{
 			"deserialize_ruby_yaml_column.port",
@@ -144,6 +167,7 @@ func TestComputedColumns(t *testing.T) {
 			"append",
 			3,
 			"Hello!",
+			schema.TEXT,
 		},
 	}
 
@@ -159,6 +183,12 @@ func TestComputedColumns(t *testing.T) {
 
 				csvfile := hook.LastEntry().Data["file"].(string)
 				assertCsvCellContents(t, cse.computedColumnFirstRowValue, csvfile, 0, cse.computedColumnIndex, "`%s` column value not equal", cse.computedColumnName)
+
+				var table schema.Table
+				var tableExtract TableExtract
+				readTableExtractConfiguration(portFile, cse.table, &tableExtract)
+				inspectTable("testsrc", cse.table, &table, &tableExtract)
+				assert.Equal(t, cse.computedColumnType, table.Columns[cse.computedColumnIndex].DataType)
 			})
 		})
 	}
@@ -275,7 +305,7 @@ func TestExportTimestamp(t *testing.T) {
 		srcdb.Exec("INSERT INTO timestamps (created_at) VALUES (NULL)")
 
 		currentWorkflow = &Workflow{make([]func() error, 0), func() {}, 0, &starlark.Thread{}}
-		tempfile, _ := exportCSV("testsrc", "timestamps", columns, "", make(map[string][]*starlark.Function), make([]ComputedColumn, 0))
+		tempfile, _ := exportCSV("testsrc", "timestamps", columns, "", TableExtract{})
 
 		assertCsvCellContents(t, "2004-08-19T18:51:06Z", tempfile, 0, 0)
 		assertCsvCellContents(t, "", tempfile, 1, 0)

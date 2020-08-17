@@ -61,7 +61,7 @@ func extractLoadAPI(endpointName string, destination string) {
 		func() error {
 			return createEndpointdestinationTableIfNotExists(destination, destinationTableName, &endpoint)
 		},
-		func() error { return inspectTable(destination, destinationTableName, &destinationTable) },
+		func() error { return inspectTable(destination, destinationTableName, &destinationTable, nil) },
 		func() error { return performAPIExtraction(&endpoint, &results) },
 		func() error { return determineImportColumns(&destinationTable, results, &columns) },
 		func() error { return saveResultsToCSV(endpointName, results, &columns, &csvfile) },

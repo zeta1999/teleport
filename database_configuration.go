@@ -34,7 +34,7 @@ type DatabaseExtract struct {
 
 type TableExtract struct {
 	LoadOptions      LoadOptions
-	ColumnTransforms map[string][]*starlark.Function
+	ColumnTransforms map[string]ColumnTransform
 	ComputedColumns  []ComputedColumn
 }
 
@@ -42,6 +42,12 @@ type ComputedColumn struct {
 	Name     string
 	Type     string
 	Function *starlark.Function
+}
+
+type ColumnTransform struct {
+	Name      string
+	Type      string
+	Functions []*starlark.Function
 }
 
 type databasesConfig struct {
@@ -202,18 +208,25 @@ func (tableExtract *TableExtract) setLoadStrategy(thread *starlark.Thread, _ *st
 
 func (tableExtract *TableExtract) addColumnTransform(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (value starlark.Value, err error) {
 	var (
-		column   string
-		function *starlark.Function
+		name       string
+		function   *starlark.Function
+		columnType string
 	)
 
-	if err := starlark.UnpackPositionalArgs("TransformColumn", args, kwargs, 2, &column, &function); err != nil {
+	if err := starlark.UnpackPositionalArgs("TransformColumn", args, kwargs, 2, &name, &function, &columnType); err != nil {
 		return nil, err
 	}
 
 	if tableExtract.ColumnTransforms == nil {
-		tableExtract.ColumnTransforms = make(map[string][]*starlark.Function)
+		tableExtract.ColumnTransforms = make(map[string]ColumnTransform)
 	}
-	tableExtract.ColumnTransforms[column] = append(tableExtract.ColumnTransforms[column], function)
+	if _, ok := tableExtract.ColumnTransforms[name]; !ok {
+		tableExtract.ColumnTransforms[name] = ColumnTransform{Name: name}
+	}
+	columnTransform := tableExtract.ColumnTransforms[name]
+	columnTransform.Type = columnType
+	columnTransform.Functions = append(columnTransform.Functions, function)
+	tableExtract.ColumnTransforms[name] = columnTransform
 
 	return GetThread().Local("tableStruct").(*starlarkstruct.Struct), nil
 }

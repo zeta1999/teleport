@@ -52,7 +52,7 @@ func extractLoadDatabase(sourceOrPath string, destination string, tableName stri
 		func() error { return readTableExtractConfiguration(sourceOrPath, tableName, &tableExtract) },
 		func() error { return connectDatabaseWithLogging(source) },
 		func() error { return connectDatabaseWithLogging(destination) },
-		func() error { return inspectTable(source, tableName, &sourceTable, tableExtract.ComputedColumns...) },
+		func() error { return inspectTable(source, tableName, &sourceTable, &tableExtract) },
 		func() error {
 			return createDestinationTableIfNotExists(destination, destinationTableName, &sourceTable, &destinationTable)
 		},
@@ -85,7 +85,7 @@ func extractDatabase(sourceOrPath string, tableName string) {
 	RunWorkflow([]func() error{
 		func() error { return readTableExtractConfiguration(sourceOrPath, tableName, &tableExtract) },
 		func() error { return connectDatabaseWithLogging(source) },
-		func() error { return inspectTable(source, tableName, &table, tableExtract.ComputedColumns...) },
+		func() error { return inspectTable(source, tableName, &table, &tableExtract) },
 		func() error { return extractSource(&table, nil, tableExtract, nil, &csvfile) },
 	}, func() {
 		log.WithFields(log.Fields{
@@ -105,7 +105,7 @@ func connectDatabaseWithLogging(source string) (err error) {
 	return
 }
 
-func inspectTable(source string, tableName string, table *schema.Table, computedColumns ...ComputedColumn) (err error) {
+func inspectTable(source string, tableName string, table *schema.Table, tableExtract *TableExtract) (err error) {
 	log.WithFields(log.Fields{
 		"database": source,
 		"table":    tableName,
@@ -119,12 +119,27 @@ func inspectTable(source string, tableName string, table *schema.Table, computed
 	}
 	dumpedTable.Source = source
 
-	for _, computedColumn := range computedColumns {
-		column, err := computedColumn.toColumn()
-		if err != nil {
-			return err
+	if tableExtract != nil {
+		for i, column := range dumpedTable.Columns {
+			if columnTransform, ok := tableExtract.ColumnTransforms[column.Name]; ok {
+				if columnTransform.Type != "" {
+					dataType, options, schemaErr := schema.ParseDatabaseType(column.Name, columnTransform.Type)
+					if schemaErr != nil {
+						return
+					}
+					dumpedTable.Columns[i].DataType = dataType
+					dumpedTable.Columns[i].Options = options
+				}
+			}
 		}
-		dumpedTable.Columns = append(dumpedTable.Columns, column)
+
+		for _, computedColumn := range tableExtract.ComputedColumns {
+			column, err := computedColumn.toColumn()
+			if err != nil {
+				return err
+			}
+			dumpedTable.Columns = append(dumpedTable.Columns, column)
+		}
 	}
 
 	*table = *dumpedTable
@@ -169,7 +184,7 @@ func extractSource(sourceTable *schema.Table, destinationTable *schema.Table, ta
 		whereStatement = fmt.Sprintf("%s > '%s'", tableExtract.LoadOptions.ModifiedAtColumn, updateTime)
 	}
 
-	file, err := exportCSV(sourceTable.Source, sourceTable.Name, exportColumns, whereStatement, tableExtract.ColumnTransforms, tableExtract.ComputedColumns)
+	file, err := exportCSV(sourceTable.Source, sourceTable.Name, exportColumns, whereStatement, tableExtract)
 	if err != nil {
 		return err
 	}
@@ -181,7 +196,7 @@ func extractSource(sourceTable *schema.Table, destinationTable *schema.Table, ta
 	return
 }
 
-func exportCSV(source string, table string, columns []schema.Column, whereStatement string, columnTransforms map[string][]*starlark.Function, computedColumns []ComputedColumn) (string, error) {
+func exportCSV(source string, table string, columns []schema.Column, whereStatement string, tableExtract TableExtract) (string, error) {
 	database, err := connectDatabase(source)
 	if err != nil {
 		return "", fmt.Errorf("Database Open Error: %w", err)
@@ -212,7 +227,7 @@ func exportCSV(source string, table string, columns []schema.Column, whereStatem
 	return generateCSV(columnNames, fmt.Sprintf("extract-%s-%s-*.csv", table, source), func(writer *csv.Writer) error {
 		destination := make([]interface{}, len(columnNames))
 		rawResult := make([]interface{}, len(columnNames))
-		writeBuffer := make([]string, len(columnNames)+len(computedColumns))
+		writeBuffer := make([]string, len(columnNames)+len(tableExtract.ComputedColumns))
 		for i := range rawResult {
 			destination[i] = &rawResult[i]
 		}
@@ -226,7 +241,7 @@ func exportCSV(source string, table string, columns []schema.Column, whereStatem
 			IncrementRowCounter()
 
 			for i := range columns {
-				value, err := applyColumnTransforms(parseFromDatabase(rawResult[i], columns[i].DataType), columnTransforms[columns[i].Name])
+				value, err := applyColumnTransforms(parseFromDatabase(rawResult[i], columns[i].DataType), tableExtract.ColumnTransforms[columns[i].Name].Functions)
 				if err != nil {
 					return err
 				}
@@ -234,7 +249,7 @@ func exportCSV(source string, table string, columns []schema.Column, whereStatem
 				writeBuffer[i] = formatForDatabaseCSV(value, columns[i].DataType)
 			}
 
-			for j, computedColumn := range computedColumns {
+			for j, computedColumn := range tableExtract.ComputedColumns {
 				i := len(columns) + j
 
 				value, err := computeColumn(rawResult, columns, computedColumn)
