@@ -14,6 +14,8 @@ const (
 	Full         LoadStrategy = "Full"
 	Incremental  LoadStrategy = "Incremental"
 	ModifiedOnly LoadStrategy = "ModifiedOnly"
+
+	defaultLoadStrategy = Full
 )
 
 type LoadOptions struct {

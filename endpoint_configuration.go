@@ -41,6 +41,10 @@ func readEndpointConfiguration(path string, endpointptr *Endpoint) error {
 		return err
 	}
 
+	if endpoint.LoadOptions.Strategy == "" {
+		endpoint.LoadOptions.Strategy = defaultLoadStrategy
+	}
+
 	*endpointptr = endpoint
 	return nil
 }

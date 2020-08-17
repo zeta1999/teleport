@@ -38,6 +38,13 @@ func TestDatabaseConfigurationCases(t *testing.T) {
 			[]string{},
 		},
 		{
+			"default.port",
+			"widgets",
+			log.InfoLevel,
+			10,
+			[]string{},
+		},
+		{
 			"modified_only.port",
 			"objects",
 			log.InfoLevel,
