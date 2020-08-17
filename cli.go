@@ -21,6 +21,7 @@ type CliOptions struct {
 	File       string
 	Preview    bool
 	Debug      bool
+	FullLoad   bool
 }
 
 type StrategyOptions struct {
@@ -43,6 +44,7 @@ func parseArguments() CliOptions {
 	flag.StringVar(&options.TableName, "t", "", "Alias for -table")
 	flag.StringVar(&options.File, "file", "", "Path to file to be used in command")
 	flag.StringVar(&options.File, "f", "", "Alias for -file")
+	flag.BoolVar(&options.FullLoad, "full", options.Debug, "override Load Strategy configuration with the Full strategy")
 	flag.BoolVar(&options.Preview, "p", false, "alias for -preview")
 	flag.BoolVar(&options.Preview, "preview", options.Preview, "use preview mode to perform a dry-run with truncated data and verbose logging")
 	flag.BoolVar(&options.Debug, "d", false, "alias for -debug")
@@ -82,6 +84,7 @@ func help() {
 	fmt.Println("  -table, -t [table]\tname of table in the database data source")
 	fmt.Println("  -preview, -p\t\tpreview command as a dry-run without making any changes")
 	fmt.Println("  -debug, -d\t\tenable debug log output")
+	fmt.Println("  -full\t\t\toverride the configured load strategy and use Full instead")
 }
 
 func version() {

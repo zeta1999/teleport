@@ -211,6 +211,28 @@ func TestComputedColumnsIncludedWhenCreatingTable(t *testing.T) {
 	})
 }
 
+func TestFullLoadFlag(t *testing.T) {
+	FullLoad = true
+	var (
+		testFile               string    = "modified_only.port"
+		table                  string    = "objects"
+		expectedLastEntryLevel log.Level = log.InfoLevel
+		expectedRows           int       = 3 // ModifiedOnly strategy expects only 2 rows, 3 signifies a Full load
+	)
+
+	runDatabaseTest(t, testFile, func(t *testing.T, portFile string, dbSrc *sql.DB, dbDest *sql.DB) {
+		setupTable(dbSrc, table)
+
+		extractLoadDatabase(portFile, "testdest", table)
+
+		assert.Equal(t, expectedLastEntryLevel, hook.LastEntry().Level)
+		if expectedRows != -1 {
+			assertRowCount(t, expectedRows, dbDest, fmt.Sprintf("testsrc_%s", table))
+		}
+	})
+	FullLoad = false
+}
+
 // Skip this test until schema for SQLite staging tables is fixed
 func xTestSQLiteLoadExtractLoadConsistency(t *testing.T) {
 	runDatabaseTest(t, "full.port", func(t *testing.T, _ string, srcdb *sql.DB, destdb *sql.DB) {

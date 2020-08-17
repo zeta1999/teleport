@@ -5,6 +5,7 @@
 * (Database) Support TLS for Amazon RDS MySQL instances
 * Support '.port.py' extension for Port configuration files to simplify enabling IDE syntax highlight
 * (Database) Add optional 3rd argument "column_type" to TransformColumn()
+* (Database) -full forces the Full load strategy to be used (overriding the configured strategy) for batch operations
 
 ## 0.0.1-alpha.4
 

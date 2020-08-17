@@ -105,7 +105,7 @@ func readTableExtractConfiguration(path string, tableName string, tableExtractpt
 	if err != nil {
 		log.Warn("No database configuration found")
 		tableExtract := &TableExtract{}
-		tableExtract.LoadOptions.Strategy = "Full"
+		tableExtract.LoadOptions.Strategy = LoadStrategy("Full")
 		*tableExtractptr = *tableExtract
 		return nil
 	}
@@ -120,13 +120,19 @@ func readTableExtractConfiguration(path string, tableName string, tableExtractpt
 	// }
 
 	if tableExtract := databaseExtract.TableExtracts[tableName]; tableExtract != nil {
+		if FullLoad {
+			tableExtract.LoadOptions.Strategy = LoadStrategy("Full")
+		}
 		*tableExtractptr = *tableExtract
 	} else if tableExtract := databaseExtract.TableExtracts["*"]; tableExtract != nil {
+		if FullLoad {
+			tableExtract.LoadOptions.Strategy = LoadStrategy("Full")
+		}
 		*tableExtractptr = *tableExtract
 	} else {
 		log.Warn("Missing extract configuration, assuming Full")
 		tableExtract = &TableExtract{}
-		tableExtract.LoadOptions.Strategy = "Full"
+		tableExtract.LoadOptions.Strategy = LoadStrategy("Full")
 		*tableExtractptr = *tableExtract
 	}
 

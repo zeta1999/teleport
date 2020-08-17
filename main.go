@@ -15,20 +15,23 @@ import (
 )
 
 var (
-	// Preview indicates preview/dry-run mode is enabled
-	Preview bool = false
-
-	// PreviewLimit sets the number of rows to output while in preview mode
-	PreviewLimit int = 3
-
 	// Version sets the release version
 	Version string
 
 	// Build sets the build tag
 	Build string
 
+	// Preview indicates preview/dry-run mode is enabled
+	Preview bool = false
+
+	// PreviewLimit sets the number of rows to output while in preview mode
+	PreviewLimit int = 3
+
 	// SecretsFile sets the location of the secrets file in the Pad directory
 	SecretsFile string = "config/secrets.txt.enc"
+
+	// FullLoad sets the LoadStrategy to Full regardless of the configuration
+	FullLoad bool = false
 
 	legacySecretsFile string = "secrets.txt"
 )
@@ -65,6 +68,7 @@ func main() {
 
 	opts := parseArguments()
 	Preview = opts.Preview
+	FullLoad = opts.FullLoad
 
 	if Preview || opts.Debug {
 		log.SetLevel(log.DebugLevel)
