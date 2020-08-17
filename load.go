@@ -96,7 +96,12 @@ func createStagingTable(destinationTable *schema.Table, stagingTableName string)
 		return
 	}
 
-	query := fmt.Sprintf(GetDialect(Databases[destinationTable.Source]).CreateStagingTableQuery, destinationTable.Name, stagingTableName)
+	query := GetDialect(Databases[destinationTable.Source]).CreateStagingTableQuery
+	if query == "" {
+		return fmt.Errorf("load not supported for this database type: %s", GetDialect(Databases[destinationTable.Source]).HumanName)
+
+	}
+	query = fmt.Sprintf(query, destinationTable.Name, stagingTableName)
 
 	fnlog.Debugf("Creating staging table")
 	if Preview {
