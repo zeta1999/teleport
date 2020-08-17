@@ -323,6 +323,14 @@ func connectDatabase(source string) (*sql.DB, error) {
 		return nil, err
 	}
 
+	if schema, ok := Databases[source].Options["schema"]; ok {
+		_, err := database.Exec(fmt.Sprintf("SET search_path TO %s", schema))
+		if err != nil {
+			return nil, err
+		}
+
+	}
+
 	dbs[source] = database
 	return dbs[source], nil
 }

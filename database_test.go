@@ -256,38 +256,6 @@ func xTestSQLiteLoadExtractLoadConsistency(t *testing.T) {
 	})
 }
 
-func TestPostgreLoadExtractLoadConsistency(t *testing.T) {
-	Databases["testsrc"] = Database{"postgres://postgres@localhost:45432/?sslmode=disable", map[string]string{}, true}
-	srcdb, err := connectDatabase("testsrc")
-	if err != nil {
-		assert.FailNow(t, "%w", err)
-	}
-	defer delete(dbs, "testsrc")
-
-	Databases["testdest"] = Database{"postgres://postgres@localhost:45432/?sslmode=disable", map[string]string{}, false}
-	destdb, err := connectDatabase("testdest")
-	if err != nil {
-		assert.FailNow(t, "%w", err)
-	}
-	defer delete(dbs, "testdest")
-
-	defer srcdb.Exec(`DROP TABLE IF EXISTS widgets`)
-	defer destdb.Exec(`DROP TABLE IF EXISTS testsrc_widgets`)
-
-	srcdb.Exec(widgetsTableDefinition.GenerateCreateTableStatement("widgets"))
-
-	redirectLogs(t, func() {
-		err = importCSV("testsrc", "widgets", "testdata/example_widgets.csv", widgetsTableDefinition.Columns)
-		assert.NoError(t, err)
-		extractLoadDatabase("testsrc", "testdest", "widgets")
-
-		newTable, err := schema.DumpTableMetadata(destdb, "testsrc_widgets")
-		assert.NoError(t, err)
-		assertRowCount(t, 10, destdb, "testsrc_widgets")
-		assert.Equal(t, widgetsTableDefinition.Columns, newTable.Columns)
-	})
-}
-
 func TestLoadSourceHasAdditionalColumn(t *testing.T) {
 	runDatabaseTest(t, "full.port", func(t *testing.T, _ string, srcdb *sql.DB, destdb *sql.DB) {
 		// Create a new schema.Table Definition, same as widgets, but without the `description` column
