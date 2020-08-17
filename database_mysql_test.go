@@ -16,10 +16,10 @@ func TestMySQLExportTimestampToDate(t *testing.T) {
 	withMySQLDatabase(t, func(t *testing.T, srcdb *sql.DB) {
 		columns := make([]schema.Column, 1)
 		columns[0] = schema.Column{"updated_at", schema.DATE, map[schema.Option]int{}}
-		csvfile, err := exportCSV("testsrc", "objects", columns, "", make(map[string][]*starlark.Function), []ComputedColumn{})
+		csvfile, err := exportCSV("testsrc", "objects", columns, "", TableExtract{})
 		assert.NoError(t, err)
 
-		assertCsvCellContents(t, time.Now().Add(-7*24*time.Hour).Format("2006-01-02"), csvfile, 0, 0)
+		assertCsvCellContents(t, time.Now().UTC().Add(-7*24*time.Hour).Format("2006-01-02"), csvfile, 0, 0)
 	})
 }
 
@@ -45,7 +45,7 @@ func TestMySQLColumnTransforms(t *testing.T) {
 			"objects",
 			"updated_on",
 			3,
-			time.Now().Add(-7 * 24 * time.Hour).Format("2006-01-02"),
+			time.Now().Add(-7 * 24 * time.Hour).UTC().Format("2006-01-02"),
 		},
 	}
 
