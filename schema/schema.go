@@ -136,6 +136,8 @@ func determineDataType(columnType sqlColumn) (DataType, error) {
 		return STRING, nil
 	case strings.Contains(databaseTypeName, "text"):
 		return TEXT, nil
+	case databaseTypeName == "num": // "NUM" data type in SQLite
+		return TEXT, nil
 	case strings.Contains(databaseTypeName, "tinyint"):
 		return BOOLEAN, nil
 	case strings.HasPrefix(databaseTypeName, "bool"):
