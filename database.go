@@ -224,7 +224,13 @@ func exportCSV(source string, table string, columns []schema.Column, whereStatem
 		return "", err
 	}
 
-	return generateCSV(columnNames, fmt.Sprintf("extract-%s-%s-*.csv", table, source), func(writer *csv.Writer) error {
+	headers := make([]string, len(columnNames)+len(tableExtract.ComputedColumns))
+	copy(headers, columnNames)
+	for i, computedColumn := range tableExtract.ComputedColumns {
+		headers[len(columnNames)+i] = computedColumn.Name
+	}
+
+	return generateCSV(headers, fmt.Sprintf("extract-%s-%s-*.csv", table, source), func(writer *csv.Writer) error {
 		destination := make([]interface{}, len(columnNames))
 		rawResult := make([]interface{}, len(columnNames))
 		writeBuffer := make([]string, len(columnNames)+len(tableExtract.ComputedColumns))
