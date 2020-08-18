@@ -57,6 +57,7 @@ func (w *Workflow) run() (err error) {
 }
 
 func (w *Workflow) handleError(err error) {
+	notify(err)
 	switch err.(type) {
 	case *WorkflowError:
 		if err.(*WorkflowError).exitCode == Fail {

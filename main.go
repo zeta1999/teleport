@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/hundredwatt/teleport/schema"
@@ -12,6 +13,9 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	log "github.com/sirupsen/logrus"
 	"go.starlark.net/resolve"
+
+	sentry "github.com/getsentry/sentry-go"
+	honeybadger "github.com/honeybadger-io/honeybadger-go"
 )
 
 var (
@@ -37,6 +41,19 @@ var (
 )
 
 func main() {
+	if _, ok := os.LookupEnv("HONEYBADGER_API_KEY"); ok {
+		honeybadger.SetContext(honeybadger.Context{"args": os.Args[1:]})
+		defer honeybadger.Monitor()
+		defer honeybadger.Flush()
+	} else if _, ok := os.LookupEnv("SENTRY_DSN"); ok {
+		sentry.Init(sentry.ClientOptions{})
+		sentry.ConfigureScope(func(scope *sentry.Scope) {
+			scope.SetExtra("args", os.Args[1:])
+		})
+		defer sentry.Recover()
+		defer sentry.Flush(5 * time.Second)
+	}
+
 	if _, ok := os.LookupEnv("PADPATH"); !ok {
 		os.Setenv("PADPATH", ".")
 	}
@@ -137,6 +154,7 @@ func main() {
 		fmt.Printf("Error: '%s' is an invalid command\n", os.Args[1])
 		listCommands()
 	}
+
 }
 
 func generateProjectDirectory(padpath string) {
@@ -225,4 +243,14 @@ func setEnvironmentValuesFromSecretsFile() {
 func configureStarlark() {
 	resolve.AllowLambda = true
 	resolve.AllowNestedDef = true
+}
+
+func notify(err error) {
+	if _, ok := os.LookupEnv("HONEYBADGER_API_KEY"); ok {
+		honeybadger.Notify(err)
+		honeybadger.Flush()
+	} else if _, ok := os.LookupEnv("SENTRY_DSN"); ok {
+		sentry.CaptureException(err)
+		sentry.Flush(5 * time.Second)
+	}
 }
