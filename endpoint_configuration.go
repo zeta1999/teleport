@@ -90,7 +90,7 @@ func (endpoint *Endpoint) get(thread *starlark.Thread, _ *starlark.Builtin, args
 		url starlark.String
 	)
 	if err := starlark.UnpackPositionalArgs("Get", args, kwargs, 1, &url); err != nil {
-		return nil, err
+		return nil, prependStarlarkPositionToError(thread, err)
 	}
 
 	endpoint.URL = os.ExpandEnv(url.GoString())
@@ -104,7 +104,7 @@ func (endpoint *Endpoint) addHeader(thread *starlark.Thread, _ *starlark.Builtin
 		name, hvalue starlark.String
 	)
 	if err := starlark.UnpackPositionalArgs("BasicAuth", args, kwargs, 2, &name, &hvalue); err != nil {
-		return nil, err
+		return nil, prependStarlarkPositionToError(thread, err)
 	}
 
 	if len(endpoint.Headers) == 0 {
@@ -121,7 +121,7 @@ func (endpoint *Endpoint) setBasicAuth(thread *starlark.Thread, _ *starlark.Buil
 		username, password starlark.String
 	)
 	if err := starlark.UnpackPositionalArgs("BasicAuth", args, kwargs, 2, &username, &password); err != nil {
-		return nil, err
+		return nil, prependStarlarkPositionToError(thread, err)
 	}
 
 	endpoint.BasicAuth = &map[string]string{
@@ -137,7 +137,7 @@ func (endpoint *Endpoint) setResponseType(thread *starlark.Thread, _ *starlark.B
 		responseType starlark.String
 	)
 	if err := starlark.UnpackPositionalArgs("ResponseType", args, kwargs, 1, &responseType); err != nil {
-		return nil, err
+		return nil, prependStarlarkPositionToError(thread, err)
 	}
 
 	endpoint.ResponseType = responseType.GoString()
@@ -150,7 +150,7 @@ func (endpoint *Endpoint) setTableDefinition(thread *starlark.Thread, _ *starlar
 		tableDefinition *starlark.Dict
 	)
 	if err := starlark.UnpackPositionalArgs("TableDefinition", args, kwargs, 1, &tableDefinition); err != nil {
-		return nil, err
+		return nil, prependStarlarkPositionToError(thread, err)
 	}
 
 	tableDefinitionMap := make(map[string]string)
@@ -175,23 +175,25 @@ func (endpoint *Endpoint) setLoadStrategy(thread *starlark.Thread, _ *starlark.B
 	switch LoadStrategy(args[0].(starlark.String).GoString()) {
 	case Full:
 		if err := starlark.UnpackPositionalArgs("LoadStrategy", args, kwargs, 1, &strategy); err != nil {
-			return nil, err
+			return nil, prependStarlarkPositionToError(thread, err)
 		}
 	case ModifiedOnly:
 		if err := starlark.UnpackArgs("LoadStrategy", args, kwargs, "strategy", &strategy, "primary_key", &primaryKey, "modified_at_column", &ModifiedAtColumn, "go_back_hours", &goBackHours); err != nil {
-			return nil, err
+			return nil, prependStarlarkPositionToError(thread, err)
 		}
 	case Incremental:
 		if err := starlark.UnpackArgs("LoadStrategy", args, kwargs, "strategy", &strategy, "primary_key", &primaryKey); err != nil {
-			return nil, err
+			return nil, prependStarlarkPositionToError(thread, err)
 		}
 	default:
-		return nil, errors.New("LoadStrategy(): invalid strategy, allowed values: Full, ModifiedOnly, Incremental")
+		err := errors.New("LoadStrategy(): invalid strategy, allowed values: Full, ModifiedOnly, Incremental")
+		return nil, prependStarlarkPositionToError(thread, err)
 	}
 
 	goBackHoursInt, err := strconv.Atoi(goBackHours.String())
 	if err != nil {
-		return nil, fmt.Errorf("LoadStrategy(): go_back_hours error: %w", err)
+		err := fmt.Errorf("LoadStrategy(): go_back_hours error: %w", err)
+		return nil, prependStarlarkPositionToError(thread, err)
 	}
 	endpoint.LoadOptions = LoadOptions{LoadStrategy(strategy), primaryKey.GoString(), ModifiedAtColumn.GoString(), goBackHoursInt}
 
@@ -203,17 +205,18 @@ func (endpoint *Endpoint) setErrorHandling(thread *starlark.Thread, _ *starlark.
 		errorHandling *starlark.Dict
 	)
 	if err := starlark.UnpackPositionalArgs("ErrorHandling", args, kwargs, 1, &errorHandling); err != nil {
-		return nil, err
+		return nil, prependStarlarkPositionToError(thread, err)
 	}
 
 	errorHandlingMap := make(map[errorClass]ExitCode)
 	for _, k := range errorHandling.Keys() {
 		v, _, err := errorHandling.Get(k)
 		if err != nil {
-			return nil, err
+			return nil, prependStarlarkPositionToError(thread, err)
 		}
 		if i, convErr := strconv.Atoi(v.String()); convErr != nil {
-			return nil, fmt.Errorf("ErrorHandling value not supported: %s", v.String())
+			err := fmt.Errorf("ErrorHandling value not supported: %s", v.String())
+			return nil, prependStarlarkPositionToError(thread, err)
 		} else {
 			errorHandlingMap[errorClass(k.(starlark.String).GoString())] = ExitCode(i)
 		}

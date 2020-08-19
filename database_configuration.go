@@ -170,7 +170,7 @@ func (databaseExtract *DatabaseExtract) newTableExtract(thread *starlark.Thread,
 		name starlark.String
 	)
 	if err := starlark.UnpackPositionalArgs("Table", args, kwargs, 1, &name); err != nil {
-		return nil, err
+		return nil, prependStarlarkPositionToError(thread, err)
 	}
 
 	tableExtract := TableExtract{}
@@ -193,18 +193,19 @@ func (tableExtract *TableExtract) setLoadStrategy(thread *starlark.Thread, _ *st
 	switch LoadStrategy(args[0].(starlark.String).GoString()) {
 	case Full:
 		if err := starlark.UnpackPositionalArgs("LoadStrategy", args, kwargs, 1, &strategy); err != nil {
-			return nil, err
+			return nil, prependStarlarkPositionToError(thread, err)
 		}
 	case ModifiedOnly:
 		if err := starlark.UnpackArgs("LoadStrategy", args, kwargs, "strategy", &strategy, "primary_key", &primaryKey, "modified_at_column", &ModifiedAtColumn, "go_back_hours", &goBackHours); err != nil {
-			return nil, err
+			return nil, prependStarlarkPositionToError(thread, err)
 		}
 	case Incremental:
 		if err := starlark.UnpackArgs("LoadStrategy", args, kwargs, "strategy", &strategy, "primary_key", &primaryKey); err != nil {
-			return nil, err
+			return nil, prependStarlarkPositionToError(thread, err)
 		}
 	default:
-		return nil, errors.New("LoadStrategy(): invalid strategy, allowed values: Full, ModifiedOnly, Incremental")
+		err := errors.New("LoadStrategy(): invalid strategy, allowed values: Full, ModifiedOnly, Incremental")
+		return nil, prependStarlarkPositionToError(thread, err)
 	}
 
 	goBackHoursInt, err := strconv.Atoi(goBackHours.String())

@@ -116,3 +116,7 @@ func appendBackTraceToStarlarkError(err error) error {
 		return fmt.Errorf("Transform() error: %w", err)
 	}
 }
+
+func prependStarlarkPositionToError(thread *starlark.Thread, err error) error {
+	return fmt.Errorf("%s: %w", thread.CallFrame(1).Pos, err)
+}
