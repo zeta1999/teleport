@@ -210,7 +210,8 @@ func (tableExtract *TableExtract) setLoadStrategy(thread *starlark.Thread, _ *st
 
 	goBackHoursInt, err := strconv.Atoi(goBackHours.String())
 	if err != nil {
-		return nil, fmt.Errorf("LoadStrategy(): go_back_hours error: %w", err)
+		err := fmt.Errorf("LoadStrategy(): go_back_hours error: %w", err)
+		return nil, prependStarlarkPositionToError(thread, err)
 	}
 	tableExtract.LoadOptions = LoadOptions{LoadStrategy(strategy), primaryKey.GoString(), ModifiedAtColumn.GoString(), goBackHoursInt}
 
@@ -225,7 +226,7 @@ func (tableExtract *TableExtract) addColumnTransform(thread *starlark.Thread, _ 
 	)
 
 	if err := starlark.UnpackPositionalArgs("TransformColumn", args, kwargs, 2, &name, &function, &columnType); err != nil {
-		return nil, err
+		return nil, prependStarlarkPositionToError(thread, err)
 	}
 
 	if tableExtract.ColumnTransforms == nil {
@@ -250,7 +251,7 @@ func (tableExtract *TableExtract) addComputedColumn(thread *starlark.Thread, _ *
 	)
 
 	if err := starlark.UnpackPositionalArgs("ComputeColumn", args, kwargs, 2, &name, &function, &columnType); err != nil {
-		return nil, err
+		return nil, prependStarlarkPositionToError(thread, err)
 	}
 
 	if columnType == "" {
