@@ -104,6 +104,11 @@ func main() {
 		secretsCLI()
 		return
 
+	// Schedule
+	case "schedule":
+		scheduleCLI()
+		return
+
 	// Database Interactions
 	case "about-db":
 		aboutDB(opts.Source)

@@ -60,6 +60,7 @@ func help() {
 	fmt.Println("Commands:")
 	fmt.Println("  new <path/to/pad>\tgenerate a new pad folder at the given path")
 	fmt.Println("  secrets <command>\tmanage encrypted ENV variables for your pad")
+	fmt.Println("  schedule <command>\tmanage the job schedule configuration for your pad")
 	fmt.Println("  help\t\t\tshow this message")
 	fmt.Println("  version\t\tprint version information")
 	fmt.Println("")
@@ -186,6 +187,34 @@ func secretsCLI() {
 	}
 }
 
+func scheduleCLI() {
+	if len(os.Args) != 3 {
+		scheduleHelp()
+		return
+	}
+
+	switch os.Args[2] {
+	case "validate":
+		if err := readSchedule(); err != nil {
+			log.Fatal(err)
+		}
+		log.Infof("%d valid items in schedule ✓", len(schedule))
+		return
+	case "export":
+		if err := readSchedule(); err != nil {
+			log.Fatal(err)
+		}
+		if bytes, err := exportSchedule(); err != nil {
+			log.Fatal(err)
+		} else {
+			fmt.Println(string(bytes))
+			return
+		}
+	default:
+		scheduleHelp()
+	}
+}
+
 func secretsHelp() {
 	fmt.Println("usage: teleport secrets [COMMAND] <[ARGS]...>")
 	fmt.Println("Commands:")
@@ -194,6 +223,13 @@ func secretsHelp() {
 	fmt.Println("  show\t\t\tdecrypt and print all the items in the secrets file")
 	fmt.Println("  set [KEY] <[VALUE]>\tcreate or update a secret by key; password prompt will be used if VALUE is not provided in the command")
 	fmt.Println("  delete [KEY]\t\tdelete a secret by key")
+}
+
+func scheduleHelp() {
+	fmt.Println("usage: teleport schedule [COMMAND]")
+	fmt.Println("Commands:")
+	fmt.Println("  validate\treads the schedule file and prints any errors")
+	fmt.Println("  export\texport the schedule as JSON for handling by infrastructure")
 }
 
 func promptForValue() (string, error) {

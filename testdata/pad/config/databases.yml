@@ -8,3 +8,7 @@ connections:
     url: mysql://mysql_test_user:password@127.0.0.1:43306/test_db
   postgresdocker:
     url: postgres://postgres@localhost:45432/?sslmode=disable
+  postgresdocker_transforms:
+    url: postgres://postgres@localhost:45432/?sslmode=disable
+    options:
+      schema: transforms

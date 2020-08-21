@@ -1,0 +1,6 @@
+ExtractLoadAPI('worldtimeapi_ip_times', every='1 hour', to='postgresdocker')
+ExtractLoadAPI('example_widgets', every='2 hours', to='postgresdocker')
+
+ExtractLoadDB('example', 'objects', every='1 day', to='postgresdocker')
+
+Transform('times_by_day_of_week', source='postgresdocker', every='1 day')

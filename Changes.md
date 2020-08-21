@@ -9,6 +9,8 @@
 * (Database) Add optional 3rd argument "column_type" to TransformColumn()
 * (Database) -full forces the Full load strategy to be used (overriding the configured strategy) for batch operations
 * (Database) Schema connection configuration option
+* Configure the job schedule for teleport commands in `config/schedule.port`
+* `teleport schedule` CLI commands to validate and export the job schedule
 
 ## 0.0.1-alpha.4
 
