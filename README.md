@@ -35,23 +35,23 @@ Teleport RPM/DEB packages for any 64-bit Linux OS are available:
 
 ```
 # DEB distros like Ubuntu
-curl -OfsSL https://github.com/hundredwatt/teleport/releases/download/v0.0.1-alpha.4/teleport_0.0.1-alpha.4_amd64.deb
-dpkg -i teleport_0.0.1-alpha.4_amd64.deb
+curl -OfsSL https://github.com/hundredwatt/teleport/releases/download/v0.0.1-alpha.5/teleport_0.0.1-alpha.5_amd64.deb
+dpkg -i teleport_0.0.1-alpha.5_amd64.deb
 
 # RPM distros like CentOS
-curl -OfsSL https://github.com/hundredwatt/teleport/releases/download/v0.0.1-alpha.4/teleport_0.0.1_alpha.4_x86_64.rpm
+curl -OfsSL https://github.com/hundredwatt/teleport/releases/download/v0.0.1-alpha.5/teleport_0.0.1_alpha.4_x86_64.rpm
 yum install teleport_0.0.1_alpha.4_x86_64.rpm
 ```
 
 ## Docker
 
-1. Download the container: `docker pull teleportdata/teleport:v0.0.1-alpha.4`
-2. Run the container: `docker run --rm teleportdata/teleport:v0.0.1-alpha.4 version`
+1. Download the container: `docker pull teleportdata/teleport:v0.0.1-alpha.5`
+2. Run the container: `docker run --rm teleportdata/teleport:v0.0.1-alpha.5 version`
 
 To run the container with a pad directory mounted and environment variables set, use the full syntax:
 
 ```
-docker run --rm  -e "KEY=value" -v $(pwd):/pad teleportdata/teleport:v0.0.1-alpha.4 [COMMAND] [OPTIONS]"
+docker run --rm  -e "KEY=value" -v $(pwd):/pad teleportdata/teleport:v0.0.1-alpha.5 [COMMAND] [OPTIONS]"
 ```
 
 ## From Source
