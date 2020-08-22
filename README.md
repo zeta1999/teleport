@@ -1,5 +1,7 @@
 # Teleport
 
+<img src="assets/logo.png" width="320">
+
 One framework for all your data ingestion needs
 
 Teleport's ambition is to become the standard for building ELT data ingestion pipelines. It provides an opionated, convention-over-configuration framework to allow you to pack your data warehouse, hydrate your data lake, or add a drop to your data pond from any or all of your 1st party and 3rd party data services.
