@@ -35,7 +35,7 @@ func generateCSV(headers []string, name string, fn func(*csv.Writer) error) (str
 		return "", err
 	}
 
-	writer := csv.NewWriter(tmpfile)
+	writer := csv.NewWriter(&WorkflowWriter{Writer: tmpfile})
 
 	err = fn(writer)
 	if err != nil {
@@ -103,4 +103,17 @@ Body:
 		`, strings.Join(headers, ","), indentString(string(content))))
 
 	return nil
+}
+
+func byteCountDecimal(b int64) string {
+	const unit = 1000
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
+	}
+	div, exp := int64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "kMGTPE"[exp])
 }

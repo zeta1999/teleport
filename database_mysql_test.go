@@ -11,7 +11,7 @@ import (
 )
 
 func TestMySQLExportTimestampToDate(t *testing.T) {
-	currentWorkflow = &Workflow{make([]func() error, 0), func() {}, 0, &starlark.Thread{}}
+	currentWorkflow = &Workflow{Thread: &starlark.Thread{}}
 
 	withMySQLDatabase(t, func(t *testing.T, srcdb *sql.DB) {
 		columns := make([]schema.Column, 1)

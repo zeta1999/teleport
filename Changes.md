@@ -2,6 +2,8 @@
 
 ## HEAD
 
+* (Database) Progress indication in DEBUG log for database extracts
+
 ## 0.0.1-alpha.6
 
 * Configure the job schedule for teleport commands in `config/schedule.port`

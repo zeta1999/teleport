@@ -22,7 +22,7 @@ func TestPadStructure(t *testing.T) {
 		defer os.Unsetenv("TELEPORT_SECRET_KEY")
 		defer os.Unsetenv(key)
 
-		currentWorkflow = &Workflow{make([]func() error, 0), func() {}, 0, &starlark.Thread{}}
+		currentWorkflow = &Workflow{Thread: &starlark.Thread{}}
 		var endpoint Endpoint
 
 		// API files in ./sources/apis
@@ -67,7 +67,7 @@ func TestLegacyPadStructure(t *testing.T) {
 		defer os.Unsetenv("TELEPORT_SECRET_KEY")
 		defer os.Unsetenv(key)
 
-		currentWorkflow = &Workflow{make([]func() error, 0), func() {}, 0, &starlark.Thread{}}
+		currentWorkflow = &Workflow{Thread: &starlark.Thread{}}
 
 		// API files in ./apis
 		var endpoint Endpoint

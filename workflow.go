@@ -1,16 +1,19 @@
 package main
 
 import (
+	"io"
+
 	log "github.com/sirupsen/logrus"
 	"go.starlark.net/starlark"
 )
 
 // Workflow is responsible for managing sequential execution steps of a process
 type Workflow struct {
-	Steps      []step
-	Success    func()
-	RowCounter int64
-	Thread     *starlark.Thread
+	Steps        []step
+	Success      func()
+	RowCounter   int64
+	BytesCounter int64
+	Thread       *starlark.Thread
 }
 
 // WorkflowError is the custom error type for instructing workflow how to handle errors
@@ -37,6 +40,19 @@ func WorkflowFail(err error) *WorkflowError {
 
 func WorkflowRetry(err error) *WorkflowError {
 	return &WorkflowError{Retry, err}
+}
+
+// WorkflowWriter wraps an io.Writer in order to monitor number of bytes written
+type WorkflowWriter struct {
+	io.Writer
+}
+
+func (ww *WorkflowWriter) Write(b []byte) (n int, err error) {
+	n, err = ww.Writer.Write(b)
+
+	currentWorkflow.BytesCounter += int64(n)
+
+	return
 }
 
 // step represents a single unit of work in the Workflow. Each step function returns nil on success or an error on failure
@@ -82,6 +98,11 @@ func IncrementRowCounter() {
 	currentWorkflow.RowCounter++
 }
 
+// GetBytesCounter returns the value of BytesCounter for the current workflow
+func GetBytesCounter() int64 {
+	return currentWorkflow.RowCounter
+}
+
 // GetThread returns the Starlark Thread for the current workflow
 func GetThread() *starlark.Thread {
 	return currentWorkflow.Thread
@@ -89,7 +110,7 @@ func GetThread() *starlark.Thread {
 
 // RunWorkflow execute a workflow with the provided steps
 func RunWorkflow(steps []step, success func()) {
-	currentWorkflow = &Workflow{steps, success, 0, &starlark.Thread{}}
+	currentWorkflow = &Workflow{steps, success, 0, 0, &starlark.Thread{}}
 
 	err := currentWorkflow.run()
 	if err != nil {

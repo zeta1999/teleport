@@ -238,6 +238,9 @@ func exportCSV(source string, table string, columns []schema.Column, whereStatem
 			destination[i] = &rawResult[i]
 		}
 
+		done := monitorExtractDB()
+		defer done()
+
 		for rows.Next() {
 			err := rows.Scan(destination...)
 			if err != nil {
@@ -384,6 +387,35 @@ func computeColumn(arg starlark.Value, columns []schema.Column, computedColumn C
 	}
 
 	return value, nil
+}
+
+func monitorExtractDB() func() {
+	// only enable monitoring when log level is set to DEBUG
+	if log.GetLevel() != log.DebugLevel {
+		return func() {}
+	}
+
+	ticker := time.NewTicker(15 * time.Second)
+	done := make(chan bool)
+
+	go func() {
+		for {
+			select {
+			case <-done:
+				return
+			case <-ticker.C:
+				log.WithFields(log.Fields{
+					"rows":         currentWorkflow.RowCounter,
+					"csvBytesSize": byteCountDecimal(currentWorkflow.BytesCounter),
+				}).Debug("Exporting CSV")
+			}
+		}
+	}()
+
+	return func() {
+		ticker.Stop()
+		done <- true
+	}
 }
 
 func formatForDatabaseCSV(value interface{}, dataType schema.DataType) string {

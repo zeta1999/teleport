@@ -301,7 +301,7 @@ func TestExportTimestamp(t *testing.T) {
 		srcdb.Exec("INSERT INTO timestamps (created_at) VALUES (DATETIME(1092941466, 'unixepoch'))")
 		srcdb.Exec("INSERT INTO timestamps (created_at) VALUES (NULL)")
 
-		currentWorkflow = &Workflow{make([]func() error, 0), func() {}, 0, &starlark.Thread{}}
+		currentWorkflow = &Workflow{Thread: &starlark.Thread{}}
 		tempfile, _ := exportCSV("testsrc", "timestamps", columns, "", TableExtract{})
 
 		assertCsvCellContents(t, "2004-08-19T18:51:06Z", tempfile, 0, 0)
