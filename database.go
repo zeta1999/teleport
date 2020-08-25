@@ -255,20 +255,32 @@ func exportCSV(source string, table string, columns []schema.Column, whereStatem
 				writeBuffer[i] = formatForDatabaseCSV(value, columns[i].DataType)
 			}
 
-			for j, computedColumn := range tableExtract.ComputedColumns {
-				i := len(columns) + j
+			if len(tableExtract.ComputedColumns) > 0 {
+				row := make(map[string]interface{})
+				for i := range columns {
+					row[columns[i].Name] = parseFromDatabase(rawResult[i], columns[i].DataType)
+				}
 
-				value, err := computeColumn(rawResult, columns, computedColumn)
+				arg, err := slutil.Marshal(row)
 				if err != nil {
 					return err
 				}
 
-				computedColumnColumn, err := computedColumn.toColumn()
-				if err != nil {
-					return err
-				}
+				for j, computedColumn := range tableExtract.ComputedColumns {
+					i := len(columns) + j
 
-				writeBuffer[i] = formatForDatabaseCSV(value, computedColumnColumn.DataType)
+					value, err := computeColumn(arg, columns, computedColumn)
+					if err != nil {
+						return err
+					}
+
+					computedColumnColumn, err := computedColumn.toColumn()
+					if err != nil {
+						return err
+					}
+
+					writeBuffer[i] = formatForDatabaseCSV(value, computedColumnColumn.DataType)
+				}
 			}
 
 			err = writer.Write(writeBuffer)
@@ -360,17 +372,7 @@ func applyColumnTransforms(value interface{}, columnTransforms []*starlark.Funct
 	return value, nil
 }
 
-func computeColumn(rawResult []interface{}, columns []schema.Column, computedColumn ComputedColumn) (interface{}, error) {
-	row := make(map[string]interface{})
-	for i := range columns {
-		row[columns[i].Name] = parseFromDatabase(rawResult[i], columns[i].DataType)
-	}
-
-	arg, err := slutil.Marshal(row)
-	if err != nil {
-		return "", err
-	}
-
+func computeColumn(arg starlark.Value, columns []schema.Column, computedColumn ComputedColumn) (interface{}, error) {
 	slvalue, err := starlark.Call(GetThread(), computedColumn.Function, starlark.Tuple{arg}, nil)
 	if err != nil {
 		return "", appendBackTraceToStarlarkError(err)
