@@ -1,0 +1,124 @@
+#!/usr/bin/env python3
+
+import os,subprocess,json,hashlib,argparse
+from datetime import timedelta, datetime
+
+from prefect import Flow,Client
+from prefect.tasks.shell import ShellTask
+from prefect.schedules import IntervalSchedule
+from prefect.client import Secret
+
+parser = argparse.ArgumentParser(description='Deploy your Teleport Pad to Prefect')
+parser.add_argument('-f', '--force', dest='force', action='store_true', help='delete and re-create all flows')
+parser.add_argument('-p', '--preview', dest='preview', action='store_true', help='perform a dry-run to see log output without applying any updates')
+args = parser.parse_args()
+
+def generateName(item):
+  teleport_hash = hashlib.sha1(json.dumps(item).encode('UTF-8')).hexdigest()[:8]
+
+  name = [elem for elem in item['command'] if not elem.startswith('-')]
+  name.append(teleport_hash)
+  name ='-'.join(name)
+  return name
+
+def rateToInterval(rate):
+  if rate['unit'] == 'minute':
+    return timedelta(minutes=rate['value'])
+  elif rate['unit'] == 'hour':
+    return timedelta(hours=rate['value'])
+  elif rate['unit'] == 'day':
+    return timedelta(days=rate['value'])
+
+client = Client()
+
+proc = subprocess.run(['teleport', 'schedule', 'export'], capture_output=True)
+if proc.returncode != 0:
+  raise Exception('`teleport schedule export` command failed')
+schedule = (json.loads(proc.stdout))
+
+prefix = 'teleport/'
+
+
+environment = {}
+if 'PADPATH' in os.environ:
+  environment['PADPATH'] = os.path.join(os.getcwd(), os.environ['PADPATH'])
+else:
+  environment['PADPATH'] = os.getcwd()
+
+secret_key = Secret("TELEPORT_SECRET_KEY")
+if secret_key.exists():
+  environment['TELEPORT_SECRET_KEY'] = secret_key.get()
+elif 'TELEPORT_SECRET_KEY' in os.environ:
+  environment['TELEPORT_SECRET_KEY'] = os.environ['TELEPORT_SECRET_KEY']
+
+if 'TELEPORT_SECRET_KEY' in os.environ:
+  environment['TELEPORT_SECRET_KEY'] = os.environ['TELEPORT_SECRET_KEY']
+
+project_name = prefix + os.path.basename(environment['PADPATH'])
+
+project = client.graphql("""
+  query {
+    project(where: { name: { _eq: "%s" } }) {
+      id,
+      flows(where: { archived: { _eq: false} }) { id, name }
+    }
+  }
+""" % project_name)['data']
+
+delete_flow_statement = """
+  mutation {
+    delete_flow(input: { flow_id: "%s" }) {
+      success,
+      error
+    }
+  }
+"""
+
+existing_flows = []
+unchanged_flows = []
+flow_names_to_id = {}
+
+if project['project'] == []:
+  client.create_project(project_name)
+else:
+  flows = project['project'][0]['flows']
+  for flow in flows:
+    flow_names_to_id[flow['name']] = flow['id']
+    if args.force:
+      print("Archiving flow: %s" % flow['name'])
+      if not args.preview:
+        client.graphql(delete_flow_statement % flow['id'])
+    else:
+      existing_flows.append(flow['name'])
+
+task = ShellTask(return_all=True, log_stderr=True)
+for item in schedule:
+  name = generateName(item)
+
+  if name in existing_flows:
+    unchanged_flows.append(name)
+    continue
+
+  schedule = IntervalSchedule(
+    interval=rateToInterval(item['rate'])
+  )
+
+  with Flow(name, schedule=schedule) as flow:
+    task(command=' '.join(['teleport'] + item['command']), env=environment)
+
+  print("Creating flow: %s" % name)
+  if not args.preview:
+    flow.register(project_name=project_name)
+
+for name in [name for name in existing_flows if not name in unchanged_flows]:
+  print("Archiving flow: %s", name)
+  if not args.preview:
+    client.graphql(delete_flow_statement % flow_names_to_id[name])
+
+# TODO
+# X Check if project exists
+# X Remove deleted tasks
+# X Schedule recurring tasks
+# TELEPORT_SECRET_KEY => Documentation
+# README + Packaging
+# Error handling (Retry vs Fail)

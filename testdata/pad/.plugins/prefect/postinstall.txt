@@ -1,0 +1,15 @@
+`prefect` configures tasks from the Teleport Schedule to execute in Prefect.io
+
+Documentation: TODO
+Dependencies: python3, prefect
+Usage:
+
+  teleport plugin -- prefect [-h] [-f] [-p]
+
+  Deploy your Teleport Pad to Prefect
+
+  optional arguments:
+    -h, --help     show this help message and exit
+    -f, --force    delete and re-create all flows
+    -p, --preview  perform a dry-run to see log output without applying any
+                  updates
