@@ -175,8 +175,10 @@ func generateProjectDirectory(padpath string) {
 			log.Fatal(err)
 		}
 
-		// No .keep file in sources/
+		// No .keep file in sources/ or config/
 		if directory == "sources" {
+			continue
+		} else if directory == "config" {
 			continue
 		}
 
