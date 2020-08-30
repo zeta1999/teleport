@@ -130,7 +130,11 @@ func secretsCLI() {
 	case "init":
 		err := secrets.InitializeSecretsFile(secretsSettings())
 		if err != nil {
-			log.Fatal(err)
+			if err.Error() == "TELEPORT_SECRET_KEY not set" {
+				log.Fatal(fmt.Errorf("%s, use `teleport secrets generate_secret_key` to create the secret key", err))
+			} else {
+				log.Fatal(err)
+			}
 		}
 	case "show":
 		body, err := secrets.ReadSecretsFile(secretsSettings())
@@ -219,7 +223,7 @@ func secretsHelp() {
 	fmt.Println("usage: teleport secrets [COMMAND] <[ARGS]...>")
 	fmt.Println("Commands:")
 	fmt.Println("  generate_secret_key\tgenerate and print a random string to use as the encryption secret key")
-	fmt.Println("  initialize\t\tadd an empty encrypted secrets file to the current Pad directory")
+	fmt.Println("  init\t\t\tadd an empty encrypted secrets file to the current Pad directory")
 	fmt.Println("  show\t\t\tdecrypt and print all the items in the secrets file")
 	fmt.Println("  set [KEY] <[VALUE]>\tcreate or update a secret by key; password prompt will be used if VALUE is not provided in the command")
 	fmt.Println("  delete [KEY]\t\tdelete a secret by key")
