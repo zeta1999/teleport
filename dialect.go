@@ -2,6 +2,8 @@ package main
 
 import (
 	"strings"
+
+	"github.com/xo/dburl"
 )
 
 type Dialect struct {
@@ -46,10 +48,21 @@ var (
 func GetDialect(d Database) Dialect {
 	if strings.HasPrefix(d.URL, "redshift://") {
 		return redshift
-	} else if strings.HasPrefix(d.URL, "postgres://") {
-		return postgres
-	} else if strings.HasPrefix(d.URL, "sqlite://") {
-		return sqlite
+	} else if strings.HasPrefix(d.URL, "rs://") {
+		return redshift
+	}
+
+	if u, err := dburl.Parse(d.URL); err == nil {
+		switch u.Driver {
+		case "postgres":
+			return postgres
+		case "sqlite3":
+			return sqlite
+		case "mysql":
+			return mysql
+		default:
+			return mysql
+		}
 	}
 
 	return mysql
