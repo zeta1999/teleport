@@ -209,6 +209,15 @@ func generateProjectDirectory(padpath string) {
 		log.Fatal(err)
 	}
 
+	scheduleConfigFile, err := os.Create(filepath.Join(padpath, "config", "schedule.port"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = scheduleConfigFile.WriteString("# ExtractLoadAPI('example_api', to='db1', every='6 hours')")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	log.WithField("padpath", padpath).Info("Pad generated successfully")
 }
 
