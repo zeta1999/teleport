@@ -225,14 +225,15 @@ func requestAllPages(endpoint *Endpoint, finalResults *[]dataObject) error {
 		}
 		results = append(results, pageResults...)
 
-		itr++
-		if Preview {
+		if Preview && itr != 0 {
 			if len(results) > PreviewLimit {
 				results = results[:PreviewLimit]
 			}
 			log.Debug("(preview) Skipping additional pages if any")
 			break
 		}
+
+		itr++
 	}
 
 	*finalResults = results

@@ -100,12 +100,12 @@ func TestAPIConfigurationCases(t *testing.T) {
 
 func TestAPIPreview(t *testing.T) {
 	Preview = true
-	runAPITest(t, "api_basic_auth.port", func(t *testing.T, portFile string, destdb *sql.DB) {
+	runAPITest(t, "api_offset_pagination.port", func(t *testing.T, portFile string, destdb *sql.DB) {
 		extractLoadAPI(portFile, "testdest")
 
 		assertRowCount(t, 0, destdb, "test_items")
-		tenthString, _ := hook.Entries[10].String()
-		assert.Contains(t, tenthString, "(not executed)")
+		twelvthString, _ := hook.Entries[12].String()
+		assert.Contains(t, twelvthString, "(not executed)")
 	})
 	Preview = false
 }
