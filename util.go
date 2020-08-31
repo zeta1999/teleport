@@ -100,7 +100,7 @@ Headers:
 
 Body:
 %s
-		`, strings.Join(headers, ","), indentString(string(content))))
+		`, strings.Join(headers, ","), string(content)))
 
 	return nil
 }
