@@ -3,13 +3,13 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"strings"
 	"syscall"
 
 	"github.com/hundredwatt/teleport/schema"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
 
@@ -112,6 +112,13 @@ func createDestinationTableFromConfigFile(source string, file string) error {
 }
 
 func aboutDB(source string) {
+	_, err := connectDatabase(source)
+	if err != nil {
+		log.Fatal(err)
+	} else {
+		log.Info("database successfully connected ✓")
+	}
+
 	fmt.Println("Name: ", source)
 	fmt.Printf("Type: %s\n", GetDialect(Databases[source]).HumanName)
 }
