@@ -53,6 +53,35 @@ func createTable(source string, tableName string, table *schema.Table) error {
 	return err
 }
 
+func addColumns(destination string, table *schema.Table, columns []schema.Column) error {
+	database, err := connectDatabase(destination)
+	if err != nil {
+		return err
+	}
+
+	for _, column := range columns {
+		log.WithFields(log.Fields{
+			"database": destination,
+			"table":    table.Name,
+			"column":   column.Name,
+		}).Debug("Adding column")
+
+		table.Columns = append(table.Columns, column)
+		alterQuery := table.GenerateAddColumnStatement(column)
+
+		if Preview {
+			log.Debug("(not executed) SQL Query:\n" + indentString(alterQuery))
+			continue
+		}
+		_, err := database.Exec(alterQuery)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func listTables(source string) {
 	database, err := connectDatabase(source)
 	if err != nil {
@@ -82,24 +111,6 @@ func dropTable(source string, table string) {
 	}
 
 	_, err = database.Exec(fmt.Sprintf("DROP TABLE %s", table))
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func createDestinationTable(source string, destination string, sourceTableName string) {
-	database, err := connectDatabase(source)
-	if err != nil {
-		log.Fatal("Database Open Error:", err)
-	}
-
-	table, err := schema.DumpTableMetadata(database, sourceTableName)
-	if err != nil {
-		log.Fatal("Table Metadata Error:", err)
-	}
-
-	err = createTable(destination, fmt.Sprintf("%s_%s", source, sourceTableName), table)
-
 	if err != nil {
 		log.Fatal(err)
 	}

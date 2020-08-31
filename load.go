@@ -44,7 +44,7 @@ func load(destinationTable *schema.Table, columns *[]schema.Column, csvfile *str
 	return nil
 }
 
-func createDestinationTableIfNotExists(destination string, destinationTableName string, sourceTable *schema.Table, destinationTable *schema.Table) (err error) {
+func createOrUpdateDestinationTable(destination string, destinationTableName string, sourceTable *schema.Table, destinationTable *schema.Table) error {
 	fnlog := log.WithFields(log.Fields{
 		"database": destination,
 		"table":    destinationTableName,
@@ -52,31 +52,40 @@ func createDestinationTableIfNotExists(destination string, destinationTableName 
 
 	exists, err := tableExists(destination, destinationTableName)
 	if err != nil {
-		return
-	} else if exists {
-		fnlog.Debug("Destination Table already exists, inspecting")
-
-		database, dbErr := connectDatabase(destination)
-		if dbErr != nil {
-			log.Fatal("Database Open Error:", err)
-		}
-
-		var dumpedTable *schema.Table
-		dumpedTable, err = schema.DumpTableMetadata(database, destinationTableName)
-		if err != nil {
-			return
-		}
-		dumpedTable.Source = destination // TODO: smell
-
-		*destinationTable = *dumpedTable
-
-		return
+		return err
+	} else if !exists {
+		fnlog.Infof("Destination Table does not exist, creating")
+		return createDestinationTable(destination, destinationTableName, sourceTable, destinationTable)
 	}
 
+	fnlog.Debug("Destination Table already exists, inspecting")
+
+	destinationDB, dbErr := connectDatabase(destination)
+	if dbErr != nil {
+		log.Fatal("Database Open Error:", err)
+	}
+
+	var dumpedTable *schema.Table
+	dumpedTable, err = schema.DumpTableMetadata(destinationDB, destinationTableName)
+	if err != nil {
+		return err
+	}
+	dumpedTable.Source = destination // TODO: smell
+
+	err = addColumns(destination, dumpedTable, newColumns(dumpedTable, sourceTable))
+	if err != nil {
+		return err
+	}
+
+	*destinationTable = *dumpedTable
+
+	return nil
+}
+
+func createDestinationTable(destination string, destinationTableName string, sourceTable *schema.Table, destinationTable *schema.Table) (err error) {
 	*destinationTable = schema.Table{destination, destinationTableName, make([]schema.Column, len(sourceTable.Columns))}
 	copy(destinationTable.Columns, sourceTable.Columns)
 
-	fnlog.Infof("Destination Table does not exist, creating")
 	if Preview {
 		log.Debug("(not executed) SQL Query:\n" + indentString(destinationTable.GenerateCreateTableStatement(destinationTableName)))
 		return
@@ -182,23 +191,16 @@ func importCSV(source string, table string, file string, columns []schema.Column
 func importableColumns(destinationTable *schema.Table, sourceTable *schema.Table) []schema.Column {
 	var (
 		destinationOnly = make([]schema.Column, 0)
-		sourceOnly      = make([]schema.Column, 0)
 		both            = make([]schema.Column, 0)
 	)
 
 	destinationOnly = filterColumns(destinationTable.Columns, sourceTable.NotContainsColumnWithSameName)
-	sourceOnly = filterColumns(sourceTable.Columns, destinationTable.NotContainsColumnWithSameName)
 	both = filterColumns(sourceTable.Columns, destinationTable.ContainsColumnWithSameName)
 
 	for _, column := range destinationOnly {
 		log.WithFields(log.Fields{
 			"column": column.Name,
 		}).Warn("source table does not define column included in destination table")
-	}
-	for _, column := range sourceOnly {
-		log.WithFields(log.Fields{
-			"column": column.Name,
-		}).Warn("destination table does not define column included in source table, column excluded from extract")
 	}
 
 	for _, column := range both {
@@ -223,6 +225,10 @@ func importableColumns(destinationTable *schema.Table, sourceTable *schema.Table
 	}
 
 	return both
+}
+
+func newColumns(destinationTable *schema.Table, sourceTable *schema.Table) []schema.Column {
+	return filterColumns(sourceTable.Columns, destinationTable.NotContainsColumnWithSameName)
 }
 
 func filterColumns(columns []schema.Column, f func(column schema.Column) bool) []schema.Column {

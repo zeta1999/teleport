@@ -54,7 +54,7 @@ func extractLoadDatabase(sourceOrPath string, destination string, tableName stri
 		func() error { return connectDatabaseWithLogging(destination) },
 		func() error { return inspectTable(source, tableName, &sourceTable, &tableExtract) },
 		func() error {
-			return createDestinationTableIfNotExists(destination, destinationTableName, &sourceTable, &destinationTable)
+			return createOrUpdateDestinationTable(destination, destinationTableName, &sourceTable, &destinationTable)
 		},
 		func() error {
 			return extractSource(&sourceTable, &destinationTable, tableExtract, &columns, &csvfile)

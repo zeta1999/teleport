@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hundredwatt/teleport/schema"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stretchr/testify/assert"
@@ -103,11 +104,50 @@ func TestAPIPreview(t *testing.T) {
 	runAPITest(t, "api_offset_pagination.port", func(t *testing.T, portFile string, destdb *sql.DB) {
 		extractLoadAPI(portFile, "testdest")
 
-		assertRowCount(t, 0, destdb, "test_items")
+		exists, err := tableExists("testdest", "test_items")
+		assert.NoError(t, err)
+		assert.False(t, exists)
+
 		twelvthString, _ := hook.Entries[12].String()
 		assert.Contains(t, twelvthString, "(not executed)")
 	})
 	Preview = false
+}
+
+func TestAPINewColumn(t *testing.T) {
+	// Initial extract-load-api
+	runAPITest(t, "api_csv_without_ranking.port", func(t *testing.T, portFile string, destdb *sql.DB) {
+		extractLoadAPI(portFile, "testdest")
+		var table schema.Table
+		inspectTable("testdest", "test_items", &table, nil)
+		assert.Len(t, table.Columns, 7)
+
+		// Simulate re-running extract-load-api after modifying TableDefinition() to add `ranking` column
+		runAPITest(t, "api_csv.port", func(t *testing.T, portFile string, destdb *sql.DB) {
+			extractLoadAPI(portFile, "testdest")
+
+			thirdString, _ := hook.Entries[3].String()
+			assert.Contains(t, thirdString, "Adding column")
+			assert.Contains(t, thirdString, "ranking")
+
+			var table schema.Table
+			inspectTable("testdest", "test_items", &table, nil)
+			assert.Len(t, table.Columns, 8)
+		})
+	})
+}
+
+func TestWithoutTableDefinition(t *testing.T) {
+	// Simulate table getting created outside of extract-load-api job
+	runAPITest(t, "api_csv.port", func(t *testing.T, portFile string, destdb *sql.DB) {
+		extractLoadAPI(portFile, "testdest")
+
+		runAPITest(t, "api_csv_without_table_definition.port", func(t *testing.T, portFile string, destdb *sql.DB) {
+			extractLoadAPI(portFile, "testdest")
+
+			assert.Equal(t, log.InfoLevel, hook.LastEntry().Level)
+		})
+	})
 }
 
 func TestIncrementalLoadStrategy(t *testing.T) {

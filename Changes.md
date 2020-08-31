@@ -2,6 +2,7 @@
 
 ## HEAD
 
+* Automatically Create New Columns in Destination Table
 * (Database) Progress indication in DEBUG log for database extracts
 
 ## 0.0.1-alpha.6

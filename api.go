@@ -48,20 +48,22 @@ func extractLoadAPI(endpointName string, destination string) {
 	fnlog.Info("Starting extract-load-api")
 
 	var endpoint Endpoint
+	var endpointTable schema.Table
 	var destinationTable schema.Table
 	var columns []schema.Column
 	var results []dataObject
 	var csvfile string
+	var err error
 
 	destinationTableName := strings.TrimSuffix(filepath.Base(endpointName), filepath.Ext(endpointName))
 
 	RunWorkflow([]func() error{
 		func() error { return readEndpointConfiguration(endpointName, &endpoint) },
 		func() error { return connectDatabaseWithLogging(destination) },
+		func() error { endpointTable, err = endpoint.table(); return err },
 		func() error {
-			return createEndpointdestinationTableIfNotExists(destination, destinationTableName, &endpoint)
+			return createOrUpdateDestinationTable(destination, destinationTableName, &endpointTable, &destinationTable)
 		},
-		func() error { return inspectTable(destination, destinationTableName, &destinationTable, nil) },
 		func() error { return performAPIExtraction(&endpoint, &results) },
 		func() error { return determineImportColumns(&destinationTable, results, &columns) },
 		func() error { return saveResultsToCSV(endpointName, results, &columns, &csvfile) },
@@ -92,44 +94,6 @@ func extractAPI(endpointName string) {
 			"rows": currentWorkflow.RowCounter,
 		}).Info("Extract to CSV completed 🎉")
 	})
-}
-
-func createEndpointdestinationTableIfNotExists(destination string, destinationTableName string, endpoint *Endpoint) (err error) {
-	fnlog := log.WithFields(log.Fields{
-		"database": destination,
-		"table":    destinationTableName,
-	})
-
-	exists, err := tableExists(destination, destinationTableName)
-	if err != nil {
-		return
-	} else if exists {
-		return
-	} else if endpoint.TableDefinition == nil {
-		return
-	}
-
-	db, err := connectDatabase(destination)
-	if err != nil {
-		return
-	}
-
-	statement := fmt.Sprintf("CREATE TABLE %s (\n", destinationTableName)
-	for name, datatype := range *endpoint.TableDefinition {
-		statement = statement + fmt.Sprintf("\t%s %s,\n", name, datatype)
-	}
-	statement = strings.TrimSuffix(statement, ",\n")
-	statement += "\n)"
-
-	fnlog.Infof("Destination Table does not exist, creating")
-	// if Preview {
-	// log.Debug("(not executed) SQL Query:\n" + indentString(statement))
-	// return
-	// }
-
-	_, err = db.Exec(statement)
-
-	return
 }
 
 func determineImportColumns(destinationTable *schema.Table, results []dataObject, columns *[]schema.Column) error {

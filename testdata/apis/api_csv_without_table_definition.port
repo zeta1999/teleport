@@ -1,0 +1,9 @@
+Get("$TEST_URL/widgets.csv")
+BasicAuth("user", "pass")
+ResponseType("csv")
+
+LoadStrategy(Full)
+
+def Transform(data):
+	headers = data.pop(0)
+	return [{headers[i]: row[i] for i in range(len(headers))} for row in data]

@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/hundredwatt/teleport/schema"
 	starlarkextensions "github.com/hundredwatt/teleport/starlarkextensions"
 	"go.starlark.net/starlark"
 	"gopkg.in/validator.v2"
@@ -232,4 +233,21 @@ func (endpoint *Endpoint) strategyOpts() (strategyOpts StrategyOptions) {
 	strategyOpts.ModifiedAtColumn = endpoint.LoadOptions.ModifiedAtColumn
 	strategyOpts.HoursAgo = string(endpoint.LoadOptions.GoBackHours)
 	return
+}
+
+func (endpoint *Endpoint) table() (schema.Table, error) {
+	table := schema.Table{}
+	if endpoint.TableDefinition == nil {
+		return table, nil
+	}
+
+	for name, dataType := range *endpoint.TableDefinition {
+		dataType, options, err := schema.ParseDatabaseType(name, dataType)
+		if err != nil {
+			return table, err
+		}
+		table.Columns = append(table.Columns, schema.Column{Name: name, DataType: dataType, Options: options})
+	}
+
+	return table, nil
 }

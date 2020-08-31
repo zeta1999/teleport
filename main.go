@@ -118,8 +118,6 @@ func main() {
 		listTables(opts.Source)
 	case "drop-table":
 		dropTable(opts.Source, opts.TableName)
-	case "create-destination-table":
-		createDestinationTable(opts.FromSource, opts.ToSource, opts.TableName)
 	case "create-destination-table-from-config-file":
 		createDestinationTableFromConfigFile(opts.Source, opts.File)
 	case "describe-table":

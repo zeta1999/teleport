@@ -61,3 +61,9 @@ func TestRedshiftTableGeneration(t *testing.T) {
 		}
 	})
 }
+
+func TestRedshiftAddColumn(t *testing.T) {
+	withDb(t, os.ExpandEnv("redshift://$TEST_REDSHIFT_USER:$TEST_REDSHIFT_PASSWORD@$TEST_REDSHIFT_HOST:5439/dev"), func(db *sql.DB) {
+		testAddColumn(t, db)
+	})
+}

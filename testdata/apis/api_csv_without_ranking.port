@@ -1,0 +1,18 @@
+Get("$TEST_URL/widgets.csv")
+BasicAuth("user", "pass")
+ResponseType("csv")
+
+LoadStrategy(Full)
+TableDefinition({
+	"id": "INT",
+	"price": "DECIMAL(10,2)",
+	"name": "VARCHAR(255)",
+	"active": "BOOLEAN",
+	"launched": "DATE",
+	"created_at": "TIMESTAMP",
+	"description": "TEXT"
+})
+
+def Transform(data):
+	headers = data.pop(0)
+	return [{headers[i]: row[i] for i in range(len(headers))} for row in data]

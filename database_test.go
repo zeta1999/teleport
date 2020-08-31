@@ -256,22 +256,28 @@ func xTestSQLiteLoadExtractLoadConsistency(t *testing.T) {
 	})
 }
 
-func TestLoadSourceHasAdditionalColumn(t *testing.T) {
-	runDatabaseTest(t, "full.port", func(t *testing.T, _ string, srcdb *sql.DB, destdb *sql.DB) {
+func TestLoadSourceHasNewColumn(t *testing.T) {
+	runDatabaseTest(t, "full.port", func(t *testing.T, portFile string, srcdb *sql.DB, destdb *sql.DB) {
 		// Create a new schema.Table Definition, same as widgets, but without the `description` column
 		widgetsWithoutDescription := schema.Table{"example", "widgets", make([]schema.Column, 0)}
 		widgetsWithoutDescription.Columns = append(widgetsWithoutDescription.Columns, widgetsTableDefinition.Columns[:2]...)
 		widgetsWithoutDescription.Columns = append(widgetsWithoutDescription.Columns, widgetsTableDefinition.Columns[3:]...)
 
-		srcdb.Exec(widgetsTableDefinition.GenerateCreateTableStatement("widgets"))
-		destdb.Exec(widgetsWithoutDescription.GenerateCreateTableStatement("testsrc_widgets"))
+		_, err := srcdb.Exec(widgetsTableDefinition.GenerateCreateTableStatement("widgets"))
+		assert.NoError(t, err)
+		_, err = destdb.Exec(widgetsWithoutDescription.GenerateCreateTableStatement("testsrc_widgets"))
+		assert.NoError(t, err)
 		importCSV("testsrc", "widgets", "testdata/example_widgets.csv", widgetsTableDefinition.Columns)
 
-		expectLogMessages(t, []string{"destination table does not define column", "ranking"}, func() {
-			extractLoadDatabase("testsrc", "testdest", "widgets")
-		})
+		extractLoadDatabase("testsrc", "testdest", "widgets")
 
-		assertRowCount(t, 10, destdb, "testsrc_widgets")
+		sixthString, _ := hook.Entries[6].String()
+		assert.Contains(t, sixthString, "Adding column")
+		assert.Contains(t, sixthString, "ranking")
+
+		var table schema.Table
+		inspectTable("testdest", "testsrc_widgets", &table, nil)
+		assert.Equal(t, widgetsTableDefinition.Columns[2].Name, table.Columns[7].Name)
 	})
 }
 

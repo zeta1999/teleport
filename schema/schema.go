@@ -212,7 +212,7 @@ func determineOptions(columnType sqlColumn, dataType DataType) (map[Option]int, 
 func (table *Table) GenerateCreateTableStatement(name string) string {
 	statement := fmt.Sprintf("CREATE TABLE %s (\n", name)
 	for _, column := range table.Columns {
-		statement += fmt.Sprintf("%s %s,\n", column.Name, column.generateDataTypeExpression())
+		statement += column.GenerateColumnDefinition() + ",\n"
 	}
 	statement = strings.TrimSuffix(statement, ",\n")
 	statement += "\n);"
@@ -234,6 +234,17 @@ func (table *Table) GenerateRedshiftCreateTableStatement(name string) string {
 	statement += "\n);"
 
 	return statement
+}
+
+func (table *Table) GenerateAddColumnStatement(column Column) string {
+	return fmt.Sprintf(`
+		ALTER TABLE %s
+		ADD COLUMN %s;
+	`, table.Name, column.GenerateColumnDefinition())
+}
+
+func (column *Column) GenerateColumnDefinition() string {
+	return fmt.Sprintf("%s %s", column.Name, column.generateDataTypeExpression())
 }
 
 func (column *Column) generateDataTypeExpression() string {

@@ -26,3 +26,9 @@ func TestSQLiteTableGeneration(t *testing.T) {
 		testTableGeneration(t, db)
 	})
 }
+
+func TestSQLiteAddColumn(t *testing.T) {
+	withDb(t, "sqlite://:memory:", func(db *sql.DB) {
+		testAddColumn(t, db)
+	})
+}

@@ -119,6 +119,31 @@ func testTableGeneration(t *testing.T, db *sql.DB) {
 	}
 }
 
+func testAddColumn(t *testing.T, db *sql.DB) {
+	_, err := db.Exec(widgetsTable.GenerateCreateTableStatement("new_widgets"))
+	if err != nil {
+		assert.FailNow(t, err.Error())
+	}
+	defer db.Exec(`DROP TABLE new_widgets`)
+
+	newColumn := Column{Name: "reviews_count", DataType: INTEGER, Options: map[Option]int{BYTES: 8}}
+	widgetsTable.Name = "new_widgets"
+
+	_, err = db.Exec(widgetsTable.GenerateAddColumnStatement(newColumn))
+	if err != nil {
+		assert.FailNow(t, err.Error())
+	}
+
+	table, err := DumpTableMetadata(db, "new_widgets")
+	if err != nil {
+		assert.FailNow(t, err.Error())
+	}
+
+	assert.Equal(t, newColumn.Name, table.Columns[len(table.Columns)-1].Name)
+	assert.Equal(t, newColumn.DataType, table.Columns[len(table.Columns)-1].DataType)
+	assert.Equal(t, newColumn.Options, table.Columns[len(table.Columns)-1].Options)
+}
+
 var genericCases = []struct {
 	originalDataTypes  []string
 	column             Column

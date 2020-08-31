@@ -66,3 +66,9 @@ func TestPostgresTableGeneration(t *testing.T) {
 		testTableGeneration(t, db)
 	})
 }
+
+func TestPostgresAddColumn(t *testing.T) {
+	withDb(t, "postgres://postgres@localhost:45432/?sslmode=disable", func(db *sql.DB) {
+		testAddColumn(t, db)
+	})
+}
