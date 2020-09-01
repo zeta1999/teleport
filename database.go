@@ -162,6 +162,8 @@ func extractSource(sourceTable *schema.Table, destinationTable *schema.Table, ta
 	} else {
 		importColumns = sourceTable.Columns
 	}
+	fmt.Println("@@@")
+	fmt.Println(importColumns)
 	for _, column := range importColumns {
 		if column.Options[schema.COMPUTED] != 1 {
 			exportColumns = append(exportColumns, column)

@@ -281,6 +281,31 @@ func TestLoadSourceHasNewColumn(t *testing.T) {
 	})
 }
 
+func TestLoadSourceColumnTypeChanged(t *testing.T) {
+	runDatabaseTest(t, "full.port", func(t *testing.T, portFile string, srcdb *sql.DB, destdb *sql.DB) {
+		// Create a new schema.Table Definition, same as widgets, but with 'price' column changed to a string
+		table := widgetsTableDefinition
+		column := schema.Column{Name: "price", DataType: schema.STRING, Options: map[schema.Option]int{schema.LENGTH: 16}}
+		table.Columns[1] = column
+
+		_, err := srcdb.Exec(widgetsTableDefinition.GenerateCreateTableStatement("widgets"))
+		assert.NoError(t, err)
+		_, err = destdb.Exec(table.GenerateCreateTableStatement("testsrc_widgets"))
+		assert.NoError(t, err)
+		importCSV("testsrc", "widgets", "testdata/example_widgets.csv", widgetsTableDefinition.Columns)
+
+		extractLoadDatabase("testsrc", "testdest", "widgets")
+
+		// sixthString, _ := hook.Entries[6].String()
+		// assert.Contains(t, sixthString, "Adding column")
+		// assert.Contains(t, sixthString, "ranking")
+
+		// var table schema.Table
+		// inspectTable("testdest", "testsrc_widgets", &table, nil)
+		// assert.Equal(t, widgetsTableDefinition.Columns[2].Name, table.Columns[7].Name)
+	})
+}
+
 func TestLoadStringNotLongEnough(t *testing.T) {
 	runDatabaseTest(t, "full.port", func(t *testing.T, _ string, srcdb *sql.DB, destdb *sql.DB) {
 		// Create a new schema.Table Definition, same as widgets, but with name LENGTH changed to 32

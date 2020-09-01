@@ -209,14 +209,21 @@ func importableColumns(destinationTable *schema.Table, sourceTable *schema.Table
 
 		switch destinationColumn.DataType {
 		case schema.STRING:
+			fmt.Println(sourceColumn)
+			fmt.Println(destinationColumn)
+			fmt.Println(sourceColumn.Options[schema.LENGTH])
+			fmt.Println(destinationColumn.Options[schema.LENGTH])
 			if sourceColumn.Options[schema.LENGTH] != schema.MaxLength && sourceColumn.Options[schema.LENGTH] > destinationColumn.Options[schema.LENGTH] {
 				log.Warnf("For string column `%s`, destination LENGTH is too short", sourceColumn.Name)
 			}
 		case schema.INTEGER:
+			fmt.Println(sourceColumn.Options)
 			if sourceColumn.Options[schema.BYTES] > destinationColumn.Options[schema.BYTES] {
 				log.Warnf("For integer column `%s`, destination SIZE is too small", sourceColumn.Name)
 			}
 		case schema.DECIMAL:
+			fmt.Println(sourceColumn.Options)
+			fmt.Println(destinationColumn.Options)
 			if sourceColumn.Options[schema.PRECISION] > destinationColumn.Options[schema.PRECISION] {
 				log.Warnf("For numeric column `%s`, destination PRECISION is too small", sourceColumn.Name)
 			}
