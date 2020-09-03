@@ -109,6 +109,11 @@ func main() {
 		scheduleCLI()
 		return
 
+	// Plugins
+	case "plugin", "plugins":
+		pluginsCLI()
+		return
+
 	// Database Interactions
 	case "about-db":
 		aboutDB(opts.Source)

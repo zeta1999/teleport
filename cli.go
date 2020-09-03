@@ -219,6 +219,33 @@ func scheduleCLI() {
 	}
 }
 
+func pluginsCLI() {
+	if len(os.Args) < 3 {
+		pluginsHelp()
+		return
+	}
+
+	switch os.Args[2] {
+	case "install":
+		if len(os.Args) < 4 {
+			pluginsHelp()
+			return
+		}
+
+		err := InstallPlugin(os.Args[3])
+		if err != nil {
+			log.Fatal(err)
+		}
+	case "--":
+		err := CallPlugin(os.Args[3], os.Args[4:])
+		if err != nil {
+			log.Fatal(err)
+		}
+	default:
+		pluginsHelp()
+	}
+}
+
 func secretsHelp() {
 	fmt.Println("usage: teleport secrets [COMMAND] <[ARGS]...>")
 	fmt.Println("Commands:")
@@ -234,6 +261,13 @@ func scheduleHelp() {
 	fmt.Println("Commands:")
 	fmt.Println("  validate\treads the schedule file and prints any errors")
 	fmt.Println("  export\texport the schedule as JSON for handling by infrastructure")
+}
+
+func pluginsHelp() {
+	fmt.Println("usage: teleport plugin [COMMAND] [PLUGIN_NAME] <[ARGS]...>")
+	fmt.Println("Commands:")
+	fmt.Println("  install [PLUGIN_NAME]\t\tinstall PLUGIN_NAME to the current Pad directory")
+	fmt.Println("  -- [PLUGIN_NAME] <[ARGS]...>\trun the plugin with provided arguments")
 }
 
 func promptForValue() (string, error) {

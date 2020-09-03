@@ -1,8 +1,9 @@
 # Teleport Changelog
 
 ## HEAD
-
+### Added
 * (Database) Progress indication in DEBUG log for database extracts
+* Plugins system for packaging deployment options
 
 ## 0.0.1-alpha.6
 
