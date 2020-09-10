@@ -267,7 +267,7 @@ func (tableExtract *TableExtract) strategyOpts() (strategyOpts StrategyOptions) 
 	strategyOpts.Strategy = string(tableExtract.LoadOptions.Strategy)
 	strategyOpts.PrimaryKey = tableExtract.LoadOptions.PrimaryKey
 	strategyOpts.ModifiedAtColumn = tableExtract.LoadOptions.ModifiedAtColumn
-	strategyOpts.HoursAgo = string(tableExtract.LoadOptions.GoBackHours)
+	strategyOpts.HoursAgo = fmt.Sprintf("%d", tableExtract.LoadOptions.GoBackHours)
 	return
 }
 

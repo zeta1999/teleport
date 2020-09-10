@@ -260,6 +260,6 @@ func (endpoint *Endpoint) strategyOpts() (strategyOpts StrategyOptions) {
 	strategyOpts.Strategy = string(endpoint.LoadOptions.Strategy)
 	strategyOpts.PrimaryKey = endpoint.LoadOptions.PrimaryKey
 	strategyOpts.ModifiedAtColumn = endpoint.LoadOptions.ModifiedAtColumn
-	strategyOpts.HoursAgo = string(endpoint.LoadOptions.GoBackHours)
+	strategyOpts.HoursAgo = fmt.Sprintf("%d", endpoint.LoadOptions.GoBackHours)
 	return
 }
