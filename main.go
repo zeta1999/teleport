@@ -40,6 +40,11 @@ var (
 	legacySecretsFile string = "secrets.txt"
 )
 
+func init() {
+	resolve.AllowLambda = true
+	resolve.AllowNestedDef = true
+}
+
 func main() {
 	if _, ok := os.LookupEnv("HONEYBADGER_API_KEY"); ok {
 		honeybadger.SetContext(honeybadger.Context{"args": os.Args[1:]})
@@ -95,7 +100,6 @@ func main() {
 
 	setEnvironmentValuesFromSecretsFile()
 	readDatabaseConnectionConfiguration()
-	configureStarlark()
 
 	switch opts.Command {
 
@@ -259,11 +263,6 @@ func setEnvironmentValuesFromSecretsFile() {
 	for _, variable := range body {
 		os.Setenv(variable.Key, variable.Value)
 	}
-}
-
-func configureStarlark() {
-	resolve.AllowLambda = true
-	resolve.AllowNestedDef = true
 }
 
 func notify(err error) {

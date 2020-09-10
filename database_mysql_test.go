@@ -49,8 +49,6 @@ func TestMySQLColumnTransforms(t *testing.T) {
 		},
 	}
 
-	configureStarlark()
-
 	for _, cse := range cases {
 		t.Run(cse.testFile, func(t *testing.T) {
 			withMySQLDatabase(t, func(t *testing.T, db *sql.DB) {
