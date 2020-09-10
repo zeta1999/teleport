@@ -138,7 +138,7 @@ func runAPITest(t *testing.T, testfile string, testfn func(*testing.T, string, *
 	}
 	configuration := string(bytes)
 
-	tmpFile, err := ioutil.TempFile(os.TempDir(), "/test_items.*port")
+	tmpFile, err := ioutil.TempFile(os.TempDir(), "test_items.*port")
 	if err != nil {
 		t.Fatal("cannot create temporary file:", err)
 	}

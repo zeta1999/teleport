@@ -352,7 +352,7 @@ func withTestDatabasePortFile(t *testing.T, source string, testfile string, fn f
 	}
 	configuration := string(bytes)
 
-	tmpFile, err := ioutil.TempFile(os.TempDir(), "/testsrc.*port")
+	tmpFile, err := ioutil.TempFile(os.TempDir(), "testsrc.*port")
 	if err != nil {
 		t.Fatal("cannot create temporary file:", err)
 	}
