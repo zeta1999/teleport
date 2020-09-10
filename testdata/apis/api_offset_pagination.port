@@ -8,7 +8,9 @@ TableDefinition({
 	"name": "VARCHAR(255)"
 })
 
-def Paginate(previous_response):
+Paginate(lambda previous_response: offsetPagination(previous_response))
+
+def offsetPagination(previous_response):
 	if previous_response == None: # For initial request
 		return { 'offset': 0 }
 	elif previous_response['body']['offset']: # For subsequent requests
@@ -16,5 +18,4 @@ def Paginate(previous_response):
 	else: # On final request, stop
 		return None
 
-def Transform(data):
-	return data["items"]
+Transform(lambda data: data['items'])

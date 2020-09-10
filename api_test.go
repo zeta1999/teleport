@@ -54,6 +54,12 @@ func TestAPIConfigurationCases(t *testing.T) {
 			[]string{},
 		},
 		{
+			"api_lambda_transform.port",
+			log.InfoLevel,
+			10,
+			[]string{},
+		},
+		{
 			"api_invalid_configuration.port",
 			log.FatalLevel,
 			-1,

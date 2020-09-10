@@ -1,0 +1,20 @@
+Get("$TEST_URL/widgets.csv")
+BasicAuth("user", "pass")
+ResponseType("csv")
+
+LoadStrategy(Full)
+TableDefinition({
+	"id": "INT",
+	"price": "DECIMAL(10,2)",
+	"ranking": "FLOAT",
+	"name": "VARCHAR(255)",
+	"active": "BOOLEAN",
+	"launched": "DATE",
+	"created_at": "TIMESTAMP",
+	"description": "TEXT"
+})
+
+Transform(lambda data: [
+  {
+    data[0][i]: row[i] for i in range(len(data[0]))
+  } for row in data[1:]])

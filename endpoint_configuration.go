@@ -18,6 +18,8 @@ type Endpoint struct {
 	Headers         map[string]string
 	ResponseType    string `validate:"in=json|csv"`
 	Functions       starlark.StringDict
+	Transform       *starlark.Function
+	Paginate        *starlark.Function
 	TableDefinition *map[string]string
 	ErrorHandling   *map[errorClass]ExitCode
 	LoadOptions     LoadOptions
@@ -52,13 +54,15 @@ func readEndpointConfiguration(path string, endpointptr *Endpoint) error {
 func predeclared(endpoint *Endpoint) starlark.StringDict {
 	predeclared := starlarkextensions.GetExtensions()
 	// DSL Methods
-	predeclared["Get"] = starlark.NewBuiltin("Get", endpoint.get)
 	predeclared["AddHeader"] = starlark.NewBuiltin("AddHeader", endpoint.addHeader)
 	predeclared["BasicAuth"] = starlark.NewBuiltin("BasicAuth", endpoint.setBasicAuth)
+	predeclared["ErrorHandling"] = starlark.NewBuiltin("ErrorHandling", endpoint.setErrorHandling)
+	predeclared["Get"] = starlark.NewBuiltin("Get", endpoint.get)
+	predeclared["LoadStrategy"] = starlark.NewBuiltin("LoadStrategy", endpoint.setLoadStrategy)
+	predeclared["Paginate"] = starlark.NewBuiltin("Paginate", endpoint.setPaginate)
 	predeclared["ResponseType"] = starlark.NewBuiltin("setResponseType", endpoint.setResponseType)
 	predeclared["TableDefinition"] = starlark.NewBuiltin("TableDefinition", endpoint.setTableDefinition)
-	predeclared["LoadStrategy"] = starlark.NewBuiltin("LoadStrategy", endpoint.setLoadStrategy)
-	predeclared["ErrorHandling"] = starlark.NewBuiltin("ErrorHandling", endpoint.setErrorHandling)
+	predeclared["Transform"] = starlark.NewBuiltin("Transform", endpoint.setTransform)
 
 	// Load Strategies
 	predeclared["Full"] = starlark.String(Full)
@@ -132,6 +136,19 @@ func (endpoint *Endpoint) setBasicAuth(thread *starlark.Thread, _ *starlark.Buil
 	return starlark.None, nil
 }
 
+func (endpoint *Endpoint) setPaginate(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (value starlark.Value, err error) {
+	var (
+		function *starlark.Function
+	)
+	if err := starlark.UnpackPositionalArgs("Paginate", args, kwargs, 1, &function); err != nil {
+		return nil, prependStarlarkPositionToError(thread, err)
+	}
+
+	endpoint.Paginate = function
+
+	return starlark.None, nil
+}
+
 func (endpoint *Endpoint) setResponseType(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (value starlark.Value, err error) {
 	var (
 		responseType starlark.String
@@ -162,6 +179,19 @@ func (endpoint *Endpoint) setTableDefinition(thread *starlark.Thread, _ *starlar
 		tableDefinitionMap[k.(starlark.String).GoString()] = v.(starlark.String).GoString()
 	}
 	endpoint.TableDefinition = &tableDefinitionMap
+
+	return starlark.None, nil
+}
+
+func (endpoint *Endpoint) setTransform(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (value starlark.Value, err error) {
+	var (
+		function *starlark.Function
+	)
+	if err := starlark.UnpackPositionalArgs("Transform", args, kwargs, 1, &function); err != nil {
+		return nil, prependStarlarkPositionToError(thread, err)
+	}
+
+	endpoint.Transform = function
 
 	return starlark.None, nil
 }

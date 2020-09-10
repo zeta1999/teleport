@@ -284,7 +284,7 @@ func getResponse(method string, url string, headers map[string]string, basicAuth
 }
 
 func applyTransform(value interface{}, endpoint *Endpoint) (results []dataObject, err error) {
-	if endpoint.Functions["Transform"] != nil {
+	if endpoint.Transform != nil || endpoint.Functions["Transform"] != nil {
 		switch value.(type) {
 		case starlark.Value:
 		default:
@@ -294,9 +294,17 @@ func applyTransform(value interface{}, endpoint *Endpoint) (results []dataObject
 			}
 		}
 
-		value, err = starlark.Call(GetThread(), endpoint.Functions["Transform"], starlark.Tuple{value.(starlark.Value)}, nil)
-		if err != nil {
-			return nil, appendBackTraceToStarlarkError(err)
+		if endpoint.Transform != nil {
+			value, err = starlark.Call(GetThread(), endpoint.Transform, starlark.Tuple{value.(starlark.Value)}, nil)
+			if err != nil {
+				return nil, appendBackTraceToStarlarkError(err)
+			}
+		} else {
+			value, err = starlark.Call(GetThread(), endpoint.Functions["Transform"], starlark.Tuple{value.(starlark.Value)}, nil)
+			if err != nil {
+				return nil, appendBackTraceToStarlarkError(err)
+			}
+
 		}
 
 		switch value {
@@ -351,7 +359,7 @@ func applyTransform(value interface{}, endpoint *Endpoint) (results []dataObject
 
 func updatePagination(response *http.Response, body interface{}, endpoint *Endpoint) (map[string]string, bool, error) {
 	null := make(map[string]string)
-	if endpoint.Functions["Paginate"] == nil {
+	if endpoint.Paginate == nil && endpoint.Functions["Paginate"] == nil {
 		return null, true, nil
 	}
 
@@ -374,9 +382,18 @@ func updatePagination(response *http.Response, body interface{}, endpoint *Endpo
 		args = starlark.Tuple{starlark.None}
 	}
 
-	result, err := starlark.Call(GetThread(), endpoint.Functions["Paginate"], args, nil)
-	if err != nil {
-		return null, true, fmt.Errorf("Paginate() error: %w", appendBackTraceToStarlarkError(err))
+	var result starlark.Value
+	var err error
+	if endpoint.Paginate != nil {
+		result, err = starlark.Call(GetThread(), endpoint.Paginate, args, nil)
+		if err != nil {
+			return null, true, fmt.Errorf("Paginate() error: %w", appendBackTraceToStarlarkError(err))
+		}
+	} else {
+		result, err = starlark.Call(GetThread(), endpoint.Functions["Paginate"], args, nil)
+		if err != nil {
+			return null, true, fmt.Errorf("Paginate() error: %w", appendBackTraceToStarlarkError(err))
+		}
 	}
 
 	switch result.(type) {
