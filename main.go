@@ -7,7 +7,6 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/hundredwatt/teleport/schema"
 	"github.com/hundredwatt/teleport/secrets"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
@@ -136,16 +135,19 @@ func main() {
 	case "table-metadata":
 		tableMetadata(opts.Source, opts.TableName)
 	case "import-csv":
-		database, err := connectDatabase(opts.Source)
+		db, err := connectDatabase(opts.Source)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		table, err := schema.DumpTableMetadata(database, opts.TableName)
+		table, err := db.DumpTableMetadata(opts.TableName)
 		if err != nil {
 			log.Fatal(err)
 		}
-		importCSV(opts.Source, opts.TableName, opts.File, table.Columns)
+		err = importCSV(opts.Source, opts.TableName, opts.File, table.Columns)
+		if err != nil {
+			log.Fatal(err)
+		}
 
 	// Extract data from a source to csv
 	case "extract", "extract-db":

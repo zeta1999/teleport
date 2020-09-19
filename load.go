@@ -50,19 +50,19 @@ func createDestinationTableIfNotExists(destination string, destinationTableName 
 		"table":    destinationTableName,
 	})
 
+	db, dbErr := connectDatabase(destination)
+	if dbErr != nil {
+		log.Fatal("Database Open Error:", err)
+	}
+
 	exists, err := tableExists(destination, destinationTableName)
 	if err != nil {
 		return
 	} else if exists {
 		fnlog.Debug("Destination Table already exists, inspecting")
 
-		database, dbErr := connectDatabase(destination)
-		if dbErr != nil {
-			log.Fatal("Database Open Error:", err)
-		}
-
 		var dumpedTable *schema.Table
-		dumpedTable, err = schema.DumpTableMetadata(database, destinationTableName)
+		dumpedTable, err = db.DumpTableMetadata(destinationTableName)
 		if err != nil {
 			return
 		}
@@ -78,7 +78,7 @@ func createDestinationTableIfNotExists(destination string, destinationTableName 
 
 	fnlog.Infof("Destination Table does not exist, creating")
 	if Preview {
-		log.Debug("(not executed) SQL Query:\n" + indentString(destinationTable.GenerateCreateTableStatement(destinationTableName)))
+		log.Debug("(not executed) SQL Query:\n" + indentString(db.GenerateCreateTableStatement(destinationTableName, destinationTable)))
 		return
 	}
 
@@ -91,7 +91,7 @@ func createStagingTable(destinationTable *schema.Table, stagingTableName string)
 		"staging_table": stagingTableName,
 	})
 
-	database, err := connectDatabase(destinationTable.Source)
+	db, err := connectDatabase(destinationTable.Source)
 	if err != nil {
 		return
 	}
@@ -109,7 +109,7 @@ func createStagingTable(destinationTable *schema.Table, stagingTableName string)
 		return
 	}
 
-	_, err = database.Exec(query)
+	_, err = db.Exec(query)
 	return
 }
 
@@ -136,7 +136,7 @@ func updatePrimaryTable(destinationTable *schema.Table, stagingTableName string,
 		"table":         destinationTable.Name,
 	})
 
-	database, err := connectDatabase(destinationTable.Source)
+	db, err := connectDatabase(destinationTable.Source)
 	if err != nil {
 		return
 	}
@@ -155,28 +155,28 @@ func updatePrimaryTable(destinationTable *schema.Table, stagingTableName string,
 		return
 	}
 
-	_, err = database.Exec(query)
+	_, err = db.Exec(query)
 	return
 }
 
 func importCSV(source string, table string, file string, columns []schema.Column) (err error) {
-	database, err := connectDatabase(source)
+	db, err := connectDatabase(source)
 	if err != nil {
 		return
 	}
 
 	switch GetDialect(Databases[source]).Key {
 	case "redshift":
-		err = importRedshift(database, table, file, columns, Databases[source].Options)
+		err = importRedshift(db, table, file, columns, Databases[source].Options)
 	case "postgres":
-		err = importPostgres(database, table, file, columns)
+		err = importPostgres(db, table, file, columns)
 	case "sqlite":
-		err = importSqlite3(database, table, file, columns)
+		err = importSqlite3(db, table, file, columns)
 	default:
 		err = fmt.Errorf("not implemented for this database type")
 	}
 
-	return
+	return err
 }
 
 func importableColumns(destinationTable *schema.Table, sourceTable *schema.Table) []schema.Column {

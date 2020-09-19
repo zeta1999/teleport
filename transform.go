@@ -19,12 +19,12 @@ func updateTransform(source string, transformName string) {
 		contents = string(raw)
 	}
 
-	database, err := connectDatabase(source)
+	db, err := connectDatabase(source)
 	if err != nil {
 		log.Fatal("Database Connect Error:", err)
 	}
 
-	_, err = database.Exec(fmt.Sprintf(`
+	_, err = db.Exec(fmt.Sprintf(`
 		DROP TABLE IF EXISTS staging_%s;
 
 		CREATE TABLE staging_%s AS %s;

@@ -12,6 +12,19 @@ import (
 	xschema "github.com/jimsmart/schema"
 )
 
+type Database struct {
+	*sql.DB
+	Driver string
+}
+
+type DriverExtensions struct {
+	ParseSpecialTypes          *func(sqlColumn) (DataType, map[Option]int, bool)
+	GenerateDataTypeExpression *func(Column) (string, bool)
+	EscapeIdentifier           *func(string) string
+}
+
+var GenericDatabase = &Database{}
+
 // Table is our representation of a Table in a relational database
 type Table struct {
 	Source  string   `yaml:"source"`
@@ -64,11 +77,13 @@ var (
 	ErrColumnNotSupported = fmt.Errorf("column not supported")
 )
 
-var TableNames = xschema.TableNames
+func (db *Database) TableNames() ([]string, error) {
+	return xschema.TableNames(db.DB)
+}
 
-func DumpTableMetadata(database *sql.DB, tableName string) (*Table, error) {
+func (db *Database) DumpTableMetadata(tableName string) (*Table, error) {
 	table := Table{"", tableName, nil}
-	columnTypes, err := xschema.Table(database, tableName)
+	columnTypes, err := xschema.Table(db.DB, tableName)
 	if err != nil {
 		return nil, err
 	}
@@ -76,16 +91,7 @@ func DumpTableMetadata(database *sql.DB, tableName string) (*Table, error) {
 	for _, columnType := range columnTypes {
 		column := Column{}
 		column.Name = columnType.Name()
-		column.DataType, err = determineDataType(columnType)
-		if err != nil {
-			switch err {
-			case ErrColumnNotSupported:
-				continue
-			default:
-				return nil, err
-			}
-		}
-		column.Options, err = determineOptions(columnType, column.DataType)
+		column.DataType, column.Options, err = db.ParseDatabaseType(columnType)
 		if err != nil {
 			switch err {
 			case ErrColumnNotSupported:
@@ -100,22 +106,53 @@ func DumpTableMetadata(database *sql.DB, tableName string) (*Table, error) {
 	return &table, nil
 }
 
-func ParseDatabaseType(name string, databaseType string) (DataType, map[Option]int, error) {
-	computedColumn := computedColumn{name, databaseType}
-
+func (db *Database) ParseDatabaseType(column sqlColumn) (DataType, map[Option]int, error) {
 	options := make(map[Option]int)
 
-	dataType, err := determineDataType(&computedColumn)
+	if db.driverExtensions().ParseSpecialTypes != nil {
+		dataType, options, ok := (*db.driverExtensions().ParseSpecialTypes)(column)
+		if ok {
+			return dataType, options, nil
+		}
+	}
+
+	dataType, err := determineDataType(column)
 	if err != nil {
 		return dataType, options, err
 	}
 
-	options, err = determineOptions(&computedColumn, dataType)
+	options, err = determineOptions(column, dataType)
 	if err != nil {
 		return dataType, options, err
 	}
 
 	return dataType, options, nil
+}
+
+func (db *Database) ParseDatabaseTypeFromString(databaseType string) (DataType, map[Option]int, error) {
+	computedColumn := computedColumn{"placeholder", databaseType}
+
+	return db.ParseDatabaseType(&computedColumn)
+}
+
+func (db *Database) EscapeIdentifier(name string) string {
+	if db.driverExtensions().EscapeIdentifier != nil {
+		return (*db.driverExtensions().EscapeIdentifier)(name)
+	}
+	return fmt.Sprintf("\"%s\"", name)
+}
+
+func (db *Database) driverExtensions() DriverExtensions {
+	switch db.Driver {
+	case "mysql":
+		return mysqlDriverExtensions
+	case "redshift":
+		return redshiftDriverExtensions
+	case "postgres":
+		return postgresDriverExtensions
+	default:
+		return DriverExtensions{}
+	}
 }
 
 func determineDataType(columnType sqlColumn) (DataType, error) {
@@ -150,19 +187,11 @@ func determineDataType(columnType sqlColumn) (DataType, error) {
 		return DATE, nil
 	}
 
-	if dt, ok := specialTypes(databaseTypeName); ok {
-		return dt, nil
-	}
-
 	log.Warnf("unable to determine data type for: %s %s", columnType.Name(), databaseTypeName)
 	return "", ErrColumnNotSupported
 }
 
 func determineOptions(columnType sqlColumn, dataType DataType) (map[Option]int, error) {
-	if options, ok := specialTypeOptions(strings.ToLower(columnType.DatabaseTypeName())); ok {
-		return options, nil
-	}
-
 	options := make(map[Option]int)
 	optionsRegex, _ := regexp.Compile("\\((\\d+)(,(\\d+))?\\)$")
 	switch dataType {
@@ -209,10 +238,10 @@ func determineOptions(columnType sqlColumn, dataType DataType) (map[Option]int, 
 	return options, nil
 }
 
-func (table *Table) GenerateCreateTableStatement(name string) string {
-	statement := fmt.Sprintf("CREATE TABLE %s (\n", name)
+func (db *Database) GenerateCreateTableStatement(name string, table *Table) string {
+	statement := fmt.Sprintf("CREATE TABLE %s (\n", db.EscapeIdentifier(name))
 	for _, column := range table.Columns {
-		statement += fmt.Sprintf("%s %s,\n", column.Name, column.generateDataTypeExpression())
+		statement += fmt.Sprintf("%s %s,\n", db.EscapeIdentifier(column.Name), db.GenerateDataTypeExpression(column))
 	}
 	statement = strings.TrimSuffix(statement, ",\n")
 	statement += "\n);"
@@ -220,20 +249,14 @@ func (table *Table) GenerateCreateTableStatement(name string) string {
 	return statement
 }
 
-func (table *Table) GenerateRedshiftCreateTableStatement(name string) string {
-	statement := fmt.Sprintf("CREATE TABLE %s (\n", name)
-	for _, column := range table.Columns {
-		switch column.DataType {
-		case TEXT:
-			statement += fmt.Sprintf("%s %s,\n", column.Name, "VARCHAR(max)")
-		default:
-			statement += fmt.Sprintf("%s %s,\n", column.Name, column.generateDataTypeExpression())
+func (db *Database) GenerateDataTypeExpression(column Column) string {
+	if db.driverExtensions().GenerateDataTypeExpression != nil {
+		expression, ok := (*db.driverExtensions().GenerateDataTypeExpression)(column)
+		if ok {
+			return expression
 		}
 	}
-	statement = strings.TrimSuffix(statement, ",\n")
-	statement += "\n);"
-
-	return statement
+	return column.generateDataTypeExpression()
 }
 
 func (column *Column) generateDataTypeExpression() string {
@@ -281,80 +304,6 @@ func (table *Table) NotContainsColumnWithSameName(c Column) bool {
 		}
 	}
 	return true
-}
-
-func specialTypes(databaseTypeName string) (DataType, bool) {
-	if dt, ok := postgresSpecialTypes(databaseTypeName); ok {
-		return dt, true
-	}
-
-	if dt, ok := mysqlSpecialTypes(databaseTypeName); ok {
-		return dt, true
-	}
-
-	return "", false
-}
-
-func specialTypeOptions(databaseTypeName string) (map[Option]int, bool) {
-	if options, ok := postgresSpecialTypeOptions(databaseTypeName); ok {
-		return options, true
-	}
-
-	if options, ok := mysqlSpecialTypeOptions(databaseTypeName); ok {
-		return options, true
-	}
-
-	return make(map[Option]int), false
-}
-
-func postgresSpecialTypes(databaseTypeName string) (DataType, bool) {
-	switch databaseTypeName {
-	case "money":
-		return DECIMAL, true
-	case "inet", "uuid", "cidr", "macaddr":
-		return STRING, true
-	case "xml", "json":
-		return TEXT, true
-	}
-
-	return "", false
-}
-
-func postgresSpecialTypeOptions(databaseTypeName string) (map[Option]int, bool) {
-	options := make(map[Option]int)
-
-	switch databaseTypeName {
-	case "money":
-		options[PRECISION] = 16
-		options[SCALE] = 2
-		return options, true
-	case "inet", "uuid", "cidr", "macaddr":
-		options[LENGTH] = 255
-		return options, true
-	}
-
-	return options, false
-}
-
-func mysqlSpecialTypes(databaseTypeName string) (DataType, bool) {
-	switch databaseTypeName {
-	case "time", "year":
-		return STRING, true
-	}
-
-	return "", false
-}
-
-func mysqlSpecialTypeOptions(databaseTypeName string) (map[Option]int, bool) {
-	options := make(map[Option]int)
-
-	switch databaseTypeName {
-	case "time", "year":
-		options[LENGTH] = 32
-		return options, true
-	}
-
-	return options, false
 }
 
 type sqlColumn interface {

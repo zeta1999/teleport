@@ -272,7 +272,7 @@ func (tableExtract *TableExtract) strategyOpts() (strategyOpts StrategyOptions) 
 }
 
 func (computedColumn *ComputedColumn) toColumn() (column schema.Column, err error) {
-	dataType, options, err := schema.ParseDatabaseType(computedColumn.Name, computedColumn.Type)
+	dataType, options, err := schema.GenericDatabase.ParseDatabaseTypeFromString(computedColumn.Type)
 	if err != nil {
 		return
 	}

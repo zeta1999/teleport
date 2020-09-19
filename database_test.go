@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"database/sql"
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -69,7 +68,7 @@ func TestDatabaseConfigurationCases(t *testing.T) {
 
 	for _, cse := range cases {
 		t.Run(cse.testFile, func(t *testing.T) {
-			runDatabaseTest(t, cse.testFile, func(t *testing.T, portFile string, dbSrc *sql.DB, dbDest *sql.DB) {
+			runDatabaseTest(t, cse.testFile, func(t *testing.T, portFile string, dbSrc *schema.Database, dbDest *schema.Database) {
 				setupTable(dbSrc, cse.table)
 
 				extractLoadDatabase(portFile, "testdest", cse.table)
@@ -114,7 +113,7 @@ func TestColumnTransforms(t *testing.T) {
 
 	for _, cse := range cases {
 		t.Run(cse.testFile, func(t *testing.T) {
-			runDatabaseTest(t, cse.testFile, func(t *testing.T, portFile string, dbSrc *sql.DB, dbDest *sql.DB) {
+			runDatabaseTest(t, cse.testFile, func(t *testing.T, portFile string, dbSrc *schema.Database, dbDest *schema.Database) {
 				setupTable(dbSrc, cse.table)
 
 				extractLoadDatabase(portFile, "testdest", cse.table)
@@ -127,7 +126,7 @@ func TestColumnTransforms(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Equal(t, cse.transformedColumnFirstRowValue, value)
 
-				table, err := schema.DumpTableMetadata(dbDest, fmt.Sprintf("testsrc_%s", cse.table))
+				table, err := dbDest.DumpTableMetadata(fmt.Sprintf("testsrc_%s", cse.table))
 				assert.NoError(t, err)
 				for _, column := range table.Columns {
 					if column.Name == cse.transformedColumnName {
@@ -180,7 +179,7 @@ func TestComputedColumns(t *testing.T) {
 
 	for _, cse := range cases {
 		t.Run(cse.testFile, func(t *testing.T) {
-			runDatabaseTest(t, cse.testFile, func(t *testing.T, portFile string, dbSrc *sql.DB, dbDest *sql.DB) {
+			runDatabaseTest(t, cse.testFile, func(t *testing.T, portFile string, dbSrc *schema.Database, dbDest *schema.Database) {
 				setupTable(dbSrc, cse.table)
 				if cse.optionsColumnValue != "" {
 					actionsInsert(dbSrc, 1, "Joe", cse.optionsColumnValue)
@@ -202,7 +201,7 @@ func TestComputedColumns(t *testing.T) {
 }
 
 func TestComputedColumnsIncludedWhenCreatingTable(t *testing.T) {
-	runDatabaseTest(t, "compute_column.port", func(t *testing.T, portFile string, dbSrc *sql.DB, dbDest *sql.DB) {
+	runDatabaseTest(t, "compute_column.port", func(t *testing.T, portFile string, dbSrc *schema.Database, dbDest *schema.Database) {
 		setupTable(dbSrc, "widgets")
 
 		extractLoadDatabase(portFile, "testdest", "widgets") // Destination table does not exist, so will be created
@@ -227,7 +226,7 @@ func TestFullLoadFlag(t *testing.T) {
 		expectedRows           int       = 3 // ModifiedOnly strategy expects only 2 rows, 3 signifies a Full load
 	)
 
-	runDatabaseTest(t, testFile, func(t *testing.T, portFile string, dbSrc *sql.DB, dbDest *sql.DB) {
+	runDatabaseTest(t, testFile, func(t *testing.T, portFile string, dbSrc *schema.Database, dbDest *schema.Database) {
 		setupTable(dbSrc, table)
 
 		extractLoadDatabase(portFile, "testdest", table)
@@ -242,14 +241,14 @@ func TestFullLoadFlag(t *testing.T) {
 
 // Skip this test until schema for SQLite staging tables is fixed
 func xTestSQLiteLoadExtractLoadConsistency(t *testing.T) {
-	runDatabaseTest(t, "full.port", func(t *testing.T, _ string, srcdb *sql.DB, destdb *sql.DB) {
-		srcdb.Exec(widgetsTableDefinition.GenerateCreateTableStatement("widgets"))
+	runDatabaseTest(t, "full.port", func(t *testing.T, _ string, srcdb *schema.Database, destdb *schema.Database) {
+		srcdb.Exec(srcdb.GenerateCreateTableStatement("widgets", widgetsTableDefinition))
 
 		err := importCSV("testsrc", "widgets", "testdata/example_widgets.csv", widgetsTableDefinition.Columns)
 		assert.NoError(t, err)
 		extractLoadDatabase("testsrc", "testdest", "widgets")
 
-		newTable, err := schema.DumpTableMetadata(destdb, "testsrc_widgets")
+		newTable, err := destdb.DumpTableMetadata("testsrc_widgets")
 		assert.NoError(t, err)
 		assertRowCount(t, 10, destdb, "testsrc_widgets")
 		assert.Equal(t, widgetsTableDefinition.Columns, newTable.Columns)
@@ -257,14 +256,14 @@ func xTestSQLiteLoadExtractLoadConsistency(t *testing.T) {
 }
 
 func TestLoadSourceHasAdditionalColumn(t *testing.T) {
-	runDatabaseTest(t, "full.port", func(t *testing.T, _ string, srcdb *sql.DB, destdb *sql.DB) {
+	runDatabaseTest(t, "full.port", func(t *testing.T, _ string, srcdb *schema.Database, destdb *schema.Database) {
 		// Create a new schema.Table Definition, same as widgets, but without the `description` column
 		widgetsWithoutDescription := schema.Table{"example", "widgets", make([]schema.Column, 0)}
 		widgetsWithoutDescription.Columns = append(widgetsWithoutDescription.Columns, widgetsTableDefinition.Columns[:2]...)
 		widgetsWithoutDescription.Columns = append(widgetsWithoutDescription.Columns, widgetsTableDefinition.Columns[3:]...)
 
-		srcdb.Exec(widgetsTableDefinition.GenerateCreateTableStatement("widgets"))
-		destdb.Exec(widgetsWithoutDescription.GenerateCreateTableStatement("testsrc_widgets"))
+		srcdb.Exec(srcdb.GenerateCreateTableStatement("widgets", widgetsTableDefinition))
+		destdb.Exec(destdb.GenerateCreateTableStatement("testsrc_widgets", &widgetsWithoutDescription))
 		importCSV("testsrc", "widgets", "testdata/example_widgets.csv", widgetsTableDefinition.Columns)
 
 		expectLogMessages(t, []string{"destination table does not define column", "ranking"}, func() {
@@ -276,14 +275,14 @@ func TestLoadSourceHasAdditionalColumn(t *testing.T) {
 }
 
 func TestLoadStringNotLongEnough(t *testing.T) {
-	runDatabaseTest(t, "full.port", func(t *testing.T, _ string, srcdb *sql.DB, destdb *sql.DB) {
+	runDatabaseTest(t, "full.port", func(t *testing.T, _ string, srcdb *schema.Database, destdb *schema.Database) {
 		// Create a new schema.Table Definition, same as widgets, but with name LENGTH changed to 32
 		widgetsWithShortName := schema.Table{"example", "widgets", make([]schema.Column, len(widgetsTableDefinition.Columns))}
 		copy(widgetsWithShortName.Columns, widgetsTableDefinition.Columns)
 		widgetsWithShortName.Columns[3] = schema.Column{"name", schema.STRING, map[schema.Option]int{schema.LENGTH: 32}}
 
-		srcdb.Exec(widgetsTableDefinition.GenerateCreateTableStatement("widgets"))
-		destdb.Exec(widgetsWithShortName.GenerateCreateTableStatement("testsrc_widgets"))
+		srcdb.Exec(srcdb.GenerateCreateTableStatement("widgets", widgetsTableDefinition))
+		destdb.Exec(destdb.GenerateCreateTableStatement("testsrc_widgets", &widgetsWithShortName))
 
 		expectLogMessage(t, "For string column `name`, destination LENGTH is too short", func() {
 			extractLoadDatabase("testsrc", "testdest", "widgets")
@@ -292,12 +291,12 @@ func TestLoadStringNotLongEnough(t *testing.T) {
 }
 
 func TestExportTimestamp(t *testing.T) {
-	runDatabaseTest(t, "full.port", func(t *testing.T, _ string, srcdb *sql.DB, _ *sql.DB) {
+	runDatabaseTest(t, "full.port", func(t *testing.T, _ string, srcdb *schema.Database, _ *schema.Database) {
 		columns := make([]schema.Column, 0)
 		columns = append(columns, schema.Column{"created_at", schema.TIMESTAMP, map[schema.Option]int{}})
 		table := schema.Table{"test1", "timestamps", columns}
 
-		srcdb.Exec(table.GenerateCreateTableStatement("timestamps"))
+		srcdb.Exec(srcdb.GenerateCreateTableStatement("timestamps", &table))
 		srcdb.Exec("INSERT INTO timestamps (created_at) VALUES (DATETIME(1092941466, 'unixepoch'))")
 		srcdb.Exec("INSERT INTO timestamps (created_at) VALUES (NULL)")
 
@@ -311,7 +310,7 @@ func TestExportTimestamp(t *testing.T) {
 
 func TestDatabasePreview(t *testing.T) {
 	Preview = true
-	runDatabaseTest(t, "full.port", func(t *testing.T, _ string, srcdb *sql.DB, _ *sql.DB) {
+	runDatabaseTest(t, "full.port", func(t *testing.T, _ string, srcdb *schema.Database, _ *schema.Database) {
 		setupObjectsTable(srcdb)
 
 		expectLogMessage(t, "(not executed)", func() {
@@ -324,7 +323,7 @@ func TestDatabasePreview(t *testing.T) {
 	Preview = false
 }
 
-func runDatabaseTest(t *testing.T, testfile string, testfn func(*testing.T, string, *sql.DB, *sql.DB)) {
+func runDatabaseTest(t *testing.T, testfile string, testfn func(*testing.T, string, *schema.Database, *schema.Database)) {
 	withTestDatabasePortFile(t, "testsrc", testfile, func(t *testing.T, filename string) {
 		Databases["testsrc"] = Database{"sqlite://:memory:", map[string]string{}, true}
 		dbSrc, err := connectDatabase("testsrc")
@@ -366,36 +365,14 @@ func withTestDatabasePortFile(t *testing.T, source string, testfile string, fn f
 	fn(t, tmpFile.Name())
 }
 
-func assertRowCount(t *testing.T, expected int, database *sql.DB, table string) {
-	row := database.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %s", table))
+func assertRowCount(t *testing.T, expected int, db *schema.Database, table string) {
+	row := db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %s", table))
 	var count int
 	err := row.Scan(&count)
 	if err != nil {
 		assert.FailNow(t, "%w", err)
 	}
 	assert.Equal(t, expected, count, "the number of rows is different than expected")
-}
-
-func assertNoNullValues(t *testing.T, database *sql.DB, table string) {
-	rows, err := database.Query(fmt.Sprintf("SELECT * FROM %s", table))
-
-	columnTypes, err := rows.ColumnTypes()
-	assert.NoError(t, err)
-
-	destination := make([]interface{}, len(columnTypes))
-	rawResult := make([]interface{}, len(columnTypes))
-	for i := range rawResult {
-		destination[i] = &rawResult[i]
-	}
-	for rows.Next() {
-		rows.Scan(destination...)
-
-		for i, val := range rawResult {
-			assert.NotEqual(t, nil, val, "row has nil value for %q: %q", columnTypes[i].Name(), rawResult)
-			return
-		}
-	}
-
 }
 
 func assertCsvCellContents(t *testing.T, expected string, csvfilename string, row int, col int, msgsAndArgs ...interface{}) {
@@ -426,10 +403,10 @@ func assertCsvCellContents(t *testing.T, expected string, csvfilename string, ro
 	}
 }
 
-func setupTable(db *sql.DB, tableName string) {
+func setupTable(db *schema.Database, tableName string) {
 	switch tableName {
 	case "widgets":
-		db.Exec(widgetsTableDefinition.GenerateCreateTableStatement("widgets"))
+		db.Exec(db.GenerateCreateTableStatement("widgets", widgetsTableDefinition))
 		importCSV("testsrc", "widgets", "testdata/example_widgets.csv", widgetsTableDefinition.Columns)
 	case "objects":
 		setupObjectsTable(db)
@@ -438,13 +415,13 @@ func setupTable(db *sql.DB, tableName string) {
 	}
 }
 
-func setupObjectsTable(db *sql.DB) {
+func setupObjectsTable(db *schema.Database) {
 	objects := schema.Table{"", "objects", make([]schema.Column, 3)}
 	objects.Columns[0] = schema.Column{"id", schema.INTEGER, map[schema.Option]int{schema.BYTES: 8}}
 	objects.Columns[1] = schema.Column{"name", schema.STRING, map[schema.Option]int{schema.LENGTH: 255}}
 	objects.Columns[2] = schema.Column{"updated_at", schema.TIMESTAMP, map[schema.Option]int{}}
 
-	db.Exec(objects.GenerateCreateTableStatement("objects"))
+	db.Exec(db.GenerateCreateTableStatement("objects", &objects))
 	statement, _ := db.Prepare("INSERT INTO objects (id, name, updated_at) VALUES (?, ?, ?)")
 	statement.Exec(1, "book", time.Now().Add(-7*24*time.Hour))
 	statement.Exec(2, "tv", time.Now().Add(-1*24*time.Hour))
@@ -452,15 +429,15 @@ func setupObjectsTable(db *sql.DB) {
 	statement.Close()
 }
 
-func setupActionsTable(db *sql.DB) {
+func setupActionsTable(db *schema.Database) {
 	actions := schema.Table{"", "actions", make([]schema.Column, 3)}
 	actions.Columns[0] = schema.Column{"id", schema.INTEGER, map[schema.Option]int{schema.BYTES: 8}}
 	actions.Columns[1] = schema.Column{"name", schema.STRING, map[schema.Option]int{schema.LENGTH: 255}}
 	actions.Columns[2] = schema.Column{"options", schema.STRING, map[schema.Option]int{schema.LENGTH: 1023}}
-	db.Exec(actions.GenerateCreateTableStatement("actions"))
+	db.Exec(db.GenerateCreateTableStatement("actions", &actions))
 }
 
-func actionsInsert(db *sql.DB, args ...interface{}) {
+func actionsInsert(db *schema.Database, args ...interface{}) {
 	statement, _ := db.Prepare("INSERT INTO actions (id, name, options) VALUES (?, ?, ?)")
 	statement.Exec(args...)
 	statement.Close()

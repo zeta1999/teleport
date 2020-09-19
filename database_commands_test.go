@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"testing"
 
 	"github.com/hundredwatt/teleport/schema"
@@ -9,7 +8,7 @@ import (
 )
 
 func TestTableExists(t *testing.T) {
-	runDatabaseTest(t, "full.port", func(t *testing.T, _ string, db *sql.DB, _ *sql.DB) {
+	runDatabaseTest(t, "full.port", func(t *testing.T, _ string, db *schema.Database, _ *schema.Database) {
 		db.Exec("CREATE TABLE IF NOT EXISTS animals (id integer, name varchar(255))")
 
 		actual, _ := tableExists("testsrc", "does_not_exist")
@@ -21,7 +20,7 @@ func TestTableExists(t *testing.T) {
 }
 
 func TestCreateTable(t *testing.T) {
-	runDatabaseTest(t, "full.port", func(t *testing.T, _ string, db *sql.DB, _ *sql.DB) {
+	runDatabaseTest(t, "full.port", func(t *testing.T, _ string, db *schema.Database, _ *schema.Database) {
 		table := widgetsTable()
 
 		assert.NoError(t, createTable("testsrc", "newtable", &table))

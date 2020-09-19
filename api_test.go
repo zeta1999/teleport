@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hundredwatt/teleport/schema"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stretchr/testify/assert"
@@ -87,7 +87,7 @@ func TestAPIConfigurationCases(t *testing.T) {
 
 	for _, cse := range cases {
 		t.Run(cse.testAPIFile, func(t *testing.T) {
-			runAPITest(t, cse.testAPIFile, func(t *testing.T, portFile string, destdb *sql.DB) {
+			runAPITest(t, cse.testAPIFile, func(t *testing.T, portFile string, destdb *schema.Database) {
 				extractAPI(portFile)
 
 				assert.Equal(t, cse.expectedLastEntryLevel, hook.LastEntry().Level)
@@ -106,7 +106,7 @@ func TestAPIConfigurationCases(t *testing.T) {
 
 func TestAPIPreview(t *testing.T) {
 	Preview = true
-	runAPITest(t, "api_offset_pagination.port", func(t *testing.T, portFile string, destdb *sql.DB) {
+	runAPITest(t, "api_offset_pagination.port", func(t *testing.T, portFile string, destdb *schema.Database) {
 		extractLoadAPI(portFile, "testdest")
 
 		assertRowCount(t, 0, destdb, "test_items")
@@ -117,7 +117,7 @@ func TestAPIPreview(t *testing.T) {
 }
 
 func TestIncrementalLoadStrategy(t *testing.T) {
-	runAPITest(t, "api_incremental_load_strategy.port", func(t *testing.T, portFile string, destdb *sql.DB) {
+	runAPITest(t, "api_incremental_load_strategy.port", func(t *testing.T, portFile string, destdb *schema.Database) {
 		destdb.Exec(`CREATE TABLE test_items (id INT, name VARCHAR(255));`)
 		destdb.Exec(`INSERT INTO test_items (id, name) VALUES (9, "Bono");`)
 
@@ -126,7 +126,7 @@ func TestIncrementalLoadStrategy(t *testing.T) {
 	})
 }
 
-func runAPITest(t *testing.T, testfile string, testfn func(*testing.T, string, *sql.DB)) {
+func runAPITest(t *testing.T, testfile string, testfn func(*testing.T, string, *schema.Database)) {
 	ts := testServer()
 
 	os.Setenv("TEST_URL", ts.URL)

@@ -1,12 +1,13 @@
 package main
 
 import (
-	"database/sql"
 	"testing"
+
+	"github.com/hundredwatt/teleport/schema"
 )
 
 func TestSQLTransform(t *testing.T) {
-	runDatabaseTest(t, "full.port", func(t *testing.T, _ string, _ *sql.DB, db *sql.DB) {
+	runDatabaseTest(t, "full.port", func(t *testing.T, _ string, _ *schema.Database, db *schema.Database) {
 		setupObjectsTable(db)
 		SQLTransforms["test.sql"] = "SELECT name AS title FROM objects"
 

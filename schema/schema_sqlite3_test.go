@@ -1,14 +1,13 @@
 package schema
 
 import (
-	"database/sql"
 	"testing"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
 func TestSQLiteInspection(t *testing.T) {
-	withDb(t, "sqlite://:memory:", func(db *sql.DB) {
+	withDatabase(t, "sqlite://:memory:", func(db Database) {
 		testColumnCases(t, db, genericCases)
 
 		testColumnCases(t, db, genericStringCases)
@@ -16,13 +15,13 @@ func TestSQLiteInspection(t *testing.T) {
 }
 
 func TestWarnAndIgnoreUnsupportedColumns(t *testing.T) {
-	withDb(t, "sqlite://:memory:", func(db *sql.DB) {
+	withDatabase(t, "sqlite://:memory:", func(db Database) {
 		testSkippedColumnCases(t, db, []string{"BINARY"})
 	})
 }
 
 func TestSQLiteTableGeneration(t *testing.T) {
-	withDb(t, "sqlite://:memory:", func(db *sql.DB) {
+	withDatabase(t, "sqlite://:memory:", func(db Database) {
 		testTableGeneration(t, db)
 	})
 }

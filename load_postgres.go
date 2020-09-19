@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"database/sql"
 	"encoding/csv"
 	"io"
 	"os"
@@ -13,8 +12,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func importPostgres(database *sql.DB, table string, file string, columns []schema.Column) error {
-	transaction, err := database.Begin()
+func importPostgres(db *schema.Database, table string, file string, columns []schema.Column) error {
+	transaction, err := db.Begin()
 	if err != nil {
 		return err
 	}

@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"strings"
 	"syscall"
 
 	"github.com/hundredwatt/teleport/schema"
@@ -14,12 +13,12 @@ import (
 )
 
 func tableExists(source string, tableName string) (bool, error) {
-	database, err := connectDatabase(source)
+	db, err := connectDatabase(source)
 	if err != nil {
 		return false, err
 	}
 
-	tables, err := schema.TableNames(database)
+	tables, err := db.TableNames()
 	if err != nil {
 		return false, err
 	}
@@ -34,32 +33,25 @@ func tableExists(source string, tableName string) (bool, error) {
 }
 
 func createTable(source string, tableName string, table *schema.Table) error {
-	database, err := connectDatabase(source)
+	db, err := connectDatabase(source)
 	if err != nil {
 		log.Fatal("Database Connect Error:", err)
 	}
 
-	driver := fmt.Sprintf("%T", database.Driver())
+	statement := db.GenerateCreateTableStatement(tableName, table)
 
-	var statement string
-	if driver == "*pq.Driver" && strings.HasPrefix(Databases[source].URL, "redshift") || strings.HasPrefix(Databases[source].URL, "rs") {
-		statement = table.GenerateRedshiftCreateTableStatement(tableName)
-	} else {
-		statement = table.GenerateCreateTableStatement(tableName)
-	}
-
-	_, err = database.Exec(statement)
+	_, err = db.Exec(statement)
 
 	return err
 }
 
 func listTables(source string) {
-	database, err := connectDatabase(source)
+	db, err := connectDatabase(source)
 	if err != nil {
 		log.Fatal("Database Open Error:", err)
 	}
 
-	tables, err := schema.TableNames(database)
+	tables, err := db.TableNames()
 	if err != nil {
 		log.Fatal("Database Error:", err)
 	}
@@ -69,7 +61,7 @@ func listTables(source string) {
 }
 
 func dropTable(source string, table string) {
-	database, err := connectDatabase(source)
+	db, err := connectDatabase(source)
 	if err != nil {
 		log.Fatal("Database Open Error:", err)
 	}
@@ -81,19 +73,19 @@ func dropTable(source string, table string) {
 		log.Fatalf("table \"%s\" not found in \"%s\"", table, source)
 	}
 
-	_, err = database.Exec(fmt.Sprintf("DROP TABLE %s", table))
+	_, err = db.Exec(fmt.Sprintf("DROP TABLE %s", db.EscapeIdentifier(table)))
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
 func createDestinationTable(source string, destination string, sourceTableName string) {
-	database, err := connectDatabase(source)
+	db, err := connectDatabase(source)
 	if err != nil {
 		log.Fatal("Database Open Error:", err)
 	}
 
-	table, err := schema.DumpTableMetadata(database, sourceTableName)
+	table, err := db.DumpTableMetadata(sourceTableName)
 	if err != nil {
 		log.Fatal("Table Metadata Error:", err)
 	}
@@ -144,12 +136,12 @@ func databaseTerminal(source string) {
 }
 
 func describeTable(source string, tableName string) {
-	database, err := connectDatabase(source)
+	db, err := connectDatabase(source)
 	if err != nil {
 		log.Fatal("Database Open Error:", err)
 	}
 
-	table, err := schema.DumpTableMetadata(database, tableName)
+	table, err := db.DumpTableMetadata(tableName)
 	if err != nil {
 		log.Fatal("Describe Table Error:", err)
 	}
@@ -174,12 +166,12 @@ func describeTable(source string, tableName string) {
 }
 
 func tableMetadata(source string, tableName string) {
-	database, err := connectDatabase(source)
+	db, err := connectDatabase(source)
 	if err != nil {
 		log.Fatal("Database Open Error:", err)
 	}
 
-	table, err := schema.DumpTableMetadata(database, tableName)
+	table, err := db.DumpTableMetadata(tableName)
 	if err != nil {
 		log.Fatal("Describe Table Error:", err)
 	}

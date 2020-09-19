@@ -3,7 +3,6 @@ package main
 import (
 	"testing"
 
-	"github.com/hundredwatt/teleport/schema"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,14 +24,14 @@ func TestPostgreLoadExtractLoadConsistency(t *testing.T) {
 	defer srcdb.Exec(`DROP TABLE IF EXISTS widgets`)
 	defer destdb.Exec(`DROP TABLE IF EXISTS testsrc_widgets`)
 
-	srcdb.Exec(widgetsTableDefinition.GenerateCreateTableStatement("widgets"))
+	srcdb.Exec(srcdb.GenerateCreateTableStatement("widgets", widgetsTableDefinition))
 
 	redirectLogs(t, func() {
 		err = importCSV("testsrc", "widgets", "testdata/example_widgets.csv", widgetsTableDefinition.Columns)
 		assert.NoError(t, err)
 		extractLoadDatabase("testsrc", "testdest", "widgets")
 
-		newTable, err := schema.DumpTableMetadata(destdb, "testsrc_widgets")
+		newTable, err := destdb.DumpTableMetadata("testsrc_widgets")
 		assert.NoError(t, err)
 		assertRowCount(t, 10, destdb, "testsrc_widgets")
 		assert.Equal(t, widgetsTableDefinition.Columns, newTable.Columns)

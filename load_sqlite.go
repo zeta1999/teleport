@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"database/sql"
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -12,8 +11,8 @@ import (
 	"github.com/hundredwatt/teleport/schema"
 )
 
-func importSqlite3(database *sql.DB, table string, file string, columns []schema.Column) error {
-	transaction, err := database.Begin()
+func importSqlite3(db *schema.Database, table string, file string, columns []schema.Column) error {
+	transaction, err := db.Begin()
 	if err != nil {
 		return err
 	}

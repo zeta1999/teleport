@@ -3,7 +3,6 @@
 package schema
 
 import (
-	"database/sql"
 	"os"
 	"testing"
 
@@ -12,7 +11,7 @@ import (
 )
 
 func TestRedshiftInspection(t *testing.T) {
-	withDb(t, os.ExpandEnv("redshift://$TEST_REDSHIFT_USER:$TEST_REDSHIFT_PASSWORD@$TEST_REDSHIFT_HOST:5439/dev"), func(db *sql.DB) {
+	withDatabase(t, os.ExpandEnv("redshift://$TEST_REDSHIFT_USER:$TEST_REDSHIFT_PASSWORD@$TEST_REDSHIFT_HOST:5439/dev"), func(db Database) {
 		testColumnCases(t, db, genericCases)
 
 		testColumnCases(t, db, genericStringCases)
@@ -33,14 +32,14 @@ func TestRedshiftInspection(t *testing.T) {
 }
 
 func TestRedshiftTableGeneration(t *testing.T) {
-	withDb(t, os.ExpandEnv("redshift://$TEST_REDSHIFT_USER:$TEST_REDSHIFT_PASSWORD@$TEST_REDSHIFT_HOST:5439/dev"), func(db *sql.DB) {
-		_, err := db.Exec(widgetsTable.GenerateRedshiftCreateTableStatement("new_widgets"))
+	withDatabase(t, os.ExpandEnv("redshift://$TEST_REDSHIFT_USER:$TEST_REDSHIFT_PASSWORD@$TEST_REDSHIFT_HOST:5439/dev"), func(db Database) {
+		_, err := db.Exec(db.GenerateCreateTableStatement("new_widgets", &widgetsTable))
 		if err != nil {
 			assert.FailNow(t, err.Error())
 		}
 		defer db.Exec(`DROP TABLE new_widgets`)
 
-		table, err := DumpTableMetadata(db, "new_widgets")
+		table, err := db.DumpTableMetadata("new_widgets")
 		if err != nil {
 			assert.FailNow(t, err.Error())
 		}

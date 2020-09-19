@@ -1,14 +1,13 @@
 package schema
 
 import (
-	"database/sql"
 	"testing"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
 func TestMySQLInspection(t *testing.T) {
-	withDb(t, "mysql://mysql_test_user:password@localhost:43306/test_db", func(db *sql.DB) {
+	withDatabase(t, "mysql://mysql_test_user:password@localhost:43306/test_db", func(db Database) {
 		testColumnCases(t, db, genericCases)
 
 		// String Types - MySQL go db/sql adapter does not support "Length"

@@ -3,7 +3,6 @@
 package main
 
 import (
-	"database/sql"
 	"os"
 	"testing"
 	"time"
@@ -13,29 +12,29 @@ import (
 )
 
 func TestRedshiftCreateTableText(t *testing.T) {
-	fromPostgresToRedshift(t, func(t *testing.T, _ *sql.DB, destdb *sql.DB) {
+	fromPostgresToRedshift(t, func(t *testing.T, _ *schema.Database, destdb *schema.Database) {
 		objects := schema.Table{"", "objects", make([]schema.Column, 1)}
 		objects.Columns[0] = schema.Column{"description", schema.TEXT, map[schema.Option]int{}}
 
 		createTable("testdest", "objects", &objects)
 		defer destdb.Exec(`DROP TABLE IF EXISTS objects`)
 
-		table, _ := schema.DumpTableMetadata(destdb, "objects")
+		table, _ := destdb.DumpTableMetadata("objects")
 
 		assert.Equal(t, schema.Column{"description", schema.STRING, map[schema.Option]int{schema.LENGTH: 65535}}, table.Columns[0])
 	})
 }
 
 func TestRedshiftLoadTest(t *testing.T) {
-	fromPostgresToRedshift(t, func(t *testing.T, srcdb *sql.DB, destdb *sql.DB) {
-		srcdb.Exec(widgetsTableDefinition.GenerateCreateTableStatement("widgets"))
+	fromPostgresToRedshift(t, func(t *testing.T, srcdb *schema.Database, destdb *schema.Database) {
+		srcdb.Exec(srcdb.GenerateCreateTableStatement("widgets", widgetsTableDefinition))
 
 		redirectLogs(t, func() {
 			err := importCSV("testsrc", "widgets", "testdata/example_widgets.csv", widgetsTableDefinition.Columns)
 			assert.NoError(t, err)
 			extractLoadDatabase("testsrc", "testdest", "widgets")
 
-			newTable, err := schema.DumpTableMetadata(destdb, "testsrc_widgets")
+			newTable, err := destdb.DumpTableMetadata("testsrc_widgets")
 			assert.NoError(t, err)
 			assertRowCount(t, 10, destdb, "testsrc_widgets")
 
@@ -60,7 +59,7 @@ func TestRedshiftLoadTest(t *testing.T) {
 	})
 }
 
-func fromPostgresToRedshift(t *testing.T, testfn func(*testing.T, *sql.DB, *sql.DB)) {
+func fromPostgresToRedshift(t *testing.T, testfn func(*testing.T, *schema.Database, *schema.Database)) {
 	redshiftURL := os.ExpandEnv("redshift://$TEST_REDSHIFT_USER:$TEST_REDSHIFT_PASSWORD@$TEST_REDSHIFT_HOST:5439/dev")
 	options := map[string]string{"s3_bucket": "teleportdata", "s3_bucket_region": "us-east-1", "service_role": "arn:aws:iam::102693510702:role/RedshiftRole"}
 

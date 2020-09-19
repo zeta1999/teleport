@@ -15,7 +15,8 @@ var widgetsTable = makeWidgetsTable()
 func TestParseDatabaseType(t *testing.T) {
 	for _, cse := range genericCases {
 		for _, dataTypes := range cse.originalDataTypes {
-			actualDataType, actualOptions, err := ParseDatabaseType("col", dataTypes)
+			db := &Database{nil, ""}
+			actualDataType, actualOptions, err := db.ParseDatabaseTypeFromString(dataTypes)
 			assert.NoError(t, err)
 
 			assert.Equal(t, cse.column.DataType, actualDataType)
@@ -24,16 +25,34 @@ func TestParseDatabaseType(t *testing.T) {
 	}
 }
 
-func withDb(t *testing.T, connectionString string, testfn func(*sql.DB)) {
-	db, err := dburl.Open(connectionString)
+func withDatabase(t *testing.T, connectionString string, testfn func(Database)) {
+	u, err := dburl.Parse(connectionString)
 	if err != nil {
 		assert.FailNow(t, err.Error())
 	}
 
-	testfn(db)
+	db, err := sql.Open(u.Driver, u.DSN)
+	if err != nil {
+		assert.FailNow(t, err.Error())
+	}
+
+	if u.Driver == "snowflake" {
+		db.Exec("USE SCHEMA PUBLIC;")
+	}
+
+	var driver string
+	if strings.HasPrefix(connectionString, "redshift://") {
+		driver = "redshift"
+	} else if strings.HasPrefix(connectionString, "rs://") {
+		driver = "redshift"
+	} else {
+		driver = u.Driver
+	}
+
+	testfn(Database{db, driver})
 }
 
-func testColumnCases(t *testing.T, db *sql.DB, cases []struct {
+func testColumnCases(t *testing.T, db Database, cases []struct {
 	originalDataTypes  []string
 	column             Column
 	createTabeDataType string
@@ -43,7 +62,7 @@ func testColumnCases(t *testing.T, db *sql.DB, cases []struct {
 		dataTypes = append(dataTypes, cse.originalDataTypes)
 	}
 	withTestTable(t, db, dataTypes, func(t *testing.T, table *Table) {
-		generatedCreateTableStatement := table.GenerateCreateTableStatement("test_table")
+		generatedCreateTableStatement := db.GenerateCreateTableStatement("test_table", table)
 
 		for cidx, cse := range cases {
 			for didx, dataType := range cse.originalDataTypes {
@@ -57,22 +76,22 @@ func testColumnCases(t *testing.T, db *sql.DB, cases []struct {
 				assert.Equal(t, cse.column.DataType, col.DataType, "DataType: %s, Case: %v", dataType, cse)
 				assert.Equal(t, cse.column.Options, col.Options, "DataType: %s, Case: %v", dataType, cse)
 
-				assert.Contains(t, generatedCreateTableStatement, fmt.Sprintf("col%d%d %s", cidx, didx, cse.createTabeDataType), "DataType: %s, Case: %v", dataType, cse)
+				assert.Contains(t, generatedCreateTableStatement, fmt.Sprintf("%s %s", db.EscapeIdentifier(fmt.Sprintf("col%d%d", cidx, didx)), cse.createTabeDataType), "DataType: %s, Case: %v", dataType, cse)
 			}
 		}
 	})
 }
 
-func testSkippedColumnCases(t *testing.T, db *sql.DB, dataTypes []string) {
+func testSkippedColumnCases(t *testing.T, db Database, dataTypes []string) {
 	withTestTable(t, db, [][]string{dataTypes}, func(t *testing.T, table *Table) {
 		assert.Len(t, table.Columns, 0)
 	})
 }
 
-func withTestTable(t *testing.T, db *sql.DB, cases [][]string, testfn func(*testing.T, *Table)) {
+func withTestTable(t *testing.T, db Database, cases [][]string, testfn func(*testing.T, *Table)) {
 	db.Exec("DROP TABLE IF EXISTS test_table")
 	createTableStatement := `
-	CREATE TABLE test_table (
+	CREATE TABLE %s (
 		%s
 	);
 `
@@ -84,13 +103,13 @@ func withTestTable(t *testing.T, db *sql.DB, cases [][]string, testfn func(*test
 	}
 	columns = strings.TrimSuffix(columns, ",\n")
 
-	_, err := db.Exec(fmt.Sprintf(createTableStatement, columns))
+	_, err := db.Exec(fmt.Sprintf(createTableStatement, db.EscapeIdentifier("test_table"), columns))
 	if err != nil {
 		assert.FailNow(t, err.Error(), fmt.Sprintf(createTableStatement, columns))
 	}
-	defer db.Exec("DROP TABLE test_table")
+	defer db.Exec(fmt.Sprintf("DROP TABLE %s", db.EscapeIdentifier("test_table")))
 
-	table, err := DumpTableMetadata(db, "test_table")
+	table, err := db.DumpTableMetadata("test_table")
 	if err != nil {
 		assert.FailNow(t, err.Error())
 	}
@@ -98,14 +117,14 @@ func withTestTable(t *testing.T, db *sql.DB, cases [][]string, testfn func(*test
 	testfn(t, table)
 }
 
-func testTableGeneration(t *testing.T, db *sql.DB) {
-	_, err := db.Exec(widgetsTable.GenerateCreateTableStatement("new_widgets"))
+func testTableGeneration(t *testing.T, db Database) {
+	_, err := db.Exec(db.GenerateCreateTableStatement("new_widgets", &widgetsTable))
 	if err != nil {
 		assert.FailNow(t, err.Error())
 	}
 	defer db.Exec(`DROP TABLE new_widgets`)
 
-	table, err := DumpTableMetadata(db, "new_widgets")
+	table, err := db.DumpTableMetadata("new_widgets")
 	if err != nil {
 		assert.FailNow(t, err.Error())
 	}

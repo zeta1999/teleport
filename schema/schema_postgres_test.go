@@ -1,14 +1,13 @@
 package schema
 
 import (
-	"database/sql"
 	"testing"
 
 	_ "github.com/lib/pq"
 )
 
 func TestPostgresInspection(t *testing.T) {
-	withDb(t, "postgres://postgres@localhost:45432/?sslmode=disable", func(db *sql.DB) {
+	withDatabase(t, "postgres://postgres@localhost:45432/?sslmode=disable", func(db Database) {
 		testColumnCases(t, db, genericCases)
 
 		testColumnCases(t, db, genericStringCases)
@@ -62,7 +61,7 @@ func TestPostgresInspection(t *testing.T) {
 }
 
 func TestPostgresTableGeneration(t *testing.T) {
-	withDb(t, "postgres://postgres@localhost:45432/?sslmode=disable", func(db *sql.DB) {
+	withDatabase(t, "postgres://postgres@localhost:45432/?sslmode=disable", func(db Database) {
 		testTableGeneration(t, db)
 	})
 }

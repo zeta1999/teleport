@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,7 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
-func importRedshift(database *sql.DB, table string, file string, columns []schema.Column, options map[string]string) error {
+func importRedshift(db *schema.Database, table string, file string, columns []schema.Column, options map[string]string) error {
 	log.Debug("Uploading CSV to S3")
 	s3URL, err := uploadFileToS3(options["s3_bucket_region"], options["s3_bucket"], file)
 	if err != nil {
@@ -37,7 +36,7 @@ func importRedshift(database *sql.DB, table string, file string, columns []schem
 	csvOptions := "EMPTYASNULL ACCEPTINVCHARS TIMEFORMAT 'auto'"
 
 	log.Debug("Executing Redshift COPY command")
-	_, err = database.Exec(fmt.Sprintf(`
+	_, err = db.Exec(fmt.Sprintf(`
 		COPY %s
 		(%s)
 		FROM '%s'

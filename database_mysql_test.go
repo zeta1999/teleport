@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"testing"
 	"time"
 
@@ -13,7 +12,7 @@ import (
 func TestMySQLExportTimestampToDate(t *testing.T) {
 	currentWorkflow = &Workflow{Thread: &starlark.Thread{}}
 
-	withMySQLDatabase(t, func(t *testing.T, srcdb *sql.DB) {
+	withMySQLDatabase(t, func(t *testing.T, srcdb *schema.Database) {
 		columns := make([]schema.Column, 1)
 		columns[0] = schema.Column{"updated_at", schema.DATE, map[schema.Option]int{}}
 		csvfile, err := exportCSV("testsrc", "objects", columns, "", TableExtract{})
@@ -51,7 +50,7 @@ func TestMySQLColumnTransforms(t *testing.T) {
 
 	for _, cse := range cases {
 		t.Run(cse.testFile, func(t *testing.T) {
-			withMySQLDatabase(t, func(t *testing.T, db *sql.DB) {
+			withMySQLDatabase(t, func(t *testing.T, db *schema.Database) {
 				withTestDatabasePortFile(t, "testsrc", cse.testFile, func(t *testing.T, portFile string) {
 					setupTable(db, cse.table)
 
@@ -65,7 +64,7 @@ func TestMySQLColumnTransforms(t *testing.T) {
 	}
 }
 
-func withMySQLDatabase(t *testing.T, testfn func(*testing.T, *sql.DB)) {
+func withMySQLDatabase(t *testing.T, testfn func(*testing.T, *schema.Database)) {
 	Databases["testsrc"] = Database{"mysql://mysql_test_user:password@localhost:43306/test_db", map[string]string{}, true}
 	srcdb, err := connectDatabase("testsrc")
 	if err != nil {

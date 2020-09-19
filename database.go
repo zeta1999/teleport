@@ -22,7 +22,7 @@ import (
 )
 
 var (
-	dbs = make(map[string]*sql.DB)
+	dbs = make(map[string]*schema.Database)
 )
 
 func extractLoadDatabase(sourceOrPath string, destination string, tableName string) {
@@ -113,7 +113,7 @@ func inspectTable(source string, tableName string, table *schema.Table, tableExt
 
 	db, _ := connectDatabase(source)
 
-	dumpedTable, err := schema.DumpTableMetadata(db, tableName)
+	dumpedTable, err := db.DumpTableMetadata(tableName)
 	if err != nil {
 		return err
 	}
@@ -123,7 +123,7 @@ func inspectTable(source string, tableName string, table *schema.Table, tableExt
 		for i, column := range dumpedTable.Columns {
 			if columnTransform, ok := tableExtract.ColumnTransforms[column.Name]; ok {
 				if columnTransform.Type != "" {
-					dataType, options, schemaErr := schema.ParseDatabaseType(column.Name, columnTransform.Type)
+					dataType, options, schemaErr := db.ParseDatabaseTypeFromString(columnTransform.Type)
 					if schemaErr != nil {
 						return
 					}
@@ -197,7 +197,7 @@ func extractSource(sourceTable *schema.Table, destinationTable *schema.Table, ta
 }
 
 func exportCSV(source string, table string, columns []schema.Column, whereStatement string, tableExtract TableExtract) (string, error) {
-	database, err := connectDatabase(source)
+	db, err := connectDatabase(source)
 	if err != nil {
 		return "", fmt.Errorf("Database Open Error: %w", err)
 	}
@@ -219,7 +219,7 @@ func exportCSV(source string, table string, columns []schema.Column, whereStatem
 		query += fmt.Sprintf(" WHERE %s", whereStatement)
 	}
 
-	rows, err := database.Query(query)
+	rows, err := db.Query(query)
 	if err != nil {
 		return "", err
 	}
@@ -300,7 +300,7 @@ func exportCSV(source string, table string, columns []schema.Column, whereStatem
 	})
 }
 
-func connectDatabase(source string) (*sql.DB, error) {
+func connectDatabase(source string) (*schema.Database, error) {
 	if dbs[source] != nil {
 		return dbs[source], nil
 	}
@@ -343,10 +343,18 @@ func connectDatabase(source string) (*sql.DB, error) {
 		if err != nil {
 			return nil, err
 		}
-
 	}
 
-	dbs[source] = database
+	var driver string
+	if strings.HasPrefix(Databases[source].URL, "redshift://") {
+		driver = "redshift"
+	} else if strings.HasPrefix(Databases[source].URL, "rs://") {
+		driver = "redshift"
+	} else {
+		driver = u.Driver
+	}
+
+	dbs[source] = &schema.Database{database, driver}
 	return dbs[source], nil
 }
 
