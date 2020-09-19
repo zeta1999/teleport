@@ -10,6 +10,8 @@ import (
 	"github.com/hundredwatt/teleport/secrets"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/snowflakedb/gosnowflake"
+
 	log "github.com/sirupsen/logrus"
 	"go.starlark.net/resolve"
 

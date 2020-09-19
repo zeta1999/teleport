@@ -103,7 +103,7 @@ func readTableExtractConfiguration(path string, tableName string, tableExtractpt
 
 	portFile, err := findPortFile(path, []string{databasesConfigDirectory, legacyDatabasesConfigDirectory})
 	if err != nil {
-		log.Warn("No database configuration found")
+		log.Warn("No table configuration found, using default load strategy: Full")
 		tableExtract := &TableExtract{}
 		tableExtract.LoadOptions.Strategy = LoadStrategy("Full")
 		*tableExtractptr = *tableExtract
@@ -283,4 +283,14 @@ func (computedColumn *ComputedColumn) toColumn() (column schema.Column, err erro
 	column.Options[schema.COMPUTED] = 1
 
 	return
+}
+
+func databaseSchema(source string, driver string) (string, bool) {
+	if schema, ok := Databases[source].Options["schema"]; ok {
+		return schema, true
+	} else if driver == "snowflake" {
+		return "PUBLIC", true
+	}
+
+	return "", false
 }

@@ -96,12 +96,12 @@ func createStagingTable(destinationTable *schema.Table, stagingTableName string)
 		return
 	}
 
-	query := GetDialect(Databases[destinationTable.Source]).CreateStagingTableQuery
+	query := GetDialect(db).CreateStagingTableQuery
 	if query == "" {
-		return fmt.Errorf("load not supported for this database type: %s", GetDialect(Databases[destinationTable.Source]).HumanName)
+		return fmt.Errorf("load not supported for this database type: %s", GetDialect(db).HumanName)
 
 	}
-	query = fmt.Sprintf(query, destinationTable.Name, stagingTableName)
+	query = fmt.Sprintf(query, db.EscapeIdentifier(destinationTable.Name), db.EscapeIdentifier(stagingTableName))
 
 	fnlog.Debugf("Creating staging table")
 	if Preview {
@@ -144,9 +144,9 @@ func updatePrimaryTable(destinationTable *schema.Table, stagingTableName string,
 	var query string
 	switch strategyOpts.Strategy {
 	case "full", "Full":
-		query = fmt.Sprintf(GetDialect(Databases[destinationTable.Source]).FullLoadQuery, destinationTable.Name, stagingTableName)
+		query = fmt.Sprintf(GetDialect(db).FullLoadQuery, db.EscapeIdentifier(destinationTable.Name), db.EscapeIdentifier(stagingTableName))
 	case "modified-only", "ModifiedOnly", "Incremental":
-		query = fmt.Sprintf(GetDialect(Databases[destinationTable.Source]).ModifiedOnlyLoadQuery, destinationTable.Name, stagingTableName, strategyOpts.PrimaryKey)
+		query = fmt.Sprintf(GetDialect(db).ModifiedOnlyLoadQuery, db.EscapeIdentifier(destinationTable.Name), db.EscapeIdentifier(stagingTableName), strategyOpts.PrimaryKey)
 	}
 
 	fnlog.Debugf("Updating primary table")
@@ -155,8 +155,17 @@ func updatePrimaryTable(destinationTable *schema.Table, stagingTableName string,
 		return
 	}
 
-	_, err = db.Exec(query)
-	return
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	for _, statement := range strings.Split(query, ";") {
+		_, execErr := tx.Exec(statement)
+		if execErr != nil {
+			return execErr
+		}
+	}
+	return tx.Commit()
 }
 
 func importCSV(source string, table string, file string, columns []schema.Column) (err error) {
@@ -165,7 +174,9 @@ func importCSV(source string, table string, file string, columns []schema.Column
 		return
 	}
 
-	switch GetDialect(Databases[source]).Key {
+	switch GetDialect(db).Key {
+	case "snowflake":
+		err = importSnowflake(db, table, file, columns, Databases[source].Options)
 	case "redshift":
 		err = importRedshift(db, table, file, columns, Databases[source].Options)
 	case "postgres":

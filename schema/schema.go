@@ -150,6 +150,8 @@ func (db *Database) driverExtensions() DriverExtensions {
 		return redshiftDriverExtensions
 	case "postgres":
 		return postgresDriverExtensions
+	case "snowflake":
+		return snowflakeDriverExtensions
 	default:
 		return DriverExtensions{}
 	}

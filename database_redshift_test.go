@@ -52,7 +52,8 @@ func TestRedshiftLoadTest(t *testing.T) {
 			assert.Contains(t, launched, "2015-11-06")
 			assert.Contains(t, description, "* Officiis. \n* Sapiente.")
 
-			expectedColumns := widgetsTableDefinition.Columns
+			expectedColumns := make([]schema.Column, len(widgetsTableDefinition.Columns))
+			copy(expectedColumns, widgetsTableDefinition.Columns)
 			expectedColumns[7] = schema.Column{"description", schema.STRING, map[schema.Option]int{schema.LENGTH: 65535}}
 			assert.Equal(t, expectedColumns, newTable.Columns)
 		})

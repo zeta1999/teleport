@@ -104,7 +104,7 @@ func createDestinationTableFromConfigFile(source string, file string) error {
 }
 
 func aboutDB(source string) {
-	_, err := connectDatabase(source)
+	db, err := connectDatabase(source)
 	if err != nil {
 		log.Fatal(err)
 	} else {
@@ -112,11 +112,16 @@ func aboutDB(source string) {
 	}
 
 	fmt.Println("Name: ", source)
-	fmt.Printf("Type: %s\n", GetDialect(Databases[source]).HumanName)
+	fmt.Printf("Type: %s\n", GetDialect(db).HumanName)
 }
 
 func databaseTerminal(source string) {
-	command := GetDialect(Databases[source]).TerminalCommand
+	db, err := connectDatabase(source)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	command := GetDialect(db).TerminalCommand
 	if command == "" {
 		log.Fatalf("Not implemented for this database type")
 	}

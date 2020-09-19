@@ -338,13 +338,6 @@ func connectDatabase(source string) (*schema.Database, error) {
 		return nil, err
 	}
 
-	if schema, ok := Databases[source].Options["schema"]; ok {
-		_, err := database.Exec(fmt.Sprintf("SET search_path TO %s", schema))
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	var driver string
 	if strings.HasPrefix(Databases[source].URL, "redshift://") {
 		driver = "redshift"
@@ -354,7 +347,20 @@ func connectDatabase(source string) (*schema.Database, error) {
 		driver = u.Driver
 	}
 
-	dbs[source] = &schema.Database{database, driver}
+	db := &schema.Database{database, driver}
+
+	if schema, ok := databaseSchema(source, driver); ok {
+		db.Exec(fmt.Sprintf(GetDialect(db).SetSchemaQuery, schema))
+	}
+
+	if schema, ok := Databases[source].Options["schema"]; ok {
+		_, err := database.Exec(fmt.Sprintf("SET search_path TO %s", schema))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	dbs[source] = db
 	return dbs[source], nil
 }
 

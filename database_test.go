@@ -209,7 +209,7 @@ func TestComputedColumnsIncludedWhenCreatingTable(t *testing.T) {
 		assert.Equal(t, log.InfoLevel, hook.LastEntry().Level)
 
 		var createdDate string
-		row := dbDest.QueryRow("SELECT created_date FROM testsrc_widgets ORDER BY id LIMIT 1")
+		row := dbDest.QueryRow("SELECT CAST(created_date AS VARCHAR(32)) FROM testsrc_widgets ORDER BY id LIMIT 1")
 		err := row.Scan(&createdDate)
 		assert.NoError(t, err)
 
@@ -366,12 +366,10 @@ func withTestDatabasePortFile(t *testing.T, source string, testfile string, fn f
 }
 
 func assertRowCount(t *testing.T, expected int, db *schema.Database, table string) {
-	row := db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %s", table))
+	row := db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %s", db.EscapeIdentifier(table)))
 	var count int
 	err := row.Scan(&count)
-	if err != nil {
-		assert.FailNow(t, "%w", err)
-	}
+	assert.NoError(t, err)
 	assert.Equal(t, expected, count, "the number of rows is different than expected")
 }
 

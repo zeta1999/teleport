@@ -98,14 +98,14 @@ func withTestTable(t *testing.T, db Database, cases [][]string, testfn func(*tes
 	columns := ""
 	for cidx, dataTypes := range cases {
 		for didx, dataType := range dataTypes {
-			columns += fmt.Sprintf("col%d%d %s,\n", cidx, didx, dataType)
+			columns += fmt.Sprintf("%s %s,\n", db.EscapeIdentifier(fmt.Sprintf("col%d%d", cidx, didx)), dataType)
 		}
 	}
 	columns = strings.TrimSuffix(columns, ",\n")
 
 	_, err := db.Exec(fmt.Sprintf(createTableStatement, db.EscapeIdentifier("test_table"), columns))
 	if err != nil {
-		assert.FailNow(t, err.Error(), fmt.Sprintf(createTableStatement, columns))
+		assert.FailNow(t, err.Error(), fmt.Sprintf(createTableStatement, db.EscapeIdentifier("test_table"), columns))
 	}
 	defer db.Exec(fmt.Sprintf("DROP TABLE %s", db.EscapeIdentifier("test_table")))
 

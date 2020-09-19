@@ -5,6 +5,7 @@
 * (Database) Progress indication in DEBUG log for database extracts
 * Plugins system for packaging deployment options
 * New configuration methods `Paginate(function/lambda)` and `Transform(function/lambda)` for APIs
+* Support for the Snowflake database (https://www.snowflake.com)
 
 ### Deprecated
 * API Configuration functions: `def Paginate():` and `def Transform():` (new methods preferred)
