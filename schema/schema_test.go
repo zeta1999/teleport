@@ -91,10 +91,10 @@ func testSkippedColumnCases(t *testing.T, db Database, dataTypes []string) {
 func withTestTable(t *testing.T, db Database, cases [][]string, testfn func(*testing.T, *Table)) {
 	db.Exec("DROP TABLE IF EXISTS test_table")
 	createTableStatement := `
-	CREATE TABLE %s (
-		%s
-	);
-`
+		CREATE TABLE %s (
+			%s
+		)
+	`
 	columns := ""
 	for cidx, dataTypes := range cases {
 		for didx, dataType := range dataTypes {
@@ -122,7 +122,7 @@ func testTableGeneration(t *testing.T, db Database) {
 	if err != nil {
 		assert.FailNow(t, err.Error())
 	}
-	defer db.Exec(`DROP TABLE new_widgets`)
+	defer db.Exec(`DROP TABLE "new_widgets"`)
 
 	table, err := db.DumpTableMetadata("new_widgets")
 	if err != nil {

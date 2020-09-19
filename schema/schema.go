@@ -246,7 +246,7 @@ func (db *Database) GenerateCreateTableStatement(name string, table *Table) stri
 		statement += fmt.Sprintf("%s %s,\n", db.EscapeIdentifier(column.Name), db.GenerateDataTypeExpression(column))
 	}
 	statement = strings.TrimSuffix(statement, ",\n")
-	statement += "\n);"
+	statement += "\n)"
 
 	return statement
 }

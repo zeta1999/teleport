@@ -214,7 +214,12 @@ func exportCSV(source string, table string, columns []schema.Column, whereStatem
 		columnNames[i] = column.Name
 	}
 
-	query := fmt.Sprintf("SELECT %s FROM %s", strings.Join(columnNames, ", "), table)
+	escapedColumnNames := make([]string, len(columns))
+	for i, columnName := range columnNames {
+		escapedColumnNames[i] = db.EscapeIdentifier(columnName)
+	}
+
+	query := fmt.Sprintf("SELECT %s FROM %s", strings.Join(escapedColumnNames, ", "), db.EscapeIdentifier(table))
 	if whereStatement != "" {
 		query += fmt.Sprintf(" WHERE %s", whereStatement)
 	}
