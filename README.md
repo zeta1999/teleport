@@ -8,7 +8,7 @@ Teleport's ambition is to become the standard for building ELT data ingestion pi
 
 Following the guidelines of ELT, Teleport does not provide support for complex, arbitrary data workflows. Instead, Teleport serves to provide just enough tooling and standardization to get all your data where it needs to go with the "EL" (extract-load) steps and moves all the complexity of preparing your data for business use to the "T" (transform) step.
 
-*Teleport is currently in "alpha" testing. Please give it a try and report any all bugs by creating an issue.*
+*Teleport is currently in "beta" testing. Please give it a try and report any all bugs by creating an issue.
 
 # Features
 
@@ -19,7 +19,7 @@ Following the guidelines of ELT, Teleport does not provide support for complex, 
 * Detailed logging for monitoring and debugging ELT pipelines
 * All commands available in a single Command Line Interface
 
-# Installation (alpha)
+# Installation (beta)
 
 Install the `teleport` binary on:
 
@@ -37,23 +37,23 @@ Teleport RPM/DEB packages for any 64-bit Linux OS are available:
 
 ```
 # DEB distros like Ubuntu
-curl -OfsSL https://github.com/hundredwatt/teleport/releases/download/v0.0.1-alpha.6/teleport_0.0.1-alpha.6_amd64.deb
-dpkg -i teleport_0.0.1-alpha.6_amd64.deb
+curl -OfsSL https://github.com/hundredwatt/teleport/releases/download/v0.5.0-beta/teleport_0.5.0-beta_amd64.deb
+dpkg -i teleport_0.5.0-beta_amd64.deb
 
 # RPM distros like CentOS
-curl -OfsSL https://github.com/hundredwatt/teleport/releases/download/v0.0.1-alpha.6/teleport_0.0.1_alpha.6_x86_64.rpm
-yum install teleport_0.0.1_alpha.6_x86_64.rpm
+curl -OfsSL https://github.com/hundredwatt/teleport/releases/download/v0.5.0-beta/teleport_0.5.0_beta_x86_64.rpm
+yum install teleport_0.5.0_beta_x86_64.rpm
 ```
 
 ## Docker
 
-1. Download the container: `docker pull teleportdata/teleport:v0.0.1-alpha.6`
-2. Run the container: `docker run --rm teleportdata/teleport:v0.0.1-alpha.6 version`
+1. Download the container: `docker pull teleportdata/teleport:v0.5.0-beta`
+2. Run the container: `docker run --rm teleportdata/teleport:v0.5.0-beta version`
 
 To run the container with a pad directory mounted and environment variables set, use the full syntax:
 
 ```
-docker run --rm  -e "KEY=value" -v $(pwd):/pad teleportdata/teleport:v0.0.1-alpha.6 [COMMAND] [OPTIONS]"
+docker run --rm  -e "KEY=value" -v $(pwd):/pad teleportdata/teleport:v0.5.0-beta [COMMAND] [OPTIONS]"
 ```
 
 ## From Source

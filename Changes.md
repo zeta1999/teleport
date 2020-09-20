@@ -1,6 +1,8 @@
 # Teleport Changelog
 
 ## HEAD
+
+## 0.5.0-beta
 ### Added
 * (Database) Progress indication in DEBUG log for database extracts
 * Plugins system for packaging deployment options
@@ -56,9 +58,9 @@ Initial Release:
 
 - Extract from a Database (MySQL, Postgres, Redshift, SQLite supported)
 - Load to a  Database (Postgres, Redshift, SQLite supported)
-- Extract-Load table from one Database to another Database 
+- Extract-Load table from one Database to another Database
   - Table Name Convention (`{{extracted_db}}_{{table_name}}`)
-  - Automatically create destination table if it does not exist 
+  - Automatically create destination table if it does not exist
   - Determine load-able columns by comparing source and destination columns
   - Load Strategies: Full, Incremental, Modified-Only
 
