@@ -12,6 +12,7 @@ import (
 
 var plugins = map[string]string{
 	"cron": "https://api.github.com/repos/Teleport-Data/teleport-cron/tarball/master",
+	"aws-ecs": "https://api.github.com/repos/Teleport-Data/teleport-aws-ecs/tarball/master",
 }
 
 const (

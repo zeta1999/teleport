@@ -6,6 +6,7 @@
 * Plugins system for packaging deployment options
 * New configuration methods `Paginate(function/lambda)` and `Transform(function/lambda)` for APIs
 * Support for the Snowflake database (https://www.snowflake.com)
+* [`aws-ecs` plugin](https://github.com/Teleport-Data/teleport-aws-ecs#teleport-aws-ecs) for managing serverless deployment of Teleport Pads to AWS ECS/Fargate
 
 ### Deprecated
 * API Configuration functions: `def Paginate():` and `def Transform():` (new methods preferred)
