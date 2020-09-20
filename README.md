@@ -1,218 +1,73 @@
-# Teleport
-
 <img src="assets/logo.png" width="320">
 
-One framework for all your data ingestion needs
+<hr/>
 
+<p align="center">
+  <img alt="Teleport architecture" title="Teleport Architecture" src="assets/teleport_main.png" width="750">
+</p>
+
+<p align="center">
+  One framework for all your data integration needs.
+</p>
+
+## Table of Contents
+
+- [Introduction](#introduction)
+- [Features](#features)
+- [Supports](#supports)
+- [Steps to Run a Data Extraction](#steps-to-run-a-data-extraction-job)
+- [Documentation](#documentation)
+
+## Introduction
 Teleport's ambition is to become the standard for building ELT data ingestion pipelines. It provides an opionated, convention-over-configuration framework to allow you to pack your data warehouse, hydrate your data lake, or add a drop to your data pond from any or all of your 1st party and 3rd party data services.
 
 Following the guidelines of ELT, Teleport does not provide support for complex, arbitrary data workflows. Instead, Teleport serves to provide just enough tooling and standardization to get all your data where it needs to go with the "EL" (extract-load) steps and moves all the complexity of preparing your data for business use to the "T" (transform) step.
 
-*Teleport is currently in "beta" testing. Please give it a try and report any all bugs by creating an issue.
+## Features
 
-# Features
-
-* Setup connectors for extracting data from any API in minutes
-* Built-in connectors for extracting data from common relational databases
-* Minimal maintenance: one configuration file per data source and no external dependencies
-* Manage all data source and pipeline configurations in version control
-* Detailed logging for monitoring and debugging ELT pipelines
-* All commands available in a single Command Line Interface
-
-# Installation (beta)
-
-Install the `teleport` binary on:
-
-## Mac or Linux
-
-One step install:
-
-```
-curl -fsSL https://raw.githubusercontent.com/hundredwatt/teleport/master/scripts/install.sh | bash
-```
-
-## Linux Packages
-
-Teleport RPM/DEB packages for any 64-bit Linux OS are available:
-
-```
-# DEB distros like Ubuntu
-curl -OfsSL https://github.com/hundredwatt/teleport/releases/download/v0.5.0-beta/teleport_0.5.0-beta_amd64.deb
-dpkg -i teleport_0.5.0-beta_amd64.deb
-
-# RPM distros like CentOS
-curl -OfsSL https://github.com/hundredwatt/teleport/releases/download/v0.5.0-beta/teleport_0.5.0_beta_x86_64.rpm
-yum install teleport_0.5.0_beta_x86_64.rpm
-```
-
-## Docker
-
-1. Download the container: `docker pull teleportdata/teleport:v0.5.0-beta`
-2. Run the container: `docker run --rm teleportdata/teleport:v0.5.0-beta version`
-
-To run the container with a pad directory mounted and environment variables set, use the full syntax:
-
-```
-docker run --rm  -e "KEY=value" -v $(pwd):/pad teleportdata/teleport:v0.5.0-beta [COMMAND] [OPTIONS]"
-```
-
-## From Source
-
-See the [Development wiki page](https://github.com/hundredwatt/teleport/wiki/Development) for instructions on how to check out the source and build it yourself.
-
-# Usage
-
-Create a new "Pad" (Teleport's term for project directory) with and then cd to the created directory:
-
-    $ teleport new pad-name
-    $ cd pad-name
-
-After [configuring your data sources](#pad-structure), use the CLI to perform extract-load operations:
-
-    $ teleport extract-load-db -from database -to datawarehouse -table widgets
-    $ teleport extract-load-api -from api_endpoint -to datawarehouse
-
-Set the `-preview` flag with any command to perform a dry-run.
-
-<details><summary>To see all Teleport commands, run `teleport help`</summary>
-
-    $ teleport help
-    Commands:
-      new <path/to/pad>	generate a new pad folder at the given path
-      help			show this message
-      version		print version information
-
-      extract-db		export data from a database table to CSV. Required options: -from, -table
-      extract-api		export data from an API endpoint to CSV. Required options: -from
-
-      extract-load-db		extract data from a table in one database to another database. Required options: -from, -to, -table
-      extract-load-api		extract data from an API endpoint to a database. Required options: -from, -to
-
-      transform		(re-)generate a materialized table form a sql statement. Required options: -source, -table
-
-      about-db		show connection information for a database. Required options: -source
-      db-terminal		start a terminal for interacting with a database. Required options: -source
-      list-tables		list the tables in a database. Required options: -source
-      drop-table		drop a table. Required options: -source, -table
-      describe-table	print the schema for a table. Required options: -source, -table
-
-    Options:
-      -source, -s [source]	data source name
-      -from [source]	data source to extract data from
-      -to [source]		data source to load data into
-      -table, -t [table]	name of table in the database data source
-      -preview, -p		preview command as a dry-run without making any changes
-      -debug, -d		enable debug log output
-</details>
-
-# Pad Structure
-
-Pads have this directory structure:
-
-    pad-name/
-      |- config/
-        |- databases.yml
-      |- sources/
-        |- apis/
-          |- exampleapi1.port
-          |- exampleapi2.port
-          |- ...
-        |- databases/
-          |- exampledb1.port
-          |- exampledb2.port
-      |- transforms/
-        |- exampletrasnform1.sql
-        |- exampletransform2.sql
-        |- ...
-
-When refering to a resource (data source or transform) in a Teleport command, the name of the resource is the filename without the extension. e.g., to export a CSV from the API endpoint defined in `sources/apis/exampleapi1.port`, use `teleport extract-api -from exampleapi1`
-
-For API configurations, Teleport uses its own "Port" configuration language. "Port" is a declarative, Python dialect
-used for configuration and mapping data. For full documentation on the "Port" configuration language, [visit the wiki](https://github.com/hundredwatt/teleport/wiki/API-Configuration)
-
-<details><summary>Example "Port" file for the [Holiday API](https://holidayapi.com/docs)</summary>
-
-```python
-Get("https://holidayapi.com/v1/holidays?key=$HOLIDAY_API_KEY&country=US&year=2019")
-ResponseType("json")
-LoadStrategy(Full)
-
-TableDefinition({
-  "uuid": "VARCHAR(255)",
-  "name": "VARCHAR(255)",
-  "date": "DATE",
-  "observed": "DATE",
-  "public": "BOOLEAN",
-})
-
-def Paginate(previous_response):
-  return None
-
-def Transform(response):
-  holidays = []
-  for holiday in response['holidays']:
-    holidays.append({
-      "uuid": holiday['uuid'],
-      "name": holiday['name'],
-      "date": holiday['date'],
-      "observed": holiday['observed'],
-      "public": holiday['public'],
-    })
-  return holidays
-```
-</details>
+* Setup connectors for extracting data from any API in minutes.
+* Built-in connectors for extracting data from common relational databases.
+* Minimal maintenance: one configuration file per data source and no external dependencies.
+* Manage all data source and pipeline configurations in version control.
+* Detailed logging for monitoring and debugging ELT pipelines.
+* All commands available in a single Command Line Interface.
 
 
-For Database configurations, the database connection settings (i.e., host, username, password, etc) are configured in `config/databases.yml` and the extraction options for individual tables within a database are configured in that database's "Port" file.
+## Supports
+<p align="center">
 
-For full documentation on database configuration, [visit the wiki](https://github.com/hundredwatt/teleport/wiki/Database-Configuration)
+<table style="width:100%">
+  <tr>
+    <th width=25% > <p align="center"> Data Sources </p> </th>
+    <th width=25%> <p align="center"> Data Sinks </p> </th>
+  </tr>
+  <tr>
+    <td  width=25%> <p align="center"> Any HTTP API</p> </td>
+    <td  width=25%> <p align="center"> CSV file </p> </td>
+  </tr>
+  <tr>
+    <td width=25%> <p align="center"> Relational Databases: MySQL, PostgreSQL, SQLite </p> </td>
+    <td width=25%> <p align="center"> Data Warehouses: AWS Redshift, Snowflake, PostgreSQL  </p> </td>
+  </tr>
+</table>
+</p>
 
-<details><summary>Example "Port" file for extracting a database table</summary>
 
-```python
-def createdDate(row):
-  return row['created_at'].strftime("%F")
+## Steps to Run a Data Extraction Job
+<ol>
+  <li> <a href="https://github.com/hundredwatt/teleport/wiki/Teleport-Installation"> Install Teleport</a> (supported for Linux, macOS and Windows). </li>
+  <li> Set up a <a href="https://github.com/hundredwatt/teleport/wiki/Creating-a-Teleport-Pad-Directory"> Teleport Pad</a> directory. </li>
+  <li> Connect and configure data sources (i.e. 3rd-Party APIs and/or 1st-Party Databases).
+  <li> Connect data sinks (i.e. Databases and/or Data Warehouses).
+  <li> Run the <a href="https://github.com/hundredwatt/teleport/wiki/Running-a-Data-Extraction-Job"> Teleport Data Extraction Job</a>. </li>
+</ol>
 
-def toPercent(value):
-  return value * 100
+## Documentation
 
-Table("widgets") \
-  .LoadStrategy(Full) \
-  .ComputeColumn("created_date", createdDate, "DATE")
+Learn more about how to use Teleport using the Telport Wiki <a href="https://github.com/hundredwatt/teleport/wiki"> here </a>.
 
-Table("users") \
-  .LoadStrategy(ModifiedOnly, primary_key='id', modified_at_column='updated_at', go_back_hours=36) \
-  .TransformColumn("ranking", toPercent)
+## Author
 
-Table("*") \ # Configures all other tables
-  .LoadStrategy(Incremental, primary_key='id')
-```
-</details>
-
-For Transforms, Teleport supports SQL statements and that create a table named based on the filename without extension. To update a transform table, use `teleport transform -source <source> -table <table>`
-
-# Deployment
-
-Coming soon...
-
-# Contributing
-
-All contributions are welcome! To get invovled:
-
-* Open an issue with either a bug report or feature request
-* Verify existing bug reports and adding reproduction steps
-* Review Pull Requests and test changes locally on your machine
-* Writing or Editing Documentation
-
-Newbies welcome! Feel free to reach out to a maintainer for help submitting your first Pull Request.
-
-# Teleport Pro
-
-Teleport is funded by the Teleport Pro commercial offering. Teleport Pro is an extension to Teleport that includes:
-
-* More Features
-* A Commercial License
-* Priority Support
-* Allows you to support further development of open source Teleport
-
-More details coming soon...
+Jason Nochlin
+* Twitter: @jasonnochin
+* E-mail: jason (at) teleportdata.com
