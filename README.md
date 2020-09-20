@@ -65,7 +65,7 @@ Following the guidelines of ELT, Teleport does not provide support for complex, 
 
 ## Documentation
 
-Learn more about how to use Teleport using the Telport Wiki <a href="https://github.com/hundredwatt/teleport/wiki"> here </a>.
+Learn more about how to use Teleport in the Telport Wiki <a href="https://github.com/hundredwatt/teleport/wiki"> here </a>.
 
 ## Author
 
