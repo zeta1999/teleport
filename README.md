@@ -1,14 +1,10 @@
 <img src="assets/logo.png" width="320">
 
-<hr/>
-
-<p align="center">
-  <img alt="Teleport architecture" title="Teleport Architecture" src="assets/teleport_main.png" width="750">
-</p>
-
 <p align="center">
   One framework for all your data integration needs.
 </p>
+
+<hr/>
 
 ## Table of Contents
 
@@ -19,6 +15,11 @@
 - [Documentation](#documentation)
 
 ## Introduction
+
+<p align="center">
+  <img alt="Teleport architecture" title="Teleport Architecture" src="assets/teleport_main.png" width="750">
+</p>
+
 Teleport's ambition is to become the standard for building ELT data ingestion pipelines. It provides an opionated, convention-over-configuration framework to allow you to pack your data warehouse, hydrate your data lake, or add a drop to your data pond from any or all of your 1st party and 3rd party data services.
 
 Following the guidelines of ELT, Teleport does not provide support for complex, arbitrary data workflows. Instead, Teleport serves to provide just enough tooling and standardization to get all your data where it needs to go with the "EL" (extract-load) steps and moves all the complexity of preparing your data for business use to the "T" (transform) step.
