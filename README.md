@@ -60,7 +60,7 @@ Following the guidelines of ELT, Teleport does not provide support for complex, 
   <li> Set up a <a href="https://github.com/hundredwatt/teleport/wiki/Creating-a-Teleport-Pad-Directory"> Teleport Pad</a> directory. </li>
   <li> Connect and configure data sources (i.e. 3rd-Party APIs and/or 1st-Party Databases).
   <li> Connect data sinks (i.e. Databases and/or Data Warehouses).
-  <li> Run the <a href="https://github.com/hundredwatt/teleport/wiki/Running-a-Data-Extraction-Job"> Teleport Data Extraction Job</a>. </li>
+  <li> Run <a href="https://github.com/hundredwatt/teleport/wiki/Running-a-Data-Extraction-Job">Data Extraction Jobs</a> with Teleport.</li>
 </ol>
 
 ## Documentation
