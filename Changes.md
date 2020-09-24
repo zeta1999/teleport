@@ -1,6 +1,8 @@
 # Teleport Changelog
 
 ## HEAD
+### Fixed
+* Consistent column order in API CSV (no longer randomly ordered)
 
 ## 0.5.0-beta
 ### Added

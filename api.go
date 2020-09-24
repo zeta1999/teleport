@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	slutil "github.com/hundredwatt/starlib/util"
@@ -18,7 +19,10 @@ import (
 	"go.starlark.net/starlark"
 )
 
-type dataObject = map[string]interface{}
+type dataObject struct {
+	headers []string
+	values  []interface{}
+}
 
 type table [][]string
 
@@ -64,7 +68,7 @@ func extractLoadAPI(endpointName string, destination string) {
 		func() error { return inspectTable(destination, destinationTableName, &destinationTable, nil) },
 		func() error { return performAPIExtraction(&endpoint, &results) },
 		func() error { return determineImportColumns(&destinationTable, results, &columns) },
-		func() error { return saveResultsToCSV(endpointName, results, &columns, &csvfile) },
+		func() error { return saveResultsToCSV(endpointName, results, &columns, &csvfile, false) },
 		func() error { return load(&destinationTable, &columns, &csvfile, endpoint.strategyOpts()) },
 	}, func() {
 		fnlog.WithField("rows", currentWorkflow.RowCounter).Info("Completed extract-load-api 🎉")
@@ -85,7 +89,7 @@ func extractAPI(endpointName string) {
 	RunWorkflow([]func() error{
 		func() error { return readEndpointConfiguration(endpointName, &endpoint) },
 		func() error { return performAPIExtraction(&endpoint, &results) },
-		func() error { return saveResultsToCSV(endpointName, results, nil, &csvfile) },
+		func() error { return saveResultsToCSV(endpointName, results, nil, &csvfile, true) },
 	}, func() {
 		log.WithFields(log.Fields{
 			"file": csvfile,
@@ -133,10 +137,7 @@ func createEndpointdestinationTableIfNotExists(destination string, destinationTa
 }
 
 func determineImportColumns(destinationTable *schema.Table, results []dataObject, columns *[]schema.Column) error {
-	headers := make([]string, 0)
-	for key := range results[0] {
-		headers = append(headers, key)
-	}
+	headers := results[0].headers
 
 	importColumns := make([]schema.Column, 0)
 	for _, column := range destinationTable.Columns {
@@ -319,7 +320,7 @@ func applyTransform(value interface{}, endpoint *Endpoint) (results []dataObject
 		var slobject starlark.Value
 		defer objectItr.Done()
 		for objectItr.Next(&slobject) {
-			object, err := slutil.Unmarshal(slobject)
+			object, err := starlarkUnmarshal(slobject)
 			if err != nil {
 				return nil, fmt.Errorf("read object error: %w", err)
 			}
@@ -328,7 +329,9 @@ func applyTransform(value interface{}, endpoint *Endpoint) (results []dataObject
 			results = append(results, object.(dataObject))
 		}
 	case *starlark.Dict:
-		object, err := slutil.Unmarshal(value.(starlark.Value))
+		fmt.Println(value.(*starlark.Dict).Keys())
+		object, err := starlarkUnmarshal(value.(starlark.Value))
+		fmt.Println(object)
 		if err != nil {
 			return nil, fmt.Errorf("read object error: %w", err)
 		}
@@ -336,18 +339,26 @@ func applyTransform(value interface{}, endpoint *Endpoint) (results []dataObject
 		results = append(results, object.(dataObject))
 	case []interface{}:
 		for _, object := range value.([]interface{}) {
-			data := make(dataObject)
+			data := newDataObject(len(object.(map[interface{}]interface{})))
+			i := 0
 			for k, v := range object.(map[interface{}]interface{}) {
-				data[k.(string)] = v
+				data.headers[i] = k.(string)
+				data.values[i] = v
+				i++
 			}
+			data.sortKeys()
 			IncrementRowCounter()
 			results = append(results, data)
 		}
 	case map[interface{}]interface{}:
-		data := make(dataObject)
+		data := newDataObject(len(value.(map[interface{}]interface{})))
+		i := 0
 		for k, v := range value.(map[interface{}]interface{}) {
-			data[k.(string)] = v
+			data.headers[i] = k.(string)
+			data.values[i] = v
+			i++
 		}
+		data.sortKeys()
 		IncrementRowCounter()
 		results = append(results, data)
 	default:
@@ -414,12 +425,10 @@ func updatePagination(response *http.Response, body interface{}, endpoint *Endpo
 	}
 }
 
-func saveResultsToCSV(endpointName string, results []dataObject, columns *[]schema.Column, csvfile *string) error {
+func saveResultsToCSV(endpointName string, results []dataObject, columns *[]schema.Column, csvfile *string, includeHeaders bool) error {
 	headers := make([]string, 0)
 	if columns == nil {
-		for key := range results[0] {
-			headers = append(headers, key)
-		}
+		headers = results[0].headers
 	} else {
 		for _, column := range *columns {
 			headers = append(headers, column.Name)
@@ -428,12 +437,12 @@ func saveResultsToCSV(endpointName string, results []dataObject, columns *[]sche
 
 	name := fmt.Sprintf("extract-api-%s-*.csv", strings.TrimSuffix(filepath.Base(endpointName), filepath.Ext(endpointName)))
 
-	filename, err := generateCSV(headers, name, func(writer *csv.Writer) error {
+	filename, err := generateCSV(headers, name, includeHeaders, func(writer *csv.Writer) error {
 		writeBuffer := make([]string, len(headers))
 
 		for _, object := range results {
 			for i, key := range headers {
-				writeBuffer[i] = formatForCSV(object[key])
+				writeBuffer[i] = formatForCSV(object.get(key))
 			}
 
 			err := writer.Write(writeBuffer)
@@ -544,6 +553,102 @@ func convertJSONNumbers(data interface{}) (v interface{}, err error) {
 		v = x
 	}
 	return
+}
+
+func starlarkUnmarshal(x starlark.Value) (val interface{}, err error) {
+	switch v := x.(type) {
+	case *starlark.Dict:
+		var (
+			dictVal starlark.Value
+			pval    interface{}
+			kval    interface{}
+			keys    []interface{}
+			vals    []interface{}
+			// key as interface if found one key is not a string
+			ki bool
+		)
+
+		for _, k := range v.Keys() {
+			dictVal, _, err = v.Get(k)
+			if err != nil {
+				return
+			}
+
+			pval, err = slutil.Unmarshal(dictVal)
+			if err != nil {
+				err = fmt.Errorf("unmarshaling starlark value: %w", err)
+				return
+			}
+
+			kval, err = slutil.Unmarshal(k)
+			if err != nil {
+				err = fmt.Errorf("unmarshaling starlark key: %w", err)
+				return
+			}
+
+			if _, ok := kval.(string); !ok {
+				// found key as not a string
+				ki = true
+			}
+
+			keys = append(keys, kval)
+			vals = append(vals, pval)
+		}
+
+		// prepare result
+
+		rs := newDataObject(len(keys))
+		ri := map[interface{}]interface{}{}
+
+		for i, key := range keys {
+			// key as interface
+			if ki {
+				ri[key] = vals[i]
+			} else {
+				rs.headers[i] = key.(string)
+				rs.values[i] = vals[i]
+			}
+		}
+
+		if ki {
+			val = ri // map[interface{}]interface{}
+		} else {
+			val = rs // map[string]interface{}
+		}
+	default:
+		val, err = slutil.Unmarshal(v)
+	}
+
+	return
+}
+
+func newDataObject(size int) dataObject {
+	return dataObject{
+		headers: make([]string, size),
+		values:  make([]interface{}, size),
+	}
+}
+
+func (object dataObject) get(key string) interface{} {
+	for i, k := range object.headers {
+		if k == key {
+			return object.values[i]
+		}
+	}
+
+	return nil
+}
+
+func (object dataObject) sortKeys() {
+	sorted := newDataObject(len(object.headers))
+	copy(sorted.headers, object.headers)
+	sort.Strings(sorted.headers)
+	for i, k := range sorted.headers {
+		sorted.values[i] = object.get(k)
+	}
+
+	copy(object.headers, sorted.headers)
+	copy(object.values, sorted.values)
 }
 
 func (t table) MarshalStarlark() (v starlark.Value, err error) {

@@ -29,13 +29,20 @@ func randomString(length int) string {
 	return string(b)
 }
 
-func generateCSV(headers []string, name string, fn func(*csv.Writer) error) (string, error) {
+func generateCSV(headers []string, name string, includeHeaders bool, fn func(*csv.Writer) error) (string, error) {
 	tmpfile, err := ioutil.TempFile("/tmp/", name)
 	if err != nil {
 		return "", err
 	}
 
 	writer := csv.NewWriter(&WorkflowWriter{Writer: tmpfile})
+
+	if includeHeaders {
+		err = writer.Write(headers)
+		if err != nil {
+			return "", err
+		}
+	}
 
 	err = fn(writer)
 	if err != nil {

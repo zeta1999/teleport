@@ -188,7 +188,7 @@ func TestComputedColumns(t *testing.T) {
 				extractDatabase(portFile, cse.table)
 
 				csvfile := hook.LastEntry().Data["file"].(string)
-				assertCsvCellContents(t, cse.computedColumnFirstRowValue, csvfile, 0, cse.computedColumnIndex, "`%s` column value not equal", cse.computedColumnName)
+				assertCsvCellContents(t, cse.computedColumnFirstRowValue, csvfile, 1, cse.computedColumnIndex, "`%s` column value not equal", cse.computedColumnName)
 
 				var table schema.Table
 				var tableExtract TableExtract
@@ -301,7 +301,7 @@ func TestExportTimestamp(t *testing.T) {
 		srcdb.Exec("INSERT INTO timestamps (created_at) VALUES (NULL)")
 
 		currentWorkflow = &Workflow{Thread: &starlark.Thread{}}
-		tempfile, _ := exportCSV("testsrc", "timestamps", columns, "", TableExtract{})
+		tempfile, _ := exportCSV("testsrc", "timestamps", columns, "", TableExtract{}, false)
 
 		assertCsvCellContents(t, "2004-08-19T18:51:06Z", tempfile, 0, 0)
 		assertCsvCellContents(t, "", tempfile, 1, 0)

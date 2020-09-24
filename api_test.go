@@ -104,6 +104,38 @@ func TestAPIConfigurationCases(t *testing.T) {
 	}
 }
 
+func TestAPIHeadersCases(t *testing.T) {
+	cases := []struct {
+		testAPIFile     string
+		expectedHeaders []string
+	}{
+		{
+			"api_basic_auth.port",
+			[]string{"id", "name", "created_at"},
+		},
+		{
+			"api_csv.port",
+			[]string{"id", "price", "ranking", "name", "active", "launched", "created_at", "description"},
+		},
+		{
+			"api_no_transform.port",
+			[]string{"items", "offset"}, // should be alphabetically sorted
+		},
+	}
+
+	for _, cse := range cases {
+		t.Run(cse.testAPIFile, func(t *testing.T) {
+			runAPITest(t, cse.testAPIFile, func(t *testing.T, portFile string, destdb *schema.Database) {
+				extractAPI(portFile)
+
+				for i, header := range cse.expectedHeaders {
+					assertCsvCellContents(t, header, hook.LastEntry().Data["file"].(string), 0, i)
+				}
+			})
+		})
+	}
+}
+
 func TestAPIPreview(t *testing.T) {
 	Preview = true
 	runAPITest(t, "api_offset_pagination.port", func(t *testing.T, portFile string, destdb *schema.Database) {

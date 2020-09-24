@@ -1,0 +1,3 @@
+Get("$TEST_URL")
+BasicAuth("user", "pass")
+ResponseType("json")

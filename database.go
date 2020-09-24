@@ -57,7 +57,7 @@ func extractLoadDatabase(sourceOrPath string, destination string, tableName stri
 			return createDestinationTableIfNotExists(destination, destinationTableName, &sourceTable, &destinationTable)
 		},
 		func() error {
-			return extractSource(&sourceTable, &destinationTable, tableExtract, &columns, &csvfile)
+			return extractSource(&sourceTable, &destinationTable, tableExtract, &columns, &csvfile, false)
 		},
 		func() error { return load(&destinationTable, &columns, &csvfile, tableExtract.strategyOpts()) },
 	}, func() {
@@ -86,7 +86,7 @@ func extractDatabase(sourceOrPath string, tableName string) {
 		func() error { return readTableExtractConfiguration(sourceOrPath, tableName, &tableExtract) },
 		func() error { return connectDatabaseWithLogging(source) },
 		func() error { return inspectTable(source, tableName, &table, &tableExtract) },
-		func() error { return extractSource(&table, nil, tableExtract, nil, &csvfile) },
+		func() error { return extractSource(&table, nil, tableExtract, nil, &csvfile, true) },
 	}, func() {
 		log.WithFields(log.Fields{
 			"file": csvfile,
@@ -146,7 +146,7 @@ func inspectTable(source string, tableName string, table *schema.Table, tableExt
 	return
 }
 
-func extractSource(sourceTable *schema.Table, destinationTable *schema.Table, tableExtract TableExtract, columns *[]schema.Column, csvfile *string) (err error) {
+func extractSource(sourceTable *schema.Table, destinationTable *schema.Table, tableExtract TableExtract, columns *[]schema.Column, csvfile *string, includeHeaders bool) (err error) {
 	log.WithFields(log.Fields{
 		"database": sourceTable.Source,
 		"table":    sourceTable.Name,
@@ -184,7 +184,7 @@ func extractSource(sourceTable *schema.Table, destinationTable *schema.Table, ta
 		whereStatement = fmt.Sprintf("%s > '%s'", tableExtract.LoadOptions.ModifiedAtColumn, updateTime)
 	}
 
-	file, err := exportCSV(sourceTable.Source, sourceTable.Name, exportColumns, whereStatement, tableExtract)
+	file, err := exportCSV(sourceTable.Source, sourceTable.Name, exportColumns, whereStatement, tableExtract, includeHeaders)
 	if err != nil {
 		return err
 	}
@@ -196,7 +196,7 @@ func extractSource(sourceTable *schema.Table, destinationTable *schema.Table, ta
 	return
 }
 
-func exportCSV(source string, table string, columns []schema.Column, whereStatement string, tableExtract TableExtract) (string, error) {
+func exportCSV(source string, table string, columns []schema.Column, whereStatement string, tableExtract TableExtract, includeHeaders bool) (string, error) {
 	db, err := connectDatabase(source)
 	if err != nil {
 		return "", fmt.Errorf("Database Open Error: %w", err)
@@ -235,7 +235,7 @@ func exportCSV(source string, table string, columns []schema.Column, whereStatem
 		headers[len(columnNames)+i] = computedColumn.Name
 	}
 
-	return generateCSV(headers, fmt.Sprintf("extract-%s-%s-*.csv", table, source), func(writer *csv.Writer) error {
+	return generateCSV(headers, fmt.Sprintf("extract-%s-%s-*.csv", table, source), includeHeaders, func(writer *csv.Writer) error {
 		destination := make([]interface{}, len(columnNames))
 		rawResult := make([]interface{}, len(columnNames))
 		writeBuffer := make([]string, len(columnNames)+len(tableExtract.ComputedColumns))
