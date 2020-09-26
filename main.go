@@ -167,6 +167,10 @@ func main() {
 	case "transform":
 		updateTransform(opts.Source, opts.TableName)
 
+	// Testing
+	case "test-api":
+		testAPI(opts.FromSource)
+
 	// Handle invalid command
 	default:
 		fmt.Printf("Error: '%s' is an invalid command\n", os.Args[1])

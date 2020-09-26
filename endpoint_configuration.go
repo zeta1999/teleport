@@ -23,6 +23,7 @@ type Endpoint struct {
 	TableDefinition *map[string]string
 	ErrorHandling   *map[errorClass]ExitCode
 	LoadOptions     LoadOptions
+	unexpandedURL   string
 }
 
 func readEndpointConfiguration(path string, endpointptr *Endpoint) error {
@@ -98,6 +99,7 @@ func (endpoint *Endpoint) get(thread *starlark.Thread, _ *starlark.Builtin, args
 	}
 
 	endpoint.URL = os.ExpandEnv(url.GoString())
+	endpoint.unexpandedURL = url.GoString()
 	endpoint.Method = "GET"
 
 	return starlark.None, nil

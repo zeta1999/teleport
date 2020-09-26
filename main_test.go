@@ -59,3 +59,9 @@ func redirectLogs(t *testing.T, fn func()) {
 		t.Log(entry.String())
 	}
 }
+
+func failNowOnError(t *testing.T, err error) {
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+}

@@ -243,7 +243,12 @@ func requestAllPages(endpoint *Endpoint, finalResults *[]dataObject) error {
 }
 
 func getResponse(method string, url string, headers map[string]string, basicAuth *map[string]string) (resp *http.Response, err error) {
-	client := &http.Client{}
+	var client *http.Client
+	if Recorder == nil {
+		client = &http.Client{}
+	} else {
+		client = &http.Client{Transport: Recorder}
+	}
 
 	req, err := http.NewRequest(strings.ToUpper(method), url, nil)
 	if err != nil {
@@ -329,9 +334,7 @@ func applyTransform(value interface{}, endpoint *Endpoint) (results []dataObject
 			results = append(results, object.(dataObject))
 		}
 	case *starlark.Dict:
-		fmt.Println(value.(*starlark.Dict).Keys())
 		object, err := starlarkUnmarshal(value.(starlark.Value))
-		fmt.Println(object)
 		if err != nil {
 			return nil, fmt.Errorf("read object error: %w", err)
 		}
