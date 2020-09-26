@@ -6,12 +6,9 @@ import (
 
 	"github.com/hundredwatt/teleport/schema"
 	"github.com/stretchr/testify/assert"
-	"go.starlark.net/starlark"
 )
 
 func TestMySQLExportTimestampToDate(t *testing.T) {
-	currentWorkflow = &Workflow{Thread: &starlark.Thread{}}
-
 	withMySQLDatabase(t, func(t *testing.T, srcdb *schema.Database) {
 		columns := make([]schema.Column, 1)
 		columns[0] = schema.Column{"updated_at", schema.DATE, map[schema.Option]int{}}

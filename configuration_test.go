@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"go.starlark.net/starlark"
 )
 
 func TestPadStructure(t *testing.T) {
@@ -22,7 +21,6 @@ func TestPadStructure(t *testing.T) {
 		defer os.Unsetenv("TELEPORT_SECRET_KEY")
 		defer os.Unsetenv(key)
 
-		currentWorkflow = &Workflow{Thread: &starlark.Thread{}}
 		var endpoint Endpoint
 
 		// API files in ./sources/apis
@@ -66,8 +64,6 @@ func TestLegacyPadStructure(t *testing.T) {
 		defer os.Unsetenv("PADPATH")
 		defer os.Unsetenv("TELEPORT_SECRET_KEY")
 		defer os.Unsetenv(key)
-
-		currentWorkflow = &Workflow{Thread: &starlark.Thread{}}
 
 		// API files in ./apis
 		var endpoint Endpoint

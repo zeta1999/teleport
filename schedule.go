@@ -49,9 +49,7 @@ func readSchedule() error {
 		return err
 	}
 
-	currentWorkflow = &Workflow{Thread: &starlark.Thread{}}
-
-	_, err = starlark.ExecFile(GetThread(), portFile, nil, scheduleDSL())
+	_, err = starlark.ExecFile(&starlark.Thread{}, portFile, nil, scheduleDSL())
 	if err != nil {
 		return appendBackTraceToStarlarkError(err)
 	}

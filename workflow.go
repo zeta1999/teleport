@@ -34,6 +34,15 @@ const (
 	Retry
 )
 
+func ResetCurrentWorkflow() {
+	if currentWorkflow == nil {
+		currentWorkflow = new(Workflow)
+	}
+	currentWorkflow.RowCounter = 0
+	currentWorkflow.BytesCounter = 0
+	currentWorkflow.Thread = &starlark.Thread{}
+}
+
 func WorkflowFail(err error) *WorkflowError {
 	return &WorkflowError{Fail, err}
 }
@@ -110,7 +119,9 @@ func GetThread() *starlark.Thread {
 
 // RunWorkflow execute a workflow with the provided steps
 func RunWorkflow(steps []step, success func()) {
-	currentWorkflow = &Workflow{steps, success, 0, 0, &starlark.Thread{}}
+	ResetCurrentWorkflow()
+	currentWorkflow.Steps = steps
+	currentWorkflow.Success = success
 
 	err := currentWorkflow.run()
 	if err != nil {
