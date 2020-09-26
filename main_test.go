@@ -17,6 +17,8 @@ var (
 
 func init() {
 	log.SetLevel(log.DebugLevel)
+
+	ResetCurrentWorkflow()
 }
 
 func expectLogMessage(t *testing.T, message string, fn func()) {

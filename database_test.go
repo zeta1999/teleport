@@ -14,7 +14,6 @@ import (
 	"github.com/hundredwatt/teleport/schema"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"go.starlark.net/starlark"
 )
 
 var (
@@ -300,7 +299,6 @@ func TestExportTimestamp(t *testing.T) {
 		srcdb.Exec("INSERT INTO timestamps (created_at) VALUES (DATETIME(1092941466, 'unixepoch'))")
 		srcdb.Exec("INSERT INTO timestamps (created_at) VALUES (NULL)")
 
-		currentWorkflow = &Workflow{Thread: &starlark.Thread{}}
 		tempfile, _ := exportCSV("testsrc", "timestamps", columns, "", TableExtract{}, false)
 
 		assertCsvCellContents(t, "2004-08-19T18:51:06Z", tempfile, 0, 0)
