@@ -358,13 +358,6 @@ func connectDatabase(source string) (*schema.Database, error) {
 		db.Exec(fmt.Sprintf(GetDialect(db).SetSchemaQuery, schema))
 	}
 
-	if schema, ok := Databases[source].Options["schema"]; ok {
-		_, err := database.Exec(fmt.Sprintf("SET search_path TO %s", schema))
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	dbs[source] = db
 	return dbs[source], nil
 }
