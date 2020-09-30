@@ -182,6 +182,8 @@ func extractSource(sourceTable *schema.Table, destinationTable *schema.Table, ta
 	case ModifiedOnly:
 		updateTime := (time.Now().Add(time.Duration(-1*tableExtract.LoadOptions.GoBackHours) * time.Hour)).Format("2006-01-02 15:04:05")
 		whereStatement = fmt.Sprintf("%s > '%s'", tableExtract.LoadOptions.ModifiedAtColumn, updateTime)
+	default:
+		return fmt.Errorf("database load strategy not implementend: %s", tableExtract.LoadOptions.Strategy)
 	}
 
 	file, err := exportCSV(sourceTable.Source, sourceTable.Name, exportColumns, whereStatement, tableExtract, includeHeaders)
