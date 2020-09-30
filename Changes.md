@@ -3,6 +3,7 @@
 ## HEAD
 ### Fixed
 * Consistent column order in API CSV (no longer randomly ordered)
+* Set PostgreSQL jsonb data type to schema.TEXT
 
 ## 0.5.0-beta
 ### Added

@@ -16,7 +16,7 @@ var parsePostgresSpecialTypes = func(column sqlColumn) (DataType, map[Option]int
 	case "inet", "uuid", "cidr", "macaddr":
 		options[LENGTH] = 255
 		return STRING, options, true
-	case "xml", "json":
+	case "xml", "json", "jsonb":
 		return TEXT, options, true
 	}
 

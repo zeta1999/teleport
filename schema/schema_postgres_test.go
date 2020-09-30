@@ -52,7 +52,7 @@ func TestPostgresInspection(t *testing.T) {
 				"VARCHAR(255)",
 			},
 			{
-				[]string{"xml", "json"},
+				[]string{"xml", "json", "jsonb"},
 				Column{"", TEXT, map[Option]int{}},
 				"TEXT",
 			},
