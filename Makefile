@@ -1,5 +1,5 @@
 NAME=teleport
-VERSION=0.5.0-beta
+VERSION=0.5.0-beta.1
 BUILD=$(shell git rev-parse --short HEAD)
 
 # Use linker flags to provide version/build settings
@@ -18,7 +18,7 @@ test:
 	@go test
 
 ## release: build all binaries and release to GitHub
-release:# deb rpm build xbinary binary
+release: deb rpm build xbinary binary
 	@echo Releasing $(NAME) $(VERSION)
 	@hub release create v$(VERSION) \
 		-a pkg/teleport_$(VERSION)_amd64.deb \

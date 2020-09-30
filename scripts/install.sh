@@ -7,7 +7,7 @@
 
 # When releasing Teleport, the releaser should update this version number
 # AFTER they upload new binaries.
-VERSION="0.5.0-beta"
+VERSION="0.5.0-beta.1"
 BREW=$(command -v brew)
 
 set -e
