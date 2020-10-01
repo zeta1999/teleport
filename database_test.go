@@ -63,6 +63,13 @@ func TestDatabaseConfigurationCases(t *testing.T) {
 			2,
 			[]string{},
 		},
+		{
+			"specified_pks.port",
+			"widgets",
+			log.InfoLevel,
+			3,
+			[]string{},
+		},
 	}
 
 	for _, cse := range cases {
@@ -70,7 +77,14 @@ func TestDatabaseConfigurationCases(t *testing.T) {
 			runDatabaseTest(t, cse.testFile, func(t *testing.T, portFile string, dbSrc *schema.Database, dbDest *schema.Database) {
 				setupTable(dbSrc, cse.table)
 
-				extractLoadDatabase(portFile, "testdest", cse.table)
+				switch cse.testFile {
+				case "specified_pks.port":
+					withMockStdin("4\n5\n7", func() {
+						extractLoadDatabase(portFile, "testdest", cse.table)
+					})
+				default:
+					extractLoadDatabase(portFile, "testdest", cse.table)
+				}
 
 				assert.Equal(t, cse.expectedLastEntryLevel, hook.LastEntry().Level)
 				if cse.expectedRows != -1 {
@@ -437,4 +451,27 @@ func actionsInsert(db *schema.Database, args ...interface{}) {
 	statement, _ := db.Prepare("INSERT INTO actions (id, name, options) VALUES (?, ?, ?)")
 	statement.Exec(args...)
 	statement.Close()
+}
+
+func withMockStdin(content string, fn func()) {
+	tmpfile, err := ioutil.TempFile("", "stdin")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.Remove(tmpfile.Name())
+
+	if _, err := tmpfile.Write([]byte(content)); err != nil {
+		log.Fatal(err)
+	}
+
+	if _, err := tmpfile.Seek(0, 0); err != nil {
+		log.Fatal(err)
+	}
+
+	oldStdin := os.Stdin
+	defer func() { os.Stdin = oldStdin }() // Restore original Stdin
+
+	os.Stdin = tmpfile
+
+	fn()
 }

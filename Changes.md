@@ -1,6 +1,8 @@
 # Teleport Changelog
 
 ## HEAD
+### Added
+* (Database) "SpecifiedPKs" load strategy which only replicates rows with a Primary Key value provided via STDIN
 
 ## 0.5.0-beta.1
 ### Fixed

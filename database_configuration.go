@@ -160,6 +160,7 @@ func databasePredeclared(databaseExtract *DatabaseExtract) starlark.StringDict {
 	predeclared["Full"] = starlark.String(Full)
 	predeclared["Incremental"] = starlark.String(Incremental)
 	predeclared["ModifiedOnly"] = starlark.String(ModifiedOnly)
+	predeclared["SpecifiedPKs"] = starlark.String(SpecifiedPKs)
 
 	return predeclared
 }
@@ -199,6 +200,10 @@ func (tableExtract *TableExtract) setLoadStrategy(thread *starlark.Thread, _ *st
 			return nil, prependStarlarkPositionToError(thread, err)
 		}
 	case Incremental:
+		if err := starlark.UnpackArgs("LoadStrategy", args, kwargs, "strategy", &strategy, "primary_key", &primaryKey); err != nil {
+			return nil, prependStarlarkPositionToError(thread, err)
+		}
+	case SpecifiedPKs:
 		if err := starlark.UnpackArgs("LoadStrategy", args, kwargs, "strategy", &strategy, "primary_key", &primaryKey); err != nil {
 			return nil, prependStarlarkPositionToError(thread, err)
 		}

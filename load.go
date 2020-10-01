@@ -14,6 +14,7 @@ const (
 	Full         LoadStrategy = "Full"
 	Incremental  LoadStrategy = "Incremental"
 	ModifiedOnly LoadStrategy = "ModifiedOnly"
+	SpecifiedPKs LoadStrategy = "SpecifiedPKs"
 
 	defaultLoadStrategy = Full
 )
@@ -145,7 +146,7 @@ func updatePrimaryTable(destinationTable *schema.Table, stagingTableName string,
 	switch strategyOpts.Strategy {
 	case "full", "Full":
 		query = fmt.Sprintf(GetDialect(db).FullLoadQuery, db.EscapeIdentifier(destinationTable.Name), db.EscapeIdentifier(stagingTableName))
-	case "modified-only", "ModifiedOnly", "Incremental":
+	case "modified-only", "ModifiedOnly", "Incremental", "SpecifiedPKs":
 		query = fmt.Sprintf(GetDialect(db).ModifiedOnlyLoadQuery, db.EscapeIdentifier(destinationTable.Name), db.EscapeIdentifier(stagingTableName), strategyOpts.PrimaryKey)
 	}
 

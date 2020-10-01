@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"crypto/tls"
 	"crypto/x509"
 	"database/sql"
 	"encoding/csv"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -182,6 +184,25 @@ func extractSource(sourceTable *schema.Table, destinationTable *schema.Table, ta
 	case ModifiedOnly:
 		updateTime := (time.Now().Add(time.Duration(-1*tableExtract.LoadOptions.GoBackHours) * time.Hour)).Format("2006-01-02 15:04:05")
 		whereStatement = fmt.Sprintf("%s > '%s'", tableExtract.LoadOptions.ModifiedAtColumn, updateTime)
+	case SpecifiedPKs:
+		pks := make([]string, 0)
+		if stdinStat, err := os.Stdin.Stat(); err == nil {
+			if stdinStat.Size() == 0 {
+				return fmt.Errorf("no input provided to stdin; input required when using LoadStrategy(%s)", tableExtract.LoadOptions.Strategy)
+			}
+		} else {
+			return err
+		}
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan() {
+			for _, value := range strings.Split(scanner.Text(), "\n") {
+				pks = append(pks, value)
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			return err
+		}
+		whereStatement = fmt.Sprintf("%s IN (%s)", tableExtract.LoadOptions.PrimaryKey, strings.Join(pks, ","))
 	default:
 		return fmt.Errorf("database load strategy not implementend: %s", tableExtract.LoadOptions.Strategy)
 	}
