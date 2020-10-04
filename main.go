@@ -163,6 +163,9 @@ func main() {
 	case "extract-load-api":
 		extractLoadAPI(opts.FromSource, opts.ToSource)
 
+	case "load-db-from-stream":
+		consumeLoadDatabase(opts.FromSource, opts.ToSource)
+
 	// Run Transform within datawarehouse
 	case "transform":
 		updateTransform(opts.Source, opts.TableName)

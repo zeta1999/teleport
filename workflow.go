@@ -107,6 +107,11 @@ func IncrementRowCounter() {
 	currentWorkflow.RowCounter++
 }
 
+// IncrementRowCounterBy increments the RowCounter for the current workflow by the provided amount
+func IncrementRowCounterBy(amount int64) {
+	currentWorkflow.RowCounter += amount
+}
+
 // GetBytesCounter returns the value of BytesCounter for the current workflow
 func GetBytesCounter() int64 {
 	return currentWorkflow.RowCounter

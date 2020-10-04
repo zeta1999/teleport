@@ -127,16 +127,11 @@ func readTableExtractConfiguration(path string, tableName string, tableExtractpt
 		return err
 	}
 
-	var tableExtract *TableExtract
-	tableExtract, ok := databaseExtract.TableExtracts[tableName]
+	tableExtract, ok := databaseExtract.tableExtract(tableName)
 	if !ok {
-		tableExtract, ok = databaseExtract.TableExtracts["*"]
-
-		if !ok {
-			log.Warn("Missing extract configuration, assuming Full")
-			tableExtract = &TableExtract{}
-			tableExtract.LoadOptions.Strategy = LoadStrategy("Full")
-		}
+		log.Warn("Missing extract configuration, assuming Full")
+		tableExtract = &TableExtract{}
+		tableExtract.LoadOptions.Strategy = LoadStrategy("Full")
 	}
 
 	if FullLoad {
@@ -161,8 +156,21 @@ func databasePredeclared(databaseExtract *DatabaseExtract) starlark.StringDict {
 	predeclared["Incremental"] = starlark.String(Incremental)
 	predeclared["ModifiedOnly"] = starlark.String(ModifiedOnly)
 	predeclared["SpecifiedPKs"] = starlark.String(SpecifiedPKs)
+	predeclared["Kinesis"] = starlark.String(Kinesis)
 
 	return predeclared
+}
+
+func (databaseExtract *DatabaseExtract) tableExtract(tableName string) (*TableExtract, bool) {
+	if tableExtract, ok := databaseExtract.TableExtracts[tableName]; ok {
+		return tableExtract, true
+	}
+
+	if tableExtract, ok := databaseExtract.TableExtracts["*"]; ok {
+		return tableExtract, true
+	}
+
+	return nil, false
 }
 
 func (databaseExtract *DatabaseExtract) newTableExtract(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (value starlark.Value, err error) {
@@ -204,6 +212,10 @@ func (tableExtract *TableExtract) setLoadStrategy(thread *starlark.Thread, _ *st
 			return nil, prependStarlarkPositionToError(thread, err)
 		}
 	case SpecifiedPKs:
+		if err := starlark.UnpackArgs("LoadStrategy", args, kwargs, "strategy", &strategy, "primary_key", &primaryKey); err != nil {
+			return nil, prependStarlarkPositionToError(thread, err)
+		}
+	case Kinesis:
 		if err := starlark.UnpackArgs("LoadStrategy", args, kwargs, "strategy", &strategy, "primary_key", &primaryKey); err != nil {
 			return nil, prependStarlarkPositionToError(thread, err)
 		}

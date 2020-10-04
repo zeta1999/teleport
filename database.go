@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/tls"
 	"crypto/x509"
 	"database/sql"
@@ -24,7 +25,8 @@ import (
 )
 
 var (
-	dbs = make(map[string]*schema.Database)
+	dbs           = make(map[string]*schema.Database)
+	StdinOverride = []byte{}
 )
 
 func extractLoadDatabase(sourceOrPath string, destination string, tableName string) {
@@ -95,6 +97,40 @@ func extractDatabase(sourceOrPath string, tableName string) {
 			"rows": currentWorkflow.RowCounter,
 		}).Info("Extract to CSV completed 🎉")
 	})
+}
+
+func replicateDeletesDatabase(sourceOrPath string, destination string, tableName string, pkValues []string) {
+	var source string
+	if strings.Contains(sourceOrPath, "/") {
+		source = fileNameWithoutExtension(filepath.Base(sourceOrPath))
+	} else {
+		source = sourceOrPath
+	}
+
+	destinationTableName := fmt.Sprintf("%s_%s", source, tableName)
+
+	log.WithFields(log.Fields{
+		"from":  source,
+		"to":    destination,
+		"table": destinationTableName,
+	}).Info("Replicating deleted rows")
+
+	var table schema.Table
+	var tableExtract TableExtract
+
+	RunWorkflow([]func() error{
+		func() error { return readTableExtractConfiguration(sourceOrPath, tableName, &tableExtract) },
+		func() error { return connectDatabaseWithLogging(destination) },
+		func() error { return inspectTable(destination, destinationTableName, &table, &tableExtract) },
+		func() error {
+			return replicateDeletes(destination, destinationTableName, &table, &tableExtract, pkValues)
+		},
+	}, func() {
+		log.WithFields(log.Fields{
+			"rows": currentWorkflow.RowCounter,
+		}).Info("Rows deleted")
+	})
+
 }
 
 func connectDatabaseWithLogging(source string) (err error) {
@@ -184,16 +220,23 @@ func extractSource(sourceTable *schema.Table, destinationTable *schema.Table, ta
 	case ModifiedOnly:
 		updateTime := (time.Now().Add(time.Duration(-1*tableExtract.LoadOptions.GoBackHours) * time.Hour)).Format("2006-01-02 15:04:05")
 		whereStatement = fmt.Sprintf("%s > '%s'", tableExtract.LoadOptions.ModifiedAtColumn, updateTime)
-	case SpecifiedPKs:
+	case SpecifiedPKs, Kinesis:
 		pks := make([]string, 0)
-		if stdinStat, err := os.Stdin.Stat(); err == nil {
-			if stdinStat.Size() == 0 {
-				return fmt.Errorf("no input provided to stdin; input required when using LoadStrategy(%s)", tableExtract.LoadOptions.Strategy)
-			}
+
+		var scanner *bufio.Scanner
+		if len(StdinOverride) > 0 {
+			scanner = bufio.NewScanner(bytes.NewReader(StdinOverride))
 		} else {
-			return err
+			if stdinStat, err := os.Stdin.Stat(); err == nil {
+				if stdinStat.Size() == 0 {
+					return fmt.Errorf("no input provided to stdin; input required when using LoadStrategy(%s)", tableExtract.LoadOptions.Strategy)
+				}
+			} else {
+				return err
+			}
+			scanner = bufio.NewScanner(os.Stdin)
 		}
-		scanner := bufio.NewScanner(os.Stdin)
+
 		for scanner.Scan() {
 			for _, value := range strings.Split(scanner.Text(), "\n") {
 				pks = append(pks, value)
@@ -326,6 +369,41 @@ func exportCSV(source string, table string, columns []schema.Column, whereStatem
 
 		return nil
 	})
+}
+
+func replicateDeletes(destination string, destinationTableName string, table *schema.Table, tableExtract *TableExtract, pkValues []string) error {
+	fnlog := log.WithFields(log.Fields{
+		"database":    destination,
+		"table":       destinationTableName,
+		"primary_key": tableExtract.LoadOptions.PrimaryKey,
+	})
+
+	db, err := connectDatabase(destination)
+	if err != nil {
+		return fmt.Errorf("Database Open Error: %w", err)
+	}
+
+	query := fmt.Sprintf("DELETE FROM %s WHERE %s IN (%s)",
+		db.EscapeIdentifier(destinationTableName), db.EscapeIdentifier(tableExtract.LoadOptions.PrimaryKey), strings.Join(pkValues, ","))
+
+	fnlog.Infof("Replicating deletes from source")
+	if Preview {
+		log.Debug("(not executed) SQL Query:\n" + query)
+		return nil
+	}
+
+	result, err := db.Exec(query)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Warn(err)
+	}
+	IncrementRowCounterBy(rowsAffected)
+
+	return nil
 }
 
 func connectDatabase(source string) (*schema.Database, error) {
