@@ -97,7 +97,7 @@ func readDatabaseConnectionConfiguration() {
 	}
 }
 
-func readTableExtractConfiguration(path string, tableName string, tableExtractptr *TableExtract) error {
+func readDatabaseExtractConfiguration(path string, databaseExtractPtr *DatabaseExtract) error {
 	databaseExtract := DatabaseExtract{}
 	databaseExtract.TableExtracts = make(map[string]*TableExtract)
 
@@ -106,7 +106,8 @@ func readTableExtractConfiguration(path string, tableName string, tableExtractpt
 		log.Warn("No table configuration found, using default load strategy: Full")
 		tableExtract := &TableExtract{}
 		tableExtract.LoadOptions.Strategy = LoadStrategy("Full")
-		*tableExtractptr = *tableExtract
+		databaseExtract.TableExtracts["*"] = tableExtract
+		*databaseExtractPtr = databaseExtract
 		return nil
 	}
 
@@ -114,10 +115,17 @@ func readTableExtractConfiguration(path string, tableName string, tableExtractpt
 	if err != nil {
 		return err
 	}
-	//
-	// if err := tableExtract.validate(); err != nil {
-	// 	return err
-	// }
+
+	*databaseExtractPtr = databaseExtract
+	return nil
+}
+
+func readTableExtractConfiguration(path string, tableName string, tableExtractptr *TableExtract) error {
+	databaseExtract := DatabaseExtract{}
+	err := readDatabaseExtractConfiguration(path, &databaseExtract)
+	if err != nil {
+		return err
+	}
 
 	var tableExtract *TableExtract
 	tableExtract, ok := databaseExtract.TableExtracts[tableName]
@@ -142,15 +150,6 @@ func readTableExtractConfiguration(path string, tableName string, tableExtractpt
 	*tableExtractptr = *tableExtract
 	return nil
 }
-
-// func (tableExtract *TableExtract) validate() error {
-// 	validator.SetValidationFunc("in", validateIn)
-// 	if errs := validator.Validate(tableExtract); errs != nil {
-// 		return fmt.Errorf("Invalid Configuration: %s", errs.Error())
-// 	}
-
-// 	return nil
-// }
 
 func databasePredeclared(databaseExtract *DatabaseExtract) starlark.StringDict {
 	predeclared := starlarkextensions.GetExtensions()
